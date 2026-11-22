@@ -3,7 +3,7 @@
 ## 1. Inputs
 
 - [x] 1.1 Pins: load `pins.json` and refuse inexact versions (STEP-003)
-- [ ] 1.2 Step scripts: parse, refuse missing sources and missing scripts (STEP-001, STEP-004)
+- [x] 1.2 Step scripts: parse, refuse missing sources and missing scripts (STEP-001, STEP-004)
 - [ ] 1.3 Tool installs into `.bench/tools/` and the loaded-file check (STEP-002)
 
 ## 2. Replay
