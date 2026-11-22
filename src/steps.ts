@@ -1,12 +1,14 @@
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { parse } from "yaml";
+import type { Pins } from "./pins.ts";
 
 /** The workflows the benchmark compares; each has one step script per task. */
 export const WORKFLOWS = ["specjutsu", "speckit", "openspec"] as const;
 
 export type Step = {
   kind: "load" | "read" | "run" | "write" | "session";
+  tool?: string;
   path?: string;
   command?: string;
   source?: string;
@@ -34,4 +36,15 @@ export function loadSteps(root: string, script: string): Step[] {
 /** Returns one error line per step that does not cite a source; steps count from 1. */
 export function checkSources(script: string, steps: Step[]): string[] {
   return steps.flatMap((step, i) => (step.source ? [] : [`${script} step ${i + 1}: missing source`]));
+}
+
+/** Returns one error line per load step whose file is not in `.bench/tools/<tool>@<pin>/`. */
+export function checkLoads(root: string, pins: Pins, script: string, steps: Step[]): string[] {
+  return steps.flatMap((step, i) => {
+    if (step.kind !== "load" || !step.tool || !step.path) return [];
+    const install = `${step.tool}@${pins[step.tool]}`;
+    return existsSync(join(root, ".bench", "tools", install, step.path))
+      ? []
+      : [`${script} step ${i + 1}: ${step.path} not found in ${install}`];
+  });
 }
