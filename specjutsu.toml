@@ -1,0 +1,12 @@
+schema = 1
+spec_root = "specjutsu"
+mode = "guided"
+
+[[package]]
+path = "."
+sources = ["src/**"]
+
+[[package.suite]]
+runner = "vitest"
+tests = ["test/**/*.test.ts"]
+setup = "npm ci"
