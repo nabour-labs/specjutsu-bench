@@ -26,7 +26,7 @@ the other tools' maintainers can challenge a step script while it is cheap to fi
 - **The harness is TypeScript, run with Node 22.** It sits beside the fixture and uses the same
   toolchain. Rejected: Rust reusing sj's crates, which would tie the benchmark to the tool it
   measures.
-- **Step scripts are YAML with four step kinds: `load`, `read`, `run`, `write`.** `load` reads a
+- **Step scripts are YAML with four step kinds that touch bytes, `load`, `read`, `run`, `write`, plus `session`, which marks where a new agent session starts.** `load` reads a
   file from a pinned tool install (a skill, a slash-command template), `read` a file in the
   workspace, `run` a command in the workspace, `write` a golden file into it. Rejected: scripts in
   code, which are harder for an outside reviewer to read and challenge.
