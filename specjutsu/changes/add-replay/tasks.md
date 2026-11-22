@@ -4,7 +4,7 @@
 
 - [x] 1.1 Pins: load `pins.json` and refuse inexact versions (STEP-003)
 - [x] 1.2 Step scripts: parse, refuse missing sources and missing scripts (STEP-001, STEP-004)
-- [ ] 1.3 Tool installs into `.bench/tools/` and the loaded-file check (STEP-002)
+- [ ] 1.3 Loaded-file check against the pinned install in `.bench/tools/<tool>@<pin>/` (STEP-002)
 
 ## 2. Replay
 
@@ -22,5 +22,5 @@
 
 - [ ] 4.1 Fixture app, the three tasks and their golden end states (no-scenario: fixture data, checked by REPLAY-009)
 - [ ] 4.2 Step scripts for specjutsu, Spec Kit + Superpowers and OpenSpec + Superpowers, each step citing its source (no-scenario: benchmark data, checked by STEP-001..004)
-- [ ] 4.3 First committed results and the CI job running `npm run replay -- --check` (no-scenario: config)
+- [ ] 4.3 Tool install script for `.bench/tools/`, first committed results, and the CI job running `npm run replay -- --check` (no-scenario: config)
 - [ ] 4.4 README: running the replay and reading the results (no-scenario: docs)
