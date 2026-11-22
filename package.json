@@ -9,6 +9,7 @@
     "node": ">=22"
   },
   "scripts": {
+    "replay": "node src/cli.ts",
     "test": "vitest run",
     "typecheck": "tsc --noEmit"
   },
