@@ -3,7 +3,7 @@ import { join } from "node:path";
 
 export type Pins = Record<string, string>;
 
-const SEMVER = /^\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?(?:\+[0-9A-Za-z.-]+)?$/;
+const SEMVER = /^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:-[0-9A-Za-z.-]+)?(?:\+[0-9A-Za-z.-]+)?$/;
 const COMMIT = /^[0-9a-f]{40}$/;
 
 export function loadPins(root: string): Pins {
