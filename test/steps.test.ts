@@ -31,3 +31,18 @@ it("replay accepts exact pins and complete, sourced scripts", () => {
   expect(run.stderr).toBe("");
   expect(run.status).toBe(0);
 });
+
+it("STEP-002 refuses a load step whose file is not in the pinned Superpowers install", () => {
+  const load =
+    "  - kind: load\n    tool: superpowers\n    path: skills/test-driven-development/SKILL.md\n    source: https://example.com/docs#load\n";
+  const root = benchRoot({ "steps/speckit/feature.yaml": `${stepScript(1)}${load}` });
+  const pin = (JSON.parse(readFileSync(join(root, "pins.json"), "utf8")) as { superpowers: string }).superpowers;
+  mkdirSync(join(root, ".bench", "tools", `superpowers@${pin}`, "skills"), { recursive: true });
+
+  const run = replay(root);
+
+  expect(run.stderr).toContain(
+    `steps/speckit/feature.yaml step 2: skills/test-driven-development/SKILL.md not found in superpowers@${pin}`,
+  );
+  expect(run.status).toBe(1);
+});
