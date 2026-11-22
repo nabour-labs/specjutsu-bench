@@ -3,10 +3,10 @@ import { cpSync, mkdirSync, mkdtempSync, symlinkSync, writeFileSync } from "node
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
+import { WORKFLOWS } from "../src/steps.ts";
 
 const pkg = fileURLToPath(new URL("..", import.meta.url));
 
-export const WORKFLOWS = ["specjutsu", "speckit", "openspec"];
 export const TASKS = ["feature", "bugfix", "change"];
 
 /** A step script with `count` steps that each cite a source. */
