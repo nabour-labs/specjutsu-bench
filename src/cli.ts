@@ -3,6 +3,7 @@ import { join } from "node:path";
 import { checkFixtureStates } from "./fixture.ts";
 import { checkPins, loadPins } from "./pins.ts";
 import { replayAll } from "./replay.ts";
+import { resultsMarkdown } from "./report.ts";
 import {
   WORKFLOWS,
   checkLoads,
@@ -53,5 +54,6 @@ if (errors.length > 0) {
   const results = replayAll(root, loadPins(root), loadTasks(root));
   mkdirSync(join(root, "results"), { recursive: true });
   writeFileSync(join(root, "results", "results.json"), `${JSON.stringify(results, null, 2)}\n`);
+  writeFileSync(join(root, "results", "results.md"), resultsMarkdown(results));
   process.exitCode = 0;
 }
