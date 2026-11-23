@@ -309,3 +309,69 @@ describe("sj gain cross-check", () => {
     expect(run.status).toBe(1);
   });
 });
+
+it("REPLAY-014 counts the workspace path a run step prints as /workspace", () => {
+  const command = `node -e "console.log(process.cwd() + '/test/terms.test.ts')"`;
+  const root = benchRoot({ "steps/speckit/feature.yaml": "steps:\n" + step(`run\n    command: ${command}\n`) });
+
+  const run = replay(root);
+
+  expect(run.stderr).toBe("");
+  expect(run.status).toBe(0);
+  const [printed] = ownSteps(results(root).workflows.speckit.feature);
+  expect(printed.context).toBe(Buffer.byteLength("/workspace/test/terms.test.ts\n"));
+});
+
+it("REPLAY-015 commits the start state on main as one fixture start commit with the same hash on every run", () => {
+  // The second step writes the same log to a file outside the workspace, so the test can read it.
+  const command = "git log --format=%H%n%s main";
+  const root = benchRoot({
+    "steps/speckit/feature.yaml":
+      "steps:\n" + step(`run\n    command: ${command}\n`) + step(`run\n    command: ${command} > "$REPLAY_015_LOG"\n`),
+  });
+  const out = mkdtempSync(join(tmpdir(), "replay-015-"));
+  const runLog = (n: number) => {
+    const log = join(out, `log-${n}.txt`);
+    process.env.REPLAY_015_LOG = log;
+    try {
+      const run = replay(root);
+      expect(run.stderr).toBe("");
+      expect(run.status).toBe(0);
+    } finally {
+      delete process.env.REPLAY_015_LOG;
+    }
+    return { log: readFileSync(log, "utf8"), context: ownSteps(results(root).workflows.speckit.feature)[0].context };
+  };
+
+  const first = runLog(1);
+  const second = runLog(2);
+
+  // One commit: its hash line and its subject.
+  expect(first.log).toMatch(/^[0-9a-f]{40}\nfixture start\n$/);
+  expect(first.context).toBe(Buffer.byteLength(first.log));
+  expect(second.log).toBe(first.log);
+  // The hash is what the start files' tree gives with design.md's fixed author, committer and
+  // date, so it depends on nothing about this machine or run.
+  const repo = mkdtempSync(join(tmpdir(), "replay-015-repo-"));
+  const git = (args: string[], env: Record<string, string> = {}) =>
+    spawnSync("git", ["-c", "core.hooksPath=", "-c", "commit.gpgsign=false", ...args], {
+      cwd: repo,
+      encoding: "utf8",
+      env: { ...process.env, GIT_INDEX_FILE: join(repo, "index"), GIT_DIR: join(repo, ".git"), GIT_WORK_TREE: join(root, "fixture", "start"), ...env },
+    }).stdout.trim();
+  git(["init", "-q"]);
+  git(["add", "-A"]);
+  const tree = git(["write-tree"]);
+  const date = "2026-01-01T00:00:00Z";
+  const hash = git(["commit-tree", tree, "-m", "fixture start"], {
+    GIT_AUTHOR_NAME: "bench",
+    GIT_AUTHOR_EMAIL: "bench@localhost",
+    GIT_COMMITTER_NAME: "bench",
+    GIT_COMMITTER_EMAIL: "bench@localhost",
+    GIT_AUTHOR_DATE: date,
+    GIT_COMMITTER_DATE: date,
+  });
+  rmSync(repo, { recursive: true, force: true });
+  rmSync(out, { recursive: true, force: true });
+  expect(first.log).toBe(`${hash}\nfixture start\n`);
+});
