@@ -4,11 +4,12 @@ import { checkFixtureStates } from "./fixture.ts";
 import { checkPins, loadPins } from "./pins.ts";
 import { replayAll } from "./replay.ts";
 import { drift, gainMismatches, resultsMarkdown } from "./report.ts";
-import type { Results } from "./replay.ts";
+import type { Gain, Results } from "./replay.ts";
 import {
   WORKFLOWS,
   checkLoads,
   checkSessionKinds,
+  checkSjRuns,
   checkSources,
   loadSessionSteps,
   loadSteps,
@@ -35,6 +36,7 @@ function check(root: string): string[] {
   const stepErrors = checked.flatMap(([script, steps]) => [
     ...checkSources(script, steps),
     ...checkLoads(root, pins, script, steps),
+    ...checkSjRuns(root, pins, script, steps),
   ]);
   return [...pinErrors, ...missing.map((script) => `missing ${script}`), ...sessionErrors, ...stepErrors];
 }
@@ -56,10 +58,8 @@ if (errors.length > 0) {
     checkDrift(root);
   } else {
     const { results, gain } = replayAll(root, loadPins(root), loadTasks(root));
-    const mismatches = gainMismatches(gain);
-    for (const line of mismatches) console.error(line);
-    if (mismatches.length > 0) process.exitCode = 1;
-    else write(root, results);
+    if (reportGain(gain)) write(root, results);
+    else process.exitCode = 1;
   }
 }
 
@@ -78,12 +78,18 @@ function checkDrift(root: string): void {
     return;
   }
   const { results, gain } = replayAll(root, loadPins(root), loadTasks(root));
-  const mismatches = gainMismatches(gain);
-  for (const line of mismatches) console.error(line);
+  const gainOk = reportGain(gain);
   const lines = drift(committed, results);
   for (const line of lines) console.log(line);
   if (lines.length === 0) console.log("results match");
-  process.exitCode = lines.length > 0 || mismatches.length > 0 ? 1 : 0;
+  process.exitCode = lines.length > 0 || !gainOk ? 1 : 0;
+}
+
+/** Prints every `sj gain` failure or mismatch to stderr; true when there are none. */
+function reportGain(gain: Gain): boolean {
+  const lines = gainMismatches(gain);
+  for (const line of lines) console.error(line);
+  return lines.length === 0;
 }
 
 /** The committed results, or undefined when they are not JSON with `pins` and `workflows`. */

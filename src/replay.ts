@@ -11,6 +11,8 @@ export type ScriptResult = { context: number; output: number; firstStep: number;
 export type Results = { pins: Pins; workflows: Record<string, Record<string, ScriptResult>> };
 /** Per `sj` command, the raw bytes the replay counted for its steps and the `printed` bytes `sj gain` reports. */
 export type GainTotals = Record<string, { replay: number; gain: number }>;
+/** The totals, and one line per specjutsu script whose `sj gain --json` failed. */
+export type Gain = { totals: GainTotals; failures: string[] };
 
 /** The `sj` commands whose printed bytes `sj gain --json` reports. */
 const GAIN_COMMANDS = ["test", "verify", "next", "status"];
@@ -20,9 +22,9 @@ const GAIN_COMMANDS = ["test", "verify", "next", "status"];
  * compares the specjutsu scripts' `sj` steps with what the pinned `sj gain` recorded in their
  * workspaces.
  */
-export function replayAll(root: string, pins: Pins, tasks: string[]): { results: Results; gain: GainTotals } {
+export function replayAll(root: string, pins: Pins, tasks: string[]): { results: Results; gain: Gain } {
   const workflows: Results["workflows"] = {};
-  const gain: GainTotals = {};
+  const gain: Gain = { totals: {}, failures: [] };
   for (const workflow of WORKFLOWS) {
     workflows[workflow] = {};
     const sessionStart = loadSessionSteps(root, workflow)
@@ -47,7 +49,7 @@ export function replayAll(root: string, pins: Pins, tasks: string[]): { results:
   return { results: { pins, workflows }, gain };
 }
 
-/** The pinned specjutsu install's `bin/`, put first on PATH for run steps. */
+/** The pinned specjutsu install's `bin/`, put first on PATH for run steps; preflight checks `bin/sj` exists. */
 function sjBin(root: string, pins: Pins): string | undefined {
   return pins.specjutsu ? join(root, ".bench", "tools", `specjutsu@${pins.specjutsu}`, "bin") : undefined;
 }
@@ -63,20 +65,30 @@ function addGain(gain: GainTotals, command: string, side: "replay" | "gain", byt
   gain[command][side] += bytes;
 }
 
-/** Adds the `printed` bytes the pinned `sj gain --json` reports for the runs in `workspace`. */
-function addGainReport(root: string, pins: Pins, workspace: string, gain: GainTotals): void {
-  const run = spawnSync(join(sjBin(root, pins) ?? "", "sj"), ["gain", "--json", "--root", workspace], {
+/**
+ * Adds the `printed` bytes the pinned `sj gain --json` reports for the runs in `workspace`, or a
+ * failure line naming `script` (never the workspace path) when it fails or prints no JSON.
+ */
+function addGainReport(root: string, pins: Pins, script: string, workspace: string, gain: Gain): void {
+  const run = spawnSync(join(sjBin(root, pins)!, "sj"), ["gain", "--json", "--root", workspace], {
     cwd: workspace,
     encoding: "utf8",
   });
-  let commands: { command: string; printed: number }[] = [];
+  const fail = (reason: string) => gain.failures.push(`sj gain --json failed for ${script}: ${reason}`);
+  if (run.error || run.status !== 0) {
+    fail(run.stderr?.split("\n").find((line) => line.trim() !== "")?.trim() ?? "unreadable");
+    return;
+  }
+  let commands: { command: string; printed: number }[];
   try {
     commands = (JSON.parse(run.stdout) as { commands: typeof commands }).commands;
+    if (!Array.isArray(commands)) throw new Error("no commands");
   } catch {
-    // Unreadable output counts as no runs, so every counted command shows as a mismatch.
+    fail("unreadable");
+    return;
   }
   for (const { command, printed } of commands) {
-    if (GAIN_COMMANDS.includes(command)) addGain(gain, command, "gain", printed);
+    if (GAIN_COMMANDS.includes(command)) addGain(gain.totals, command, "gain", printed);
   }
 }
 
@@ -88,7 +100,7 @@ function replayScript(
   sessionStart: number,
   steps: Step[],
   firstStep: number,
-  gain: GainTotals | undefined,
+  gain: Gain | undefined,
 ): ScriptResult {
   const workspace = mkdtempSync(join(tmpdir(), "replay-workspace-"));
   try {
@@ -103,12 +115,12 @@ function replayScript(
       const { context, output, raw } = count(root, pins, task, sessionStart, workspace, step);
       const command = step.kind === "run" ? gainCommand(step.command!) : undefined;
       if (gain && command && raw !== undefined) {
-        addGain(gain, command, "replay", raw);
+        addGain(gain.totals, command, "replay", raw);
         ranSj = true;
       }
       return { ...label(step), context, output };
     });
-    if (gain && ranSj) addGainReport(root, pins, workspace, gain);
+    if (gain && ranSj) addGainReport(root, pins, `specjutsu/${task}`, workspace, gain);
     return {
       context: results.reduce((sum, step) => sum + step.context, 0),
       output: results.reduce((sum, step) => sum + step.output, 0),

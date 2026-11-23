@@ -91,6 +91,16 @@ the other tools' maintainers can challenge a step script while it is cheap to fi
   runs. The pinned binary sits at `.bench/tools/specjutsu@<pin>/bin/sj`; the tool install script
   must put it there.
 
+- **The pinned `sj` is required, never the one on PATH, and `sj` steps are bare, valid
+  invocations.** A run step calling `sj` is refused before the replay when specjutsu has no pin
+  (`tool specjutsu is not pinned`) or its `bin/sj` is missing (`specjutsu@<pin> is not
+  installed: .bench/tools/specjutsu@<pin>/bin/sj`). An `sj` step must be a bare
+  `sj <cmd> ...` command (no `cd x &&`, no pipe) that `sj` accepts: only those are matched to
+  `sj gain`'s records, and `sj` does not record a usage error (exit 2), so such a step always
+  mismatches. When `sj gain --json` exits non-zero or prints no JSON, the replay prints
+  `sj gain --json failed for <tool>/<task>: <first stderr line or unreadable>` instead of
+  mismatch lines, exit 1, naming the script rather than the temporary workspace.
+
 ## Risks / Trade-offs
 - [Normalising durations changes the counted bytes slightly] → The difference is a few bytes per
   timing line and applies the same rule to every tool.

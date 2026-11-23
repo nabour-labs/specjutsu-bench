@@ -78,3 +78,17 @@ function loadError(root: string, pins: Pins, step: Step): string | undefined {
   if (!statSync(join(dir, rel), { throwIfNoEntry: false })?.isFile()) return `${step.path} not found in ${install}`;
   return undefined;
 }
+
+/**
+ * Returns one error line per run step calling `sj` when specjutsu is not pinned or its pinned
+ * `bin/sj` is not installed, so the replay never falls back to an `sj` on PATH.
+ */
+export function checkSjRuns(root: string, pins: Pins, script: string, steps: Step[]): string[] {
+  return steps.flatMap((step, i) => {
+    if (step.kind !== "run" || !/^sj\b/.test(step.command ?? "")) return [];
+    if (!Object.hasOwn(pins, "specjutsu")) return [`${script} step ${i + 1}: tool specjutsu is not pinned`];
+    const install = `specjutsu@${pins.specjutsu}`;
+    const sj = `.bench/tools/${install}/bin/sj`;
+    return existsSync(join(root, sj)) ? [] : [`${script} step ${i + 1}: ${install} is not installed: ${sj}`];
+  });
+}

@@ -1,6 +1,6 @@
 import { chmodSync, readFileSync } from "node:fs";
 import { join } from "node:path";
-import { expect, it } from "vitest";
+import { describe, expect, it } from "vitest";
 import { benchRoot, replay } from "./helpers.ts";
 
 const SUPERPOWERS = "0123456789abcdef0123456789abcdef01234567";
@@ -240,4 +240,40 @@ it("REPLAY-010 prints the sj gain mismatch for next, replay 900 against sj gain 
 
   expect(run.stderr.trim()).toBe("sj gain mismatch for next: replay 900, sj gain 950");
   expect(run.status).toBe(1);
+});
+
+describe("sj gain cross-check", () => {
+  const pin = "0.5.0";
+  const sj = join(".bench", "tools", `specjutsu@${pin}`, "bin", "sj");
+  const files = {
+    "pins.json": JSON.stringify({ specjutsu: pin, superpowers: SUPERPOWERS }),
+    "steps/specjutsu/feature.yaml": "steps:\n" + step("run\n    command: sj next\n"),
+  };
+
+  it("refuses an sj step when the pinned sj is not installed, without using the sj on PATH", () => {
+    const root = benchRoot(files);
+
+    const run = replay(root);
+
+    expect(run.stderr.trim()).toBe(
+      `steps/specjutsu/feature.yaml step 1: specjutsu@${pin} is not installed: .bench/tools/specjutsu@${pin}/bin/sj`,
+    );
+    expect(run.status).toBe(1);
+  });
+
+  it("reports a failed sj gain --json by script and its first stderr line, not as a mismatch", () => {
+    const root = benchRoot({
+      ...files,
+      [sj]:
+        "#!/usr/bin/env node\n" +
+        `if (process.argv[2] === "next") process.stdout.write("n".repeat(900));\n` +
+        `if (process.argv[2] === "gain") { process.stderr.write("ledger locked\\nmore\\n"); process.exit(1); }\n`,
+    });
+    chmodSync(join(root, sj), 0o755);
+
+    const run = replay(root);
+
+    expect(run.stderr.trim()).toBe("sj gain --json failed for specjutsu/feature: ledger locked");
+    expect(run.status).toBe(1);
+  });
 });
