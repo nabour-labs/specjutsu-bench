@@ -26,6 +26,12 @@ export function checkFixtureStates(root: string, tasks: string[]): string[] {
   return states.flatMap(([name, task]) => (statePasses(root, command, task) ? [] : [`${name}: tests fail`]));
 }
 
+/** Links the bench's `node_modules` into `dir`, when the bench has one and `dir` has none. */
+export function linkNodeModules(root: string, dir: string): void {
+  const modules = join(root, "node_modules");
+  if (existsSync(modules) && !existsSync(join(dir, "node_modules"))) symlinkSync(modules, join(dir, "node_modules"));
+}
+
 function statePasses(root: string, command: string, task: string | undefined): boolean {
   const dir = mkdtempSync(join(tmpdir(), "replay-state-"));
   try {
@@ -33,8 +39,7 @@ function statePasses(root: string, command: string, task: string | undefined): b
     // A task without a golden dir is checked as the start state; task 4.1 supplies the golden dirs.
     const golden = task && join(root, "fixture", "golden", task);
     if (golden && existsSync(golden)) cpSync(golden, dir, { recursive: true });
-    const modules = join(root, "node_modules");
-    if (existsSync(modules) && !existsSync(join(dir, "node_modules"))) symlinkSync(modules, join(dir, "node_modules"));
+    linkNodeModules(root, dir);
     // A timed-out run has a null status, so it reports as `<state>: tests fail`.
     return spawnSync(command, { cwd: dir, shell: true, stdio: "ignore", timeout: SUITE_TIMEOUT_MS }).status === 0;
   } finally {

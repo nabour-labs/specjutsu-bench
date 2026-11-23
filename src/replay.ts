@@ -2,6 +2,7 @@ import { spawnSync } from "node:child_process";
 import { cpSync, mkdirSync, mkdtempSync, rmSync, statSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { delimiter, dirname, join, sep } from "node:path";
+import { linkNodeModules } from "./fixture.ts";
 import type { Pins } from "./pins.ts";
 import { WORKFLOWS, loadSessionSteps, loadSteps, type Step } from "./steps.ts";
 
@@ -110,6 +111,8 @@ function replayScript(
     const ledger = join(start, ".specjutsu", "ledger");
     cpSync(start, workspace, { recursive: true, filter: (src) => src !== ledger && !src.startsWith(`${ledger}${sep}`) });
     spawnSync("git", ["init", "-q"], { cwd: workspace });
+    // Run steps use the bench's installed packages, as the fixture check does.
+    linkNodeModules(root, workspace);
     let ranSj = false;
     const results = steps.map((step) => {
       const { context, output, raw } = count(root, pins, task, sessionStart, workspace, step);
