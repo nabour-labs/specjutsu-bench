@@ -46,3 +46,40 @@ it("STEP-002 refuses a load step whose file is not in the pinned Superpowers ins
   );
   expect(run.status).toBe(1);
 });
+
+function loadStep(fields: string): string {
+  return `  - kind: load\n${fields}    source: https://example.com/docs#load\n`;
+}
+
+it("STEP-005 refuses a load path outside the pinned install", () => {
+  const step = loadStep("    tool: superpowers\n    path: ../../package.json\n");
+  const root = benchRoot({ "steps/speckit/feature.yaml": `${stepScript(1)}${step}` });
+  const pin = (JSON.parse(readFileSync(join(root, "pins.json"), "utf8")) as { superpowers: string }).superpowers;
+  mkdirSync(join(root, ".bench", "tools", `superpowers@${pin}`), { recursive: true });
+  writeFileSync(join(root, ".bench", "package.json"), "{}\n");
+
+  const run = replay(root);
+
+  expect(run.stderr).toContain(`steps/speckit/feature.yaml step 2: ../../package.json is outside superpowers@${pin}`);
+  expect(run.status).toBe(1);
+});
+
+it("STEP-006 refuses a load from a tool with no pin", () => {
+  const step = loadStep("    tool: kiro\n    path: skills/spec/SKILL.md\n");
+  const root = benchRoot({ "steps/speckit/feature.yaml": `${stepScript(1)}${step}` });
+
+  const run = replay(root);
+
+  expect(run.stderr).toContain("steps/speckit/feature.yaml step 2: tool kiro is not pinned");
+  expect(run.status).toBe(1);
+});
+
+it("STEP-007 refuses a load step without a tool", () => {
+  const step = loadStep("    path: skills/test-driven-development/SKILL.md\n");
+  const root = benchRoot({ "steps/openspec/change.yaml": `${stepScript(2)}${step}` });
+
+  const run = replay(root);
+
+  expect(run.stderr).toContain("steps/openspec/change.yaml step 3: load step missing tool");
+  expect(run.status).toBe(1);
+});
