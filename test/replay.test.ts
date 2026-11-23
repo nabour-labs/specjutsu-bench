@@ -457,3 +457,56 @@ it("REPLAY-016 records the same git diff context bytes with a global diff.nopref
     for (const dir of [root, machine]) rmSync(dir, { recursive: true, force: true });
   }
 });
+
+it("REPLAY-017 records the same context bytes for a run step with GITHUB_ACTIONS=true and CI=true as with neither", () => {
+  const root = benchRoot({
+    "steps/speckit/feature.yaml":
+      "steps:\n" +
+      step(`run\n    command: node -e "process.stdout.write(['unset', 'GITHUB_ACTIONS is set'][+!!process.env.GITHUB_ACTIONS])"\n`),
+  });
+  const runContext = (vars: { GITHUB_ACTIONS?: string; CI?: string }) => {
+    const saved = { GITHUB_ACTIONS: process.env.GITHUB_ACTIONS, CI: process.env.CI };
+    try {
+      for (const name of ["GITHUB_ACTIONS", "CI"] as const) {
+        if (vars[name] === undefined) delete process.env[name];
+        else process.env[name] = vars[name];
+      }
+      const run = replay(root);
+      expect(run.stderr).toBe("");
+      expect(run.status).toBe(0);
+    } finally {
+      for (const name of ["GITHUB_ACTIONS", "CI"] as const) {
+        if (saved[name] === undefined) delete process.env[name];
+        else process.env[name] = saved[name];
+      }
+    }
+    return ownSteps(results(root).workflows.speckit.feature)[0].context;
+  };
+
+  try {
+    const ci = runContext({ GITHUB_ACTIONS: "true", CI: "true" });
+    const none = runContext({});
+
+    expect(none).toBe(5);
+    expect(ci).toBe(none);
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+it("REPLAY-018 records context 2,000,000 for a run step that prints 2,000,000 bytes", () => {
+  const root = benchRoot({
+    "steps/speckit/feature.yaml":
+      "steps:\n" + step(`run\n    command: node -e "process.stdout.write('x'.repeat(2000000))"\n`),
+  });
+
+  try {
+    const run = replay(root);
+
+    expect(run.stderr).toBe("");
+    expect(run.status).toBe(0);
+    expect(ownSteps(results(root).workflows.speckit.feature)[0].context).toBe(2000000);
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
