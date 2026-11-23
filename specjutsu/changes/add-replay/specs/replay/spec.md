@@ -59,8 +59,9 @@ directory. A `run` step SHALL run with no user or system git configuration (`GIT
 pointing at an empty file and `GIT_CONFIG_NOSYSTEM=1`) and with `COLUMNS=80`, so a command's
 output does not depend on the machine's git settings or terminal width. A `run` step SHALL see only
 an allowlisted environment (`PATH`, `HOME`, `TMPDIR`, `LANG`, `LC_ALL` and the variables the replay
-sets), so CI detection such as `CI` or `GITHUB_ACTIONS` can't change what a command prints, and its
-output SHALL be counted in full, whatever its size.
+sets, including `npm_config_update_notifier=false` so npm prints no update notice), so CI detection
+such as `CI` or `GITHUB_ACTIONS` can't change what a command prints, and its output SHALL be
+counted in full, whatever its size.
 
 #### Scenario: REPLAY-005 Two runs, identical results
 - **WHEN** the user runs `npm run replay` twice on the same commit and pins
