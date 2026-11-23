@@ -19,11 +19,11 @@
 - [x] 3.3 Cross-check against `sj gain --json` (REPLAY-010)
 - [x] 3.4 Run steps use the bench's installed packages, as the fixture check does (REPLAY-013)
 - [x] 3.5 Workspace start commit on main and workspace path normalised (REPLAY-014, REPLAY-015)
-- [ ] 3.6 Run steps ignore the machine's git config and terminal width (REPLAY-016)
+- [x] 3.6 Run steps ignore the machine's git config and terminal width (REPLAY-016)
 
 ## 4. Content
 
 - [x] 4.1 Fixture app, the three tasks and their golden end states (no-scenario: fixture data, checked by REPLAY-009)
-- [ ] 4.2 Step scripts for specjutsu, Spec Kit + Superpowers and OpenSpec + Superpowers, each step citing its source (no-scenario: benchmark data, checked by STEP-001..008)
+- [x] 4.2 Step scripts for specjutsu, Spec Kit + Superpowers and OpenSpec + Superpowers, each step citing its source (no-scenario: benchmark data, checked by STEP-001..008)
 - [ ] 4.3 Tool install script for `.bench/tools/`, first committed results, and the CI job running `npm run replay -- --check` (no-scenario: config)
 - [ ] 4.4 README: running the replay and reading the results (no-scenario: docs)

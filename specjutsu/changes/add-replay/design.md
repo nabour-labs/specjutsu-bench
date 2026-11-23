@@ -113,6 +113,9 @@ the other tools' maintainers can challenge a step script while it is cheap to fi
   can't satisfy and which no tool's docs tell the agent to do.
 
 ## Risks / Trade-offs
+
+- [Run steps keep the machine's locale] → A git built with gettext prints translated messages under
+  a non-English `LANG`. CI's runner uses `C.UTF-8`, and the committed results are checked there.
 - [Normalising durations changes the counted bytes slightly] → The difference is a few bytes per
   timing line and applies the same rule to every tool.
 
