@@ -53,3 +53,28 @@ it("REPLAY-002 records a written golden file as output and a later read of it as
   expect(write).toMatchObject({ kind: "write", output: 2000, context: 0 });
   expect(read).toMatchObject({ kind: "read", context: 2000 });
 });
+
+it("REPLAY-003 counts a 4,000-byte bootstrap at each of 2 declared sessions as two steps, 8,000 bytes", () => {
+  const bootstrap = "skills/using-superpowers/SKILL.md";
+  const session = "steps:\n" + step(`load\n    tool: superpowers\n    path: ${bootstrap}\n`);
+  const script = "steps:\n" + step("session\n") + step("read\n    path: file-1.md\n") + step("session\n");
+  const root = benchRoot({
+    "steps/speckit/session.yaml": session,
+    "steps/speckit/feature.yaml": script,
+    [`.bench/tools/superpowers@${SUPERPOWERS}/${bootstrap}`]: "b".repeat(4000),
+  });
+
+  const run = replay(root);
+
+  expect(run.stderr).toBe("");
+  expect(run.status).toBe(0);
+  const feature = results(root).workflows.speckit.feature;
+  const sessions = feature.steps.filter((s) => s.kind === "session");
+  expect(sessions).toEqual([
+    { kind: "session", context: 4000, output: 0 },
+    { kind: "session", context: 4000, output: 0 },
+  ]);
+  expect(sessions.reduce((sum, s) => sum + s.context, 0)).toBe(8000);
+  // file-1.md holds "file 1\n", 7 bytes.
+  expect(feature.context).toBe(8007);
+});
