@@ -1,4 +1,4 @@
-import { readFileSync } from "node:fs";
+import { chmodSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { expect, it } from "vitest";
 import { benchRoot, replay } from "./helpers.ts";
@@ -215,4 +215,24 @@ it("REPLAY-012 counts a run step's timings as 00:00:00 and 0ms, the same on both
   const normalized = Buffer.byteLength("Start at 00:00:00\nDuration 0ms\n");
   expect(first).toBe(normalized);
   expect(second).toBe(normalized);
+});
+
+it("REPLAY-010 prints the sj gain mismatch for next, replay 900 against sj gain 950, and exits 1", () => {
+  // A stand-in for the pinned sj: `sj next` prints 900 bytes, `sj gain --json` reports 950 for next.
+  const pin = "0.5.0";
+  const sj = join(".bench", "tools", `specjutsu@${pin}`, "bin", "sj");
+  const root = benchRoot({
+    "pins.json": JSON.stringify({ specjutsu: pin, superpowers: SUPERPOWERS }),
+    "steps/specjutsu/feature.yaml": "steps:\n" + step("run\n    command: sj next\n"),
+    [sj]:
+      "#!/usr/bin/env node\n" +
+      `if (process.argv[2] === "next") process.stdout.write("n".repeat(900));\n` +
+      `if (process.argv[2] === "gain") console.log(JSON.stringify({ commands: [{ command: "next", printed: 950, raw: 9000, runs: 1, saved_pct: 89 }] }));\n`,
+  });
+  chmodSync(join(root, sj), 0o755);
+
+  const run = replay(root);
+
+  expect(run.stderr.trim()).toBe("sj gain mismatch for next: replay 900, sj gain 950");
+  expect(run.status).toBe(1);
 });
