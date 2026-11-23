@@ -1,4 +1,7 @@
+import { mkdirSync, writeFileSync } from "node:fs";
+import { join } from "node:path";
 import { checkPins, loadPins } from "./pins.ts";
+import { replayAll } from "./replay.ts";
 import { missingScripts, checkLoads, checkSources, loadSteps, loadTasks, scriptPaths } from "./steps.ts";
 
 function check(root: string): string[] {
@@ -14,6 +17,14 @@ function check(root: string): string[] {
   return [...pinErrors, ...missing.map((script) => `missing ${script}`), ...stepErrors];
 }
 
-const errors = check(process.cwd());
+const root = process.cwd();
+const errors = check(root);
 for (const error of errors) console.error(error);
-process.exitCode = errors.length > 0 ? 1 : 0;
+if (errors.length > 0) {
+  process.exitCode = 1;
+} else {
+  const results = replayAll(root, loadPins(root), loadTasks(root));
+  mkdirSync(join(root, "results"), { recursive: true });
+  writeFileSync(join(root, "results", "results.json"), `${JSON.stringify(results, null, 2)}\n`);
+  process.exitCode = 0;
+}
