@@ -402,7 +402,7 @@ it("REPLAY-015 commits the start state on main as one fixture start commit with 
       GIT_COMMITTER_DATE: date,
     };
     const git = (...args: string[]) => spawnSync("git", args, { cwd: repo, env, encoding: "utf8" }).stdout.trim();
-    git("init", "-q", "--template=");
+    git("init", "-q", "--template=", "--object-format=sha1");
     git("add", "-A");
     return git("commit-tree", git("write-tree"), "-m", "fixture start");
   };

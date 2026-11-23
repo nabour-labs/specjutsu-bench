@@ -213,7 +213,7 @@ function commitStart(workspace: string): void {
     // can run a hook, so it is off too.
     const config = ["core.hooksPath=", "commit.gpgsign=false", "core.excludesFile=", "core.attributesFile=", "core.fsmonitor=false"];
     for (const args of [
-      ["init", "-q", "--template=", "-b", "main"],
+      ["init", "-q", "--template=", "-b", "main", "--object-format=sha1"],
       ["add", "-A"],
       ["commit", "-q", "--no-verify", "-m", "fixture start"],
     ]) {
