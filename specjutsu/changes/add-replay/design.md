@@ -54,7 +54,14 @@ the other tools' maintainers can challenge a step script while it is cheap to fi
   computed when written. The saving percent is computed on context bytes only; output bytes are
   shown but not part of the headline, because every tool ends at the same golden output.
 
+- **Run-step output is normalised before it is counted.** Durations (`698ms`, `6.92s`) become
+  `0ms` and clock times become `00:00:00`, so a test run that prints its timings counts the same
+  bytes every time. Rejected: requiring each `run` step to pass flags that hide timings, which
+  would make the scripts differ from what each tool's docs tell the agent to run.
+
 ## Risks / Trade-offs
+- [Normalising durations changes the counted bytes slightly] → The difference is a few bytes per
+  timing line and is the same for every tool.
 
 - [The scripts are written by specjutsu's authors] → Every step cites its source, the repo is
   public, and layer 2 checks the replay against real agent runs.
