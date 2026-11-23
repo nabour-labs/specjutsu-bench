@@ -61,9 +61,15 @@ the other tools' maintainers can challenge a step script while it is cheap to fi
 
 - **`--check` drift lines use the script's step numbers.** `speckit/feature step 6` is step 6
   of `steps/speckit/feature.yaml`, as in every other message. When the replay adds an implicit
-  session step to a script that declares none, that step is `step 0`. A missing
-  `results/results.json` is reported as `results/results.json: missing`, exit 1. Rejected:
-  numbering the recorded steps, which shifts every step by one in scripts with no session step.
+  session step to a script that declares none, that step is `step 0`; the replay records each
+  script's first step number as `firstStep` in `results.json`, so the rule lives only in the
+  replay. A script in only one of the two results is named as `<tool>/<task>: missing` or
+  `<tool>/<task>: added`, and a pin on only one side shows `none` for the other. When the results
+  differ in nothing the check names (a step's path or command, say), it prints `results differ`,
+  exit 1, so a change is never passed silently. A missing `results/results.json` is reported as
+  `results/results.json: missing`, and one that is not JSON with `pins` and `workflows` as
+  `results/results.json: unreadable`, both exit 1. Rejected: numbering the recorded steps, which
+  shifts every step by one in scripts with no session step.
 
 ## Risks / Trade-offs
 - [Normalising durations changes the counted bytes slightly] → The difference is a few bytes per

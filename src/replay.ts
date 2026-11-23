@@ -6,7 +6,8 @@ import type { Pins } from "./pins.ts";
 import { WORKFLOWS, loadSessionSteps, loadSteps, type Step } from "./steps.ts";
 
 export type StepResult = { kind: Step["kind"]; path?: string; command?: string; context: number; output: number };
-export type ScriptResult = { context: number; output: number; steps: StepResult[] };
+/** `firstStep` is the script's number for `steps[0]`: 0 when the replay added the session step, else 1. */
+export type ScriptResult = { context: number; output: number; firstStep: number; steps: StepResult[] };
 export type Results = { pins: Pins; workflows: Record<string, Record<string, ScriptResult>> };
 
 /** Runs every workflow's script for every task and counts the bytes each step costs. */
@@ -20,15 +21,23 @@ export function replayAll(root: string, pins: Pins, tasks: string[]): Results {
     for (const task of tasks) {
       const steps = loadSteps(root, `steps/${workflow}/${task}.yaml`);
       // A script that declares no session runs as one session for the task.
-      const sessions: Step[] = steps.some((step) => step.kind === "session") ? steps : [{ kind: "session" }, ...steps];
-      workflows[workflow][task] = replayScript(root, pins, task, sessionStart, sessions);
+      const implicit = !steps.some((step) => step.kind === "session");
+      const sessions: Step[] = implicit ? [{ kind: "session" }, ...steps] : steps;
+      workflows[workflow][task] = replayScript(root, pins, task, sessionStart, sessions, implicit ? 0 : 1);
     }
   }
   return { pins, workflows };
 }
 
 /** Runs one script in a fresh copy of `fixture/start/`, removed afterwards. */
-function replayScript(root: string, pins: Pins, task: string, sessionStart: number, steps: Step[]): ScriptResult {
+function replayScript(
+  root: string,
+  pins: Pins,
+  task: string,
+  sessionStart: number,
+  steps: Step[],
+  firstStep: number,
+): ScriptResult {
   const workspace = mkdtempSync(join(tmpdir(), "replay-workspace-"));
   try {
     cpSync(join(root, "fixture", "start"), workspace, { recursive: true });
@@ -36,6 +45,7 @@ function replayScript(root: string, pins: Pins, task: string, sessionStart: numb
     return {
       context: results.reduce((sum, step) => sum + step.context, 0),
       output: results.reduce((sum, step) => sum + step.output, 0),
+      firstStep,
       steps: results,
     };
   } finally {

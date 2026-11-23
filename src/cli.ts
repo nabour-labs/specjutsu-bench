@@ -67,14 +67,28 @@ function checkDrift(root: string): void {
     process.exitCode = 1;
     return;
   }
-  const committed = JSON.parse(readFileSync(committedPath, "utf8")) as Results;
-  const results = replayAll(root, loadPins(root), loadTasks(root));
-  const implicitSession = (tool: string, task: string) =>
-    !loadSteps(root, `steps/${tool}/${task}.yaml`).some((step) => step.kind === "session");
-  const lines = drift(committed, results, implicitSession);
+  const committed = readResults(committedPath);
+  if (!committed) {
+    console.error("results/results.json: unreadable");
+    process.exitCode = 1;
+    return;
+  }
+  const lines = drift(committed, replayAll(root, loadPins(root), loadTasks(root)));
   for (const line of lines) console.log(line);
   if (lines.length === 0) console.log("results match");
   process.exitCode = lines.length > 0 ? 1 : 0;
+}
+
+/** The committed results, or undefined when they are not JSON with `pins` and `workflows`. */
+function readResults(path: string): Results | undefined {
+  try {
+    const results = JSON.parse(readFileSync(path, "utf8")) as Partial<Results> | null;
+    return results && typeof results.pins === "object" && typeof results.workflows === "object"
+      ? (results as Results)
+      : undefined;
+  } catch {
+    return undefined;
+  }
 }
 
 function write(root: string, results: Results): void {

@@ -32,39 +32,40 @@ export function resultsMarkdown(results: Results): string {
 }
 
 /**
- * How `fresh` differs from the `committed` results: every changed pin, then the first step
- * whose bytes differ, numbered as in its script. `implicitSession(tool, task)` says whether the
- * replay added the script's session step, which is then step 0. Empty when they match.
+ * How `fresh` differs from the `committed` results: every changed pin (`none` where a side has
+ * no pin), then the first script that is missing, added or has a step whose bytes differ, its
+ * steps numbered as in the script. `results differ` when only something else changed. Empty when
+ * they match.
  */
-export function drift(
-  committed: Results,
-  fresh: Results,
-  implicitSession: (tool: string, task: string) => boolean,
-): string[] {
+export function drift(committed: Results, fresh: Results): string[] {
   const tools = [...new Set([...Object.keys(committed.pins), ...Object.keys(fresh.pins)])].sort();
   const lines = tools
     .filter((tool) => committed.pins[tool] !== fresh.pins[tool])
     .map((tool) => `pin ${tool} ${committed.pins[tool] ?? "none"} → ${fresh.pins[tool] ?? "none"}`);
-  const step = firstStepDrift(committed, fresh, implicitSession);
-  if (step) lines.push(step);
+  const script = firstScriptDrift(committed, fresh);
+  if (script) lines.push(script);
   if (lines.length === 0 && JSON.stringify(committed) !== JSON.stringify(fresh)) lines.push("results differ");
   return lines;
 }
 
-function firstStepDrift(
-  committed: Results,
-  fresh: Results,
-  implicitSession: (tool: string, task: string) => boolean,
-): string | undefined {
-  for (const [tool, tasks] of Object.entries(fresh.workflows)) {
-    for (const [task, script] of Object.entries(tasks)) {
-      const old = committed.workflows[tool]?.[task]?.steps ?? [];
-      const first = implicitSession(tool, task) ? 0 : 1;
-      for (let i = 0; i < Math.max(old.length, script.steps.length); i++) {
+function union(a: object, b: object): string[] {
+  return [...new Set([...Object.keys(a), ...Object.keys(b)])];
+}
+
+function firstScriptDrift(committed: Results, fresh: Results): string | undefined {
+  for (const tool of union(fresh.workflows, committed.workflows)) {
+    const freshTasks = fresh.workflows[tool] ?? {};
+    const committedTasks = committed.workflows[tool] ?? {};
+    for (const task of union(freshTasks, committedTasks)) {
+      const now = freshTasks[task];
+      const old = committedTasks[task];
+      if (!now) return `${tool}/${task}: missing`;
+      if (!old) return `${tool}/${task}: added`;
+      for (let i = 0; i < Math.max(old.steps.length, now.steps.length); i++) {
         for (const field of ["context", "output"] as const) {
-          const before = old[i]?.[field] ?? 0;
-          const after = script.steps[i]?.[field] ?? 0;
-          if (before !== after) return `${tool}/${task} step ${i + first}: ${field} ${before} → ${after}`;
+          const before = old.steps[i]?.[field] ?? 0;
+          const after = now.steps[i]?.[field] ?? 0;
+          if (before !== after) return `${tool}/${task} step ${i + now.firstStep}: ${field} ${before} → ${after}`;
         }
       }
     }
