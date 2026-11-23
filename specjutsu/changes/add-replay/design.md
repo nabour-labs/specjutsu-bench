@@ -49,7 +49,12 @@ the other tools' maintainers can challenge a step script while it is cheap to fi
   branch but not yet in a release, and Superpowers is consumed from git, so a commit pin is needed.
   Rejected: npm-style ranges, which would let results drift without a change in this repo.
 - **Tools install into `.bench/tools/<tool>@<pin>/`, outside `results/`.** CI caches it by
-  `pins.json` hash. The install path never appears in the results.
+  `pins.json` hash. The install path never appears in the results. Each install is the tool's
+  own git repository checked out at tag `v<pin>` (github/spec-kit, Fission-AI/OpenSpec,
+  obra/superpowers, nabour-labs/specjutsu), so a `load` step's `path` is a path in that
+  repository and its `source` is `<tool>@<pin>:<path>`. specjutsu's install also holds the built
+  `bin/sj`. Rejected: loading files that each tool's `init` generates, which would need the
+  tools' installers and network access during the replay.
 - **Results store bytes, not tokens.** `results.md` shows tokens as bytes / 4 next to the bytes,
   computed when written. The saving percent is computed on context bytes only; output bytes are
   shown but not part of the headline, because every tool ends at the same golden output.
