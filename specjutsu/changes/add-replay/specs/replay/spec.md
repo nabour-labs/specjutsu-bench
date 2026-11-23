@@ -18,7 +18,7 @@ files carry the same content for every tool wherever the tools' formats allow.
 
 ### Requirement: Session-start files are counted at every session
 Files a tool loads at the start of every agent session (a bootstrap skill, an always-on rules file,
-the generated instruction block) SHALL be counted at the start of each session its step script
+the generated instruction block), listed in `steps/<workflow>/session.yaml`, SHALL be counted at the start of each session its step script
 declares. A script starts a new session only where that tool's own docs recommend a fresh session
 or clearing context, and the `session` step cites that doc like any other step. A script that
 declares no session runs as one session for the task.
@@ -26,6 +26,10 @@ declares no session runs as one session for the task.
 #### Scenario: REPLAY-003 Bootstrap counted per session
 - **WHEN** a tool's bootstrap file is 4,000 bytes and its script for a task declares 2 sessions
 - **THEN** the results record 8,000 context bytes of bootstrap for that task, as two steps
+
+#### Scenario: REPLAY-011 A script with no session step runs as one session
+- **WHEN** a tool's bootstrap file is 4,000 bytes and its script for a task has no `session` step
+- **THEN** the results record one `session` step of 4,000 context bytes before the script's own steps
 
 ### Requirement: The results report totals and the saving
 The replay SHALL write `results/results.json` with the pins it ran with and the bytes for every

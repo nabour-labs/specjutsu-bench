@@ -28,6 +28,14 @@ results.
 - **WHEN** the third step of `steps/openspec/change.yaml` is a `load` step with a `path` but no `tool`
 - **THEN** the replay prints `steps/openspec/change.yaml step 3: load step missing tool` and exits 1
 
+### Requirement: Session-start lists hold only load steps
+A workflow's `steps/<workflow>/session.yaml` SHALL contain only `load` steps, and the replay MUST
+refuse any other kind of step there, naming the file and the step.
+
+#### Scenario: STEP-008 A non-load step in a session-start list is refused
+- **WHEN** the second step of `steps/speckit/session.yaml` is a `read` step
+- **THEN** the replay prints `steps/speckit/session.yaml step 2: only load steps are allowed in session.yaml` and exits 1
+
 ### Requirement: Tools are pinned to exact versions
 `pins.json` SHALL give every tool an exact version: a full semantic version such as `1.4.0`, or a
 full 40-character git commit. The replay MUST refuse a range, a tag-like alias or a branch name.
