@@ -29,6 +29,17 @@ export function missingScripts(root: string, scripts: string[]): string[] {
   return scripts.filter((script) => !existsSync(join(root, script)));
 }
 
+/** The file listing what a workflow's agent loads at the start of every session. */
+export function sessionScript(workflow: string): string {
+  return `steps/${workflow}/session.yaml`;
+}
+
+/** The session-start steps of a workflow; none when it has no session.yaml. */
+export function loadSessionSteps(root: string, workflow: string): Step[] {
+  const script = sessionScript(workflow);
+  return existsSync(join(root, script)) ? loadSteps(root, script) : [];
+}
+
 export function loadSteps(root: string, script: string): Step[] {
   return (parse(readFileSync(join(root, script), "utf8")) as { steps: Step[] }).steps;
 }

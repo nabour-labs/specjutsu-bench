@@ -2,7 +2,7 @@ import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { checkPins, loadPins } from "./pins.ts";
 import { replayAll } from "./replay.ts";
-import { missingScripts, checkLoads, checkSources, loadSteps, loadTasks, scriptPaths } from "./steps.ts";
+import { WORKFLOWS, checkLoads, checkSources, loadSessionSteps, loadSteps, loadTasks, missingScripts, scriptPaths, sessionScript, type Step } from "./steps.ts";
 
 function check(root: string): string[] {
   const pins = loadPins(root);
@@ -10,10 +10,14 @@ function check(root: string): string[] {
   const scripts = scriptPaths(loadTasks(root));
   const missing = missingScripts(root, scripts);
   const present = scripts.filter((script) => !missing.includes(script));
-  const stepErrors = present.flatMap((script) => {
-    const steps = loadSteps(root, script);
-    return [...checkSources(script, steps), ...checkLoads(root, pins, script, steps)];
-  });
+  const checked: [string, Step[]][] = [
+    ...WORKFLOWS.map((workflow): [string, Step[]] => [sessionScript(workflow), loadSessionSteps(root, workflow)]),
+    ...present.map((script): [string, Step[]] => [script, loadSteps(root, script)]),
+  ];
+  const stepErrors = checked.flatMap(([script, steps]) => [
+    ...checkSources(script, steps),
+    ...checkLoads(root, pins, script, steps),
+  ]);
   return [...pinErrors, ...missing.map((script) => `missing ${script}`), ...stepErrors];
 }
 

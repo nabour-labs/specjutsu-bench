@@ -13,6 +13,11 @@ function results(root: string): Results {
   return JSON.parse(readFileSync(join(root, "results", "results.json"), "utf8")) as Results;
 }
 
+/** The script's own steps, without the implicit session entry the replay adds first. */
+function ownSteps(script: Results["workflows"][string][string]) {
+  return script.steps.filter((s) => s.kind !== "session");
+}
+
 function step(fields: string): string {
   return `  - kind: ${fields}    source: https://example.com/docs#step\n`;
 }
@@ -34,7 +39,7 @@ it("REPLAY-001 records context bytes for load, read and run steps and the script
   expect(run.stderr).toBe("");
   expect(run.status).toBe(0);
   const feature = results(root).workflows.speckit.feature;
-  expect(feature.steps.map((s) => s.context)).toEqual([1200, 800, 3000]);
+  expect(ownSteps(feature).map((s) => s.context)).toEqual([1200, 800, 3000]);
   expect(feature.context).toBe(5000);
 });
 
@@ -49,7 +54,7 @@ it("REPLAY-002 records a written golden file as output and a later read of it as
 
   expect(run.stderr).toBe("");
   expect(run.status).toBe(0);
-  const [write, read] = results(root).workflows.speckit.feature.steps;
+  const [write, read] = ownSteps(results(root).workflows.speckit.feature);
   expect(write).toMatchObject({ kind: "write", output: 2000, context: 0 });
   expect(read).toMatchObject({ kind: "read", context: 2000 });
 });
