@@ -20,6 +20,10 @@ files carry the same content for every tool wherever the tools' formats allow.
 - **WHEN** a `run` step's command is `npx --no-install vitest --version`
 - **THEN** it records the same context bytes as that command prints in the bench root, because the workspace links the bench's `node_modules`
 
+#### Scenario: REPLAY-015 The start state is committed on main
+- **WHEN** a `run` step's command is `git log --format=%H%n%s main`
+- **THEN** it prints one commit with subject `fixture start`, and the hash is the same on every run and machine
+
 ### Requirement: Session-start files are counted at every session
 Files a tool loads at the start of every agent session (a bootstrap skill, an always-on rules file,
 the generated instruction block), listed in `steps/<workflow>/session.yaml`, SHALL be counted at the start of each session its step script
@@ -49,7 +53,9 @@ Two runs on the same commit with the same pins SHALL write byte-identical result
 results MUST NOT contain timestamps, absolute paths, durations or machine names. Before a `run`
 step's output is counted, the replay SHALL replace every duration (a number followed by `ms` or
 `s`, such as `698ms` or `6.92s`) with `0ms` and every clock time (`HH:MM:SS`) with `00:00:00`, so
-the count does not depend on how long the command took or when it ran.
+the count does not depend on how long the command took or when it ran. It SHALL also replace the
+workspace's absolute path with `/workspace`, so the count does not depend on the machine's temp
+directory.
 
 #### Scenario: REPLAY-005 Two runs, identical results
 - **WHEN** the user runs `npm run replay` twice on the same commit and pins
@@ -58,6 +64,10 @@ the count does not depend on how long the command took or when it ran.
 #### Scenario: REPLAY-012 A run step's timings don't change its count
 - **WHEN** a `run` step's command prints `Start at 14:02:11` and `Duration 6.92s` on one run and `Start at 09:15:40` and `Duration 12.3s` on the next
 - **THEN** both runs record the same context bytes for that step, counted as if it printed `Start at 00:00:00` and `Duration 0ms`
+
+#### Scenario: REPLAY-014 A run step's workspace path doesn't change its count
+- **WHEN** a `run` step's command prints the absolute path of its own workspace followed by `/test/terms.test.ts`
+- **THEN** the step records the bytes of `/workspace/test/terms.test.ts`
 
 ### Requirement: CI fails when results drift from the committed ones
 `npm run replay -- --check` SHALL run the replay without writing `results/`, compare its results

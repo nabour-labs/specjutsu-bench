@@ -106,6 +106,12 @@ the other tools' maintainers can challenge a step script while it is cheap to fi
   `sj gain --json failed for <tool>/<task>: <first stderr line or unreadable>` instead of
   mismatch lines, exit 1, naming the script rather than the temporary workspace.
 
+- **Each workspace commits the start state on `main` before the first step.** `sj verify` needs a
+  default branch to diff against, and a real project has history. The commit uses a fixed author,
+  committer and date (`bench <bench@localhost>`, 2026-01-01T00:00:00Z), so its hash, and any output
+  that shows it, is the same everywhere. Rejected: passing `--base` to `sj`, which an unborn HEAD
+  can't satisfy and which no tool's docs tell the agent to do.
+
 ## Risks / Trade-offs
 - [Normalising durations changes the counted bytes slightly] → The difference is a few bytes per
   timing line and applies the same rule to every tool.

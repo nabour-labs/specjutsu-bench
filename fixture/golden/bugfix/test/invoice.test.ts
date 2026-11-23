@@ -50,10 +50,12 @@ describe("line items", () => {
     expect(lineDiscount(item(3, 500))).toBe(0);
   });
 
+  // spec: DISC-001
   it("gives a line of exactly the bulk quantity the discount", () => {
     expect(lineDiscount(item(10, 500))).toBe(250);
   });
 
+  // spec: DISC-002
   it("gives a line one unit short of the bulk quantity no discount", () => {
     expect(lineDiscount(item(9, 500))).toBe(0);
   });

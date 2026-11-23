@@ -62,18 +62,22 @@ describe("totals", () => {
     expect(t).toEqual({ subtotal: 2000, discount: 0, shipping: 799, tax: 280, total: 3079 });
   });
 
+  // spec: SHIP-002
   it("ships free at exactly the threshold", () => {
     expect(totals(invoice([item(4, 2500)])).shipping).toBe(0);
   });
 
+  // spec: SHIP-001
   it("charges shipping one cent below the threshold", () => {
     expect(totals(invoice([item(1, 9999)])).shipping).toBe(799);
   });
 
+  // spec: SHIP-001
   it("charges shipping at the old $50.00 threshold", () => {
     expect(totals(invoice([item(2, 2500)])).shipping).toBe(799);
   });
 
+  // spec: SHIP-003
   it("measures the threshold after the bulk discount", () => {
     // 12 x $8.50 is $102.00, which the 5% bulk discount takes to $96.90.
     expect(totals(invoice([item(12, 850)])).shipping).toBe(799);
