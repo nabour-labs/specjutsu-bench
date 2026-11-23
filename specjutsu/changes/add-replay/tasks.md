@@ -4,7 +4,7 @@
 
 - [x] 1.1 Pins: load `pins.json` and refuse inexact versions (STEP-003)
 - [x] 1.2 Step scripts: parse, refuse missing sources and missing scripts (STEP-001, STEP-004)
-- [ ] 1.3 Loaded-file check against the pinned install in `.bench/tools/<tool>@<pin>/` (STEP-002, STEP-005..007)
+- [x] 1.3 Loaded-file check against the pinned install in `.bench/tools/<tool>@<pin>/` (STEP-002, STEP-005..007)
 
 ## 2. Replay
 
