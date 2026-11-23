@@ -1,4 +1,6 @@
-import { chmodSync, readFileSync } from "node:fs";
+import { spawnSync } from "node:child_process";
+import { chmodSync, mkdtempSync, readFileSync } from "node:fs";
+import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { benchRoot, replay } from "./helpers.ts";
@@ -215,6 +217,31 @@ it("REPLAY-012 counts a run step's timings as 00:00:00 and 0ms, the same on both
   const normalized = Buffer.byteLength("Start at 00:00:00\nDuration 0ms\n");
   expect(first).toBe(normalized);
   expect(second).toBe(normalized);
+});
+
+it("REPLAY-013 records the bytes npx --no-install vitest --version prints in the bench root", () => {
+  // benchRoot links this package's node_modules into the root, as a real bench has its own.
+  // An empty npm cache keeps npx from finding a cached vitest, of another version, outside the
+  // bench; without the update notice, the command prints only the version line.
+  const command = "npx --no-install vitest --version";
+  const root = benchRoot({ "steps/speckit/feature.yaml": "steps:\n" + step(`run\n    command: ${command}\n`) });
+  process.env.npm_config_cache = mkdtempSync(join(tmpdir(), "replay-npm-cache-"));
+  process.env.npm_config_update_notifier = "false";
+  let inRoot, run;
+  try {
+    inRoot = spawnSync(command, { cwd: root, shell: true });
+    run = replay(root);
+  } finally {
+    delete process.env.npm_config_cache;
+    delete process.env.npm_config_update_notifier;
+  }
+  expect(inRoot.status).toBe(0);
+  // The version line holds no duration or clock time, so normalising leaves its length as printed.
+  expect(inRoot.stdout.toString("utf8")).toMatch(/^vitest\/\d+\.\d+\.\d+ /);
+  expect(run.stderr).toBe("");
+  expect(run.status).toBe(0);
+  const [vitest] = ownSteps(results(root).workflows.speckit.feature);
+  expect(vitest.context).toBe(inRoot.stdout.length + inRoot.stderr.length);
 });
 
 it("REPLAY-010 prints the sj gain mismatch for next, replay 900 against sj gain 950, and exits 1", () => {
