@@ -32,6 +32,8 @@ export function benchRoot(files: Record<string, string | null> = {}): string {
     "pins.json": JSON.stringify({ openspec: "1.2.0", superpowers: "0123456789abcdef0123456789abcdef01234567" }),
     "fixture/tasks.json": JSON.stringify({ tasks: TASKS }),
   };
+  // The start state holds the files the default scripts read.
+  for (let i = 1; i <= 3; i++) all[`fixture/start/file-${i}.md`] = `file ${i}\n`;
   for (const workflow of WORKFLOWS) {
     for (const task of TASKS) all[`steps/${workflow}/${task}.yaml`] = stepScript(3);
   }
