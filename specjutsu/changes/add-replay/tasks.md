@@ -26,4 +26,4 @@
 - [x] 4.1 Fixture app, the three tasks and their golden end states (no-scenario: fixture data, checked by REPLAY-009)
 - [x] 4.2 Step scripts for specjutsu, Spec Kit + Superpowers and OpenSpec + Superpowers, each step citing its source (no-scenario: benchmark data, checked by STEP-001..008)
 - [x] 4.3 Tool install script for `.bench/tools/`, first committed results, and the CI job running `npm run replay -- --check` (no-scenario: config)
-- [ ] 4.4 README: running the replay and reading the results (no-scenario: docs)
+- [x] 4.4 README: running the replay and reading the results (no-scenario: docs)
