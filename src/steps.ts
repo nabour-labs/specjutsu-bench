@@ -1,5 +1,5 @@
 import { existsSync, readFileSync } from "node:fs";
-import { join } from "node:path";
+import { isAbsolute, join, relative, resolve, sep } from "node:path";
 import { parse } from "yaml";
 import type { Pins } from "./pins.ts";
 
@@ -41,10 +41,22 @@ export function checkSources(script: string, steps: Step[]): string[] {
 /** Returns one error line per load step whose file is not in `.bench/tools/<tool>@<pin>/`. */
 export function checkLoads(root: string, pins: Pins, script: string, steps: Step[]): string[] {
   return steps.flatMap((step, i) => {
-    if (step.kind !== "load" || !step.tool || !step.path) return [];
-    const install = `${step.tool}@${pins[step.tool]}`;
-    return existsSync(join(root, ".bench", "tools", install, step.path))
-      ? []
-      : [`${script} step ${i + 1}: ${step.path} not found in ${install}`];
+    if (step.kind !== "load") return [];
+    const error = loadError(root, pins, step);
+    return error ? [`${script} step ${i + 1}: ${error}`] : [];
   });
+}
+
+function loadError(root: string, pins: Pins, step: Step): string | undefined {
+  if (!step.tool) return "load step missing tool";
+  if (!step.path) return "load step missing path";
+  if (!Object.hasOwn(pins, step.tool)) return `tool ${step.tool} is not pinned`;
+  const install = `${step.tool}@${pins[step.tool]}`;
+  const dir = join(root, ".bench", "tools", install);
+  const rel = relative(dir, resolve(dir, step.path));
+  if (isAbsolute(step.path) || rel === "" || rel === ".." || rel.startsWith(`..${sep}`)) {
+    return `${step.path} is outside ${install}`;
+  }
+  if (!existsSync(join(dir, rel))) return `${step.path} not found in ${install}`;
+  return undefined;
 }
