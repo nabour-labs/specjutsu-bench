@@ -34,6 +34,12 @@ the other tools' maintainers can challenge a step script while it is cheap to fi
   task's specs, plans and code are fixed files under `fixture/golden/<task>/`. Where the tools'
   formats differ (a Spec Kit `spec.md` against an OpenSpec delta), each tool gets its own file
   carrying the same requirements.
+- **`fixture/tasks.json` names the fixture's test command in a `test` key**, beside `tasks`. It
+  holds the shell command that runs the fixture's own suite (run in a copy of the start state and
+  of each task's golden end state, with a timeout) so the replay can refuse a broken fixture before
+  replaying any script. It is configurable because the command belongs to the fixture, not the
+  harness: a different fixture app brings its own runner. A missing key is reported as
+  `fixture/tasks.json: missing test command`, exit 1.
 - **Sessions follow each tool's docs.** A script starts a new session (and pays the session-start
   files again) only where the tool's docs say to start fresh or clear context, citing that doc;
   otherwise a task is one session. Rejected: one session per phase for every tool, which charges

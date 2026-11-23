@@ -37,9 +37,15 @@ function check(root: string): string[] {
   return [...pinErrors, ...missing.map((script) => `missing ${script}`), ...sessionErrors, ...stepErrors];
 }
 
+/** Static checks first; the fixture's suite runs only once the scripts and pins are sound. */
+function preflight(root: string): string[] {
+  const staticErrors = check(root);
+  if (staticErrors.length > 0) return staticErrors;
+  return checkFixtureStates(root, loadTasks(root));
+}
+
 const root = process.cwd();
-const staticErrors = check(root);
-const errors = staticErrors.length > 0 ? staticErrors : checkFixtureStates(root, loadTasks(root));
+const errors = preflight(root);
 for (const error of errors) console.error(error);
 if (errors.length > 0) {
   process.exitCode = 1;

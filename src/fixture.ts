@@ -3,9 +3,13 @@ import { cpSync, existsSync, mkdtempSync, readFileSync, rmSync, symlinkSync } fr
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
-/** The shell command that runs the fixture's own test suite, from fixture/tasks.json. */
-export function loadTestCommand(root: string): string {
-  return (JSON.parse(readFileSync(join(root, "fixture", "tasks.json"), "utf8")) as { test: string }).test;
+/** Longest a fixture suite may run before its state counts as failing (a hang or watch mode). */
+const SUITE_TIMEOUT_MS = 5 * 60 * 1000;
+
+/** The shell command that runs the fixture's own test suite: the `test` key of fixture/tasks.json. */
+export function loadTestCommand(root: string): string | undefined {
+  const { test } = JSON.parse(readFileSync(join(root, "fixture", "tasks.json"), "utf8")) as { test?: unknown };
+  return typeof test === "string" && test.trim() !== "" ? test : undefined;
 }
 
 /**
@@ -14,6 +18,7 @@ export function loadTestCommand(root: string): string {
  */
 export function checkFixtureStates(root: string, tasks: string[]): string[] {
   const command = loadTestCommand(root);
+  if (command === undefined) return ["fixture/tasks.json: missing test command"];
   const states: [string, string | undefined][] = [
     ["fixture start state", undefined],
     ...tasks.map((task): [string, string] => [`fixture ${task} end state`, task]),
@@ -25,11 +30,13 @@ function statePasses(root: string, command: string, task: string | undefined): b
   const dir = mkdtempSync(join(tmpdir(), "replay-state-"));
   try {
     cpSync(join(root, "fixture", "start"), dir, { recursive: true });
+    // A task without a golden dir is checked as the start state; task 4.1 supplies the golden dirs.
     const golden = task && join(root, "fixture", "golden", task);
     if (golden && existsSync(golden)) cpSync(golden, dir, { recursive: true });
     const modules = join(root, "node_modules");
     if (existsSync(modules) && !existsSync(join(dir, "node_modules"))) symlinkSync(modules, join(dir, "node_modules"));
-    return spawnSync(command, { cwd: dir, shell: true, stdio: "ignore" }).status === 0;
+    // A timed-out run has a null status, so it reports as `<state>: tests fail`.
+    return spawnSync(command, { cwd: dir, shell: true, stdio: "ignore", timeout: SUITE_TIMEOUT_MS }).status === 0;
   } finally {
     rmSync(dir, { recursive: true, force: true });
   }
