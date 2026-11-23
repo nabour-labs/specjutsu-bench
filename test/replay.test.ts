@@ -226,6 +226,11 @@ it("REPLAY-010 prints the sj gain mismatch for next, replay 900 against sj gain 
     "steps/specjutsu/feature.yaml": "steps:\n" + step("run\n    command: sj next\n"),
     [sj]:
       "#!/usr/bin/env node\n" +
+      // Like the real sj, it reports gain only for a git repo, given by --root or the cwd.
+      `const { existsSync } = process.getBuiltinModule("node:fs");\n` +
+      `const at = process.argv.indexOf("--root");\n` +
+      `const dir = at > 0 ? process.argv[at + 1] : process.cwd();\n` +
+      `if (process.argv[2] === "gain" && !existsSync(dir + "/.git")) process.exit(1);\n` +
       `if (process.argv[2] === "next") process.stdout.write("n".repeat(900));\n` +
       `if (process.argv[2] === "gain") console.log(JSON.stringify({ commands: [{ command: "next", printed: 950, raw: 9000, runs: 1, saved_pct: 89 }] }));\n`,
   });

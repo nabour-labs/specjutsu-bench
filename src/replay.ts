@@ -1,7 +1,7 @@
 import { spawnSync } from "node:child_process";
 import { cpSync, mkdirSync, mkdtempSync, rmSync, statSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { delimiter, dirname, join } from "node:path";
+import { delimiter, dirname, join, sep } from "node:path";
 import type { Pins } from "./pins.ts";
 import { WORKFLOWS, loadSessionSteps, loadSteps, type Step } from "./steps.ts";
 
@@ -92,7 +92,12 @@ function replayScript(
 ): ScriptResult {
   const workspace = mkdtempSync(join(tmpdir(), "replay-workspace-"));
   try {
-    cpSync(join(root, "fixture", "start"), workspace, { recursive: true });
+    const start = join(root, "fixture", "start");
+    // Stale `sj gain` records in the start state are left out, and the workspace is a git repo
+    // because `sj` records gain only inside one.
+    const ledger = join(start, ".specjutsu", "ledger");
+    cpSync(start, workspace, { recursive: true, filter: (src) => src !== ledger && !src.startsWith(`${ledger}${sep}`) });
+    spawnSync("git", ["init", "-q"], { cwd: workspace });
     let ranSj = false;
     const results = steps.map((step) => {
       const { context, output, raw } = count(root, pins, task, sessionStart, workspace, step);

@@ -83,6 +83,14 @@ the other tools' maintainers can challenge a step script while it is cheap to fi
   catches it too. Rejected: comparing normalised bytes, which differ from `printed` whenever `sj`
   prints a timing.
 
+- **Every replay workspace is a git repo, and `fixture/start/.specjutsu/ledger` is never copied
+  into it.** The replay runs `git init -q` in each fresh workspace, for every tool, so all tools
+  see the same workspace: `sj` records gain only inside a git repo, and without one `sj gain`
+  would report no runs. Leaving out the start state's ledger keeps stale records from a
+  developer's earlier `sj` runs out of the comparison, which must cover only the replay's own
+  runs. The pinned binary sits at `.bench/tools/specjutsu@<pin>/bin/sj`; the tool install script
+  must put it there.
+
 ## Risks / Trade-offs
 - [Normalising durations changes the counted bytes slightly] → The difference is a few bytes per
   timing line and applies the same rule to every tool.
