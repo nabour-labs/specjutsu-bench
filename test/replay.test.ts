@@ -148,9 +148,19 @@ it("REPLAY-004 shows per-task rows, totals of 10,000, 40,000 and 25,000 and the 
   expect(run.stderr).toBe("");
   expect(run.status).toBe(0);
   const lines = readFileSync(join(root, "results", "results.md"), "utf8").split("\n");
-  expect(lines).toContain("| specjutsu | feature | 2000 | 500 | 0 |");
-  expect(lines).toContain("| speckit | change | 20000 | 5000 | 0 |");
-  expect(lines).toContain("| openspec | bugfix | 10000 | 2500 | 0 |");
+  for (const row of [
+    "| specjutsu | feature | 2000 | 500 | 0 |",
+    "| specjutsu | bugfix | 3000 | 750 | 0 |",
+    "| specjutsu | change | 5000 | 1250 | 0 |",
+    "| speckit | feature | 10000 | 2500 | 0 |",
+    "| speckit | bugfix | 10000 | 2500 | 0 |",
+    "| speckit | change | 20000 | 5000 | 0 |",
+    "| openspec | feature | 5000 | 1250 | 0 |",
+    "| openspec | bugfix | 10000 | 2500 | 0 |",
+    "| openspec | change | 10000 | 2500 | 0 |",
+  ]) {
+    expect(lines).toContain(row);
+  }
   expect(lines).toContain("| specjutsu | total | 10000 | 2500 | 0 |");
   expect(lines).toContain("| speckit | total | 40000 | 10000 | 0 |");
   expect(lines).toContain("| openspec | total | 25000 | 6250 | 0 |");
