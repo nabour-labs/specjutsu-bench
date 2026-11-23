@@ -51,6 +51,15 @@ function loadBytes(root: string, pins: Pins, step: Step): number {
   return statSync(join(root, ".bench", "tools", `${step.tool}@${pins[step.tool!]}`, step.path!)).size;
 }
 
+/** Counts output with every duration as `0ms` and every clock time as `00:00:00`. */
+function normalizedBytes(output: Buffer): number {
+  const text = output
+    .toString("utf8")
+    .replace(/\b\d+(\.\d+)?(ms|s)\b/g, "0ms")
+    .replace(/\b\d{2}:\d{2}:\d{2}\b/g, "00:00:00");
+  return Buffer.byteLength(text);
+}
+
 function count(
   root: string,
   pins: Pins,
@@ -66,7 +75,7 @@ function count(
       return { context: statSync(join(workspace, step.path!)).size, output: 0 };
     case "run": {
       const run = spawnSync(step.command!, { cwd: workspace, shell: true });
-      return { context: run.stdout.length + run.stderr.length, output: 0 };
+      return { context: normalizedBytes(run.stdout) + normalizedBytes(run.stderr), output: 0 };
     }
     case "write": {
       const target = join(workspace, step.path!);
