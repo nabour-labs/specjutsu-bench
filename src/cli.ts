@@ -1,4 +1,4 @@
-import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { checkFixtureStates } from "./fixture.ts";
 import { checkPins, loadPins } from "./pins.ts";
@@ -52,17 +52,29 @@ for (const error of errors) console.error(error);
 if (errors.length > 0) {
   process.exitCode = 1;
 } else {
-  const results = replayAll(root, loadPins(root), loadTasks(root));
   if (process.argv.includes("--check")) {
-    // Compares with the committed results without writing results/.
-    const committed = JSON.parse(readFileSync(join(root, "results", "results.json"), "utf8")) as Results;
-    const lines = drift(committed, results);
-    for (const line of lines) console.log(line);
-    if (lines.length === 0) console.log("results match");
-    process.exitCode = lines.length > 0 ? 1 : 0;
+    checkDrift(root);
   } else {
-    write(root, results);
+    write(root, replayAll(root, loadPins(root), loadTasks(root)));
   }
+}
+
+/** Compares a fresh replay with the committed results without writing results/. */
+function checkDrift(root: string): void {
+  const committedPath = join(root, "results", "results.json");
+  if (!existsSync(committedPath)) {
+    console.error("results/results.json: missing");
+    process.exitCode = 1;
+    return;
+  }
+  const committed = JSON.parse(readFileSync(committedPath, "utf8")) as Results;
+  const results = replayAll(root, loadPins(root), loadTasks(root));
+  const implicitSession = (tool: string, task: string) =>
+    !loadSteps(root, `steps/${tool}/${task}.yaml`).some((step) => step.kind === "session");
+  const lines = drift(committed, results, implicitSession);
+  for (const line of lines) console.log(line);
+  if (lines.length === 0) console.log("results match");
+  process.exitCode = lines.length > 0 ? 1 : 0;
 }
 
 function write(root: string, results: Results): void {

@@ -33,28 +33,38 @@ export function resultsMarkdown(results: Results): string {
 
 /**
  * How `fresh` differs from the `committed` results: every changed pin, then the first step
- * whose bytes differ, counting steps from 1. Empty when they match.
+ * whose bytes differ, numbered as in its script. `implicitSession(tool, task)` says whether the
+ * replay added the script's session step, which is then step 0. Empty when they match.
  */
-export function drift(committed: Results, fresh: Results): string[] {
+export function drift(
+  committed: Results,
+  fresh: Results,
+  implicitSession: (tool: string, task: string) => boolean,
+): string[] {
   const tools = [...new Set([...Object.keys(committed.pins), ...Object.keys(fresh.pins)])].sort();
   const lines = tools
     .filter((tool) => committed.pins[tool] !== fresh.pins[tool])
     .map((tool) => `pin ${tool} ${committed.pins[tool] ?? "none"} → ${fresh.pins[tool] ?? "none"}`);
-  const step = firstStepDrift(committed, fresh);
+  const step = firstStepDrift(committed, fresh, implicitSession);
   if (step) lines.push(step);
   if (lines.length === 0 && JSON.stringify(committed) !== JSON.stringify(fresh)) lines.push("results differ");
   return lines;
 }
 
-function firstStepDrift(committed: Results, fresh: Results): string | undefined {
+function firstStepDrift(
+  committed: Results,
+  fresh: Results,
+  implicitSession: (tool: string, task: string) => boolean,
+): string | undefined {
   for (const [tool, tasks] of Object.entries(fresh.workflows)) {
     for (const [task, script] of Object.entries(tasks)) {
       const old = committed.workflows[tool]?.[task]?.steps ?? [];
+      const first = implicitSession(tool, task) ? 0 : 1;
       for (let i = 0; i < Math.max(old.length, script.steps.length); i++) {
         for (const field of ["context", "output"] as const) {
           const before = old[i]?.[field] ?? 0;
           const after = script.steps[i]?.[field] ?? 0;
-          if (before !== after) return `${tool}/${task} step ${i + 1}: ${field} ${before} → ${after}`;
+          if (before !== after) return `${tool}/${task} step ${i + first}: ${field} ${before} → ${after}`;
         }
       }
     }

@@ -22,12 +22,8 @@ function commitResults(root: string): Record<string, string> {
 }
 
 it("REPLAY-006 fails the check naming speckit/feature step 6: context 3000 → 3100", () => {
-  // The script declares its session, so its 6th step is the 6th recorded step.
-  const script =
-    "steps:\n" +
-    step("session\n") +
-    step("read\n    path: file-1.md\n").repeat(4) +
-    step("read\n    path: big.md\n");
+  // The script declares no session; the replay's implicit session step must not shift its numbering.
+  const script = "steps:\n" + step("read\n    path: file-1.md\n").repeat(5) + step("read\n    path: big.md\n");
   const root = benchRoot({ "steps/speckit/feature.yaml": script, "fixture/start/big.md": "x".repeat(3000) });
   const committed = commitResults(root);
   writeFileSync(join(root, "fixture", "start", "big.md"), "x".repeat(3100));

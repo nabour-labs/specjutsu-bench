@@ -59,6 +59,12 @@ the other tools' maintainers can challenge a step script while it is cheap to fi
   bytes every time. Rejected: requiring each `run` step to pass flags that hide timings, which
   would make the scripts differ from what each tool's docs tell the agent to run.
 
+- **`--check` drift lines use the script's step numbers.** `speckit/feature step 6` is step 6
+  of `steps/speckit/feature.yaml`, as in every other message. When the replay adds an implicit
+  session step to a script that declares none, that step is `step 0`. A missing
+  `results/results.json` is reported as `results/results.json: missing`, exit 1. Rejected:
+  numbering the recorded steps, which shifts every step by one in scripts with no session step.
+
 ## Risks / Trade-offs
 - [Normalising durations changes the counted bytes slightly] → The difference is a few bytes per
   timing line and applies the same rule to every tool.
