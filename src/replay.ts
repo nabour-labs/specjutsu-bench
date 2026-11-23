@@ -70,9 +70,10 @@ function addGain(gain: GainTotals, command: string, side: "replay" | "gain", byt
  * Adds the `printed` bytes the pinned `sj gain --json` reports for the runs in `workspace`, or a
  * failure line naming `script` (never the workspace path) when it fails or prints no JSON.
  */
-function addGainReport(root: string, pins: Pins, script: string, workspace: string, gain: Gain): void {
+function addGainReport(root: string, pins: Pins, script: string, workspace: string, env: NodeJS.ProcessEnv, gain: Gain): void {
   const run = spawnSync(join(sjBin(root, pins)!, "sj"), ["gain", "--json", "--root", workspace], {
     cwd: workspace,
+    env,
     encoding: "utf8",
   });
   const fail = (reason: string) => gain.failures.push(`sj gain --json failed for ${script}: ${reason}`);
@@ -104,7 +105,12 @@ function replayScript(
   gain: Gain | undefined,
 ): ScriptResult {
   const workspace = mkdtempSync(join(tmpdir(), "replay-workspace-"));
+  const xdgHome = mkdtempSync(join(tmpdir(), "replay-xdg-"));
   try {
+    // Run steps and `sj gain` run with the pinned `sj` first on PATH.
+    const env = workspaceEnv(xdgHome);
+    const bin = sjBin(root, pins);
+    if (bin) env.PATH = `${bin}${delimiter}${process.env.PATH ?? ""}`;
     const start = join(root, "fixture", "start");
     // Stale `sj gain` records in the start state are left out, and the workspace is a git repo
     // because `sj` records gain only inside one.
@@ -128,7 +134,7 @@ function replayScript(
     const paths = [...new Set([workspace, realpathSync(workspace)])].sort((a, b) => b.length - a.length);
     let ranSj = false;
     const results = steps.map((step) => {
-      const { context, output, raw } = count(root, pins, task, sessionStart, workspace, paths, step);
+      const { context, output, raw } = count(root, pins, task, sessionStart, workspace, env, paths, step);
       const command = step.kind === "run" ? gainCommand(step.command!) : undefined;
       if (gain && command && raw !== undefined) {
         addGain(gain.totals, command, "replay", raw);
@@ -136,7 +142,7 @@ function replayScript(
       }
       return { ...label(step), context, output };
     });
-    if (gain && ranSj) addGainReport(root, pins, `specjutsu/${task}`, workspace, gain);
+    if (gain && ranSj) addGainReport(root, pins, `specjutsu/${task}`, workspace, env, gain);
     return {
       context: results.reduce((sum, step) => sum + step.context, 0),
       output: results.reduce((sum, step) => sum + step.output, 0),
@@ -145,6 +151,7 @@ function replayScript(
     };
   } finally {
     rmSync(workspace, { recursive: true, force: true });
+    rmSync(xdgHome, { recursive: true, force: true });
   }
 }
 
@@ -162,13 +169,24 @@ const START_COMMIT = {
 export class StartCommitError extends Error {}
 
 /**
- * The environment without the variables that point git at another repo, as a git hook or CI
- * wrapper may set them: git's own `rev-parse --local-env-vars` list, less its `git -c` config
- * variables, and `GIT_CEILING_DIRECTORIES`.
+ * The environment for a workspace's run steps and its `sj gain --json`, so that nothing about the
+ * machine changes what they print:
+ * - the variables that point git at another repo, as a git hook or CI wrapper may set them, are
+ *   dropped: git's own `rev-parse --local-env-vars` list and `GIT_CEILING_DIRECTORIES`;
+ * - no global, system or env (`GIT_CONFIG*`) config is read, nor the system attributes;
+ * - `XDG_CONFIG_HOME` is `xdgHome`, an empty dir, so no `~/.config/git/ignore` or `attributes`;
+ *   `HOME` is kept, as npm, npx and sj may use it;
+ * - `COLUMNS` is 80.
  */
-function workspaceEnv(): NodeJS.ProcessEnv {
+function workspaceEnv(xdgHome: string): NodeJS.ProcessEnv {
   const env = { ...process.env };
+  for (const name of Object.keys(env)) {
+    if (/^GIT_CONFIG_(KEY|VALUE)_\d+$/.test(name)) delete env[name];
+  }
   for (const name of [
+    "GIT_CONFIG",
+    "GIT_CONFIG_PARAMETERS",
+    "GIT_CONFIG_COUNT",
     "GIT_ALTERNATE_OBJECT_DIRECTORIES",
     "GIT_OBJECT_DIRECTORY",
     "GIT_DIR",
@@ -185,7 +203,13 @@ function workspaceEnv(): NodeJS.ProcessEnv {
   ]) {
     delete env[name];
   }
-  return env;
+  return Object.assign(env, {
+    GIT_CONFIG_GLOBAL: "/dev/null",
+    GIT_CONFIG_NOSYSTEM: "1",
+    GIT_ATTR_NOSYSTEM: "1",
+    XDG_CONFIG_HOME: xdgHome,
+    COLUMNS: "80",
+  });
 }
 
 /**
@@ -257,6 +281,7 @@ function count(
   task: string,
   sessionStart: number,
   workspace: string,
+  env: NodeJS.ProcessEnv,
   paths: string[],
   step: Step,
 ): { context: number; output: number; raw?: number } {
@@ -266,9 +291,6 @@ function count(
     case "read":
       return { context: statSync(join(workspace, step.path!)).size, output: 0 };
     case "run": {
-      const bin = sjBin(root, pins);
-      const env = workspaceEnv();
-      if (bin) env.PATH = `${bin}${delimiter}${process.env.PATH ?? ""}`;
       const run = spawnSync(step.command!, { cwd: workspace, shell: true, env });
       // `sj gain` counts what was printed, before normalisation.
       return {
