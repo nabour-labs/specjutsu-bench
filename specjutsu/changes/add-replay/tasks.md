@@ -18,7 +18,7 @@
 - [x] 3.2 `--check` drift report (REPLAY-006..008)
 - [x] 3.3 Cross-check against `sj gain --json` (REPLAY-010)
 - [x] 3.4 Run steps use the bench's installed packages, as the fixture check does (REPLAY-013)
-- [ ] 3.5 Workspace start commit on main and workspace path normalised (REPLAY-014, REPLAY-015)
+- [x] 3.5 Workspace start commit on main and workspace path normalised (REPLAY-014, REPLAY-015)
 
 ## 4. Content
 
