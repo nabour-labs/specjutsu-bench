@@ -1,10 +1,11 @@
 // Installs every pinned tool into .bench/tools/<tool>@<pin>/ (see design.md, "Tools install into").
-// Each install is the tool's repository at tag v<pin>; specjutsu also gets its release binary in bin/sj,
-// checked against the release's SHA256SUMS. An install that already exists is left as it is.
+// Each install is the tool's repository at tag v<pin>, or at the commit a 40-hex pin names; specjutsu
+// takes a version pin and also gets its release binary in bin/sj, checked against the release's
+// SHA256SUMS. An install that already exists is left as it is. Installs are staged under .bench/ so
+// the final rename stays on one filesystem.
 import { execFileSync } from "node:child_process";
 import { createHash } from "node:crypto";
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, renameSync, rmSync, writeFileSync } from "node:fs";
-import { tmpdir } from "node:os";
 import { join } from "node:path";
 
 const REPOS = {
@@ -32,10 +33,25 @@ for (const [tool, pin] of Object.entries(pins)) {
     console.log(`${tool}@${pin}: already installed`);
     continue;
   }
-  const staging = mkdtempSync(join(tmpdir(), `install-${tool}-`));
+  const commit = /^[0-9a-f]{40}$/.test(pin);
+  if (commit && tool === "specjutsu") {
+    console.error(`specjutsu@${pin}: sj comes from a release, so specjutsu needs a version pin, not a commit`);
+    process.exit(1);
+  }
+  mkdirSync(join(root, ".bench"), { recursive: true });
+  const staging = mkdtempSync(join(root, ".bench", `tmp-${tool}-`));
   try {
     const checkout = join(staging, "repo");
-    git("clone", "--quiet", "--depth", "1", "--branch", `v${pin}`, `https://github.com/${repo}.git`, checkout);
+    const url = `https://github.com/${repo}.git`;
+    if (commit) {
+      mkdirSync(checkout);
+      git("-C", checkout, "init", "--quiet");
+      git("-C", checkout, "remote", "add", "origin", url);
+      git("-C", checkout, "fetch", "--quiet", "--depth", "1", "origin", pin);
+      git("-C", checkout, "checkout", "--quiet", "FETCH_HEAD");
+    } else {
+      git("clone", "--quiet", "--depth", "1", "--branch", `v${pin}`, url, checkout);
+    }
     rmSync(join(checkout, ".git"), { recursive: true, force: true });
     if (tool === "specjutsu") installSj(pin, checkout, staging);
     mkdirSync(join(root, ".bench", "tools"), { recursive: true });
