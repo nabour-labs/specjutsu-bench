@@ -8,7 +8,7 @@
 
 ## 2. Replay
 
-- [ ] 2.1 Run a script in a fresh workspace and count bytes per step (REPLAY-001, REPLAY-002)
+- [x] 2.1 Run a script in a fresh workspace and count bytes per step (REPLAY-001, REPLAY-002)
 - [ ] 2.2 Session-start files counted per declared session (REPLAY-003)
 - [ ] 2.3 Fixture start and golden end states pass their tests (REPLAY-009)
 
