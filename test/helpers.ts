@@ -50,3 +50,7 @@ export function benchRoot(files: Record<string, string | null> = {}): string {
 export function replay(root: string) {
   return spawnSync("npm", ["run", "--silent", "replay"], { cwd: root, encoding: "utf8" });
 }
+
+export function replayCheck(root: string) {
+  return spawnSync("npm", ["run", "--silent", "replay", "--", "--check"], { cwd: root, encoding: "utf8" });
+}
