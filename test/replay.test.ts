@@ -177,3 +177,32 @@ it("REPLAY-005 writes byte-identical results.json and results.md on two runs", (
     expect(first[i].toString("utf8"), file).not.toContain(root);
   }
 });
+
+it("REPLAY-012 counts a run step's timings as 00:00:00 and 0ms, the same on both runs", () => {
+  // print.mjs prints the first run's timings, or the second run's when REPLAY_012_RUN is 2.
+  const root = benchRoot({
+    "steps/speckit/feature.yaml": "steps:\n" + step("run\n    command: node print.mjs\n"),
+    "fixture/start/print.mjs":
+      `const second = process.env.REPLAY_012_RUN === "2";\n` +
+      `console.log(second ? "Start at 09:15:40" : "Start at 14:02:11");\n` +
+      `console.log(second ? "Duration 12.3s" : "Duration 6.92s");\n`,
+  });
+  const runContext = (n: string) => {
+    process.env.REPLAY_012_RUN = n;
+    try {
+      const run = replay(root);
+      expect(run.stderr).toBe("");
+      expect(run.status).toBe(0);
+    } finally {
+      delete process.env.REPLAY_012_RUN;
+    }
+    return ownSteps(results(root).workflows.speckit.feature)[0].context;
+  };
+
+  const first = runContext("1");
+  const second = runContext("2");
+
+  const normalized = Buffer.byteLength("Start at 00:00:00\nDuration 0ms\n");
+  expect(first).toBe(normalized);
+  expect(second).toBe(normalized);
+});
