@@ -108,8 +108,13 @@ function replayScript(
     const start = join(root, "fixture", "start");
     // Stale `sj gain` records in the start state are left out, and the workspace is a git repo
     // because `sj` records gain only inside one.
-    const ledger = join(start, ".specjutsu", "ledger");
-    cpSync(start, workspace, { recursive: true, filter: (src) => src !== ledger && !src.startsWith(`${ledger}${sep}`) });
+    // A `node_modules` installed in the start state is left out too: the bench's own is linked in
+    // after the commit.
+    const left = [join(start, ".specjutsu", "ledger"), join(start, "node_modules")];
+    cpSync(start, workspace, {
+      recursive: true,
+      filter: (src) => !left.some((path) => src === path || src.startsWith(`${path}${sep}`)),
+    });
     commitStart(workspace);
     // Run steps use the bench's installed packages, as the fixture check does.
     // git's `node_modules/` patterns match only directories, so the link is excluded by name.
@@ -118,9 +123,12 @@ function replayScript(
       mkdirSync(info, { recursive: true });
       appendFileSync(join(info, "exclude"), "/node_modules\n");
     }
+    // A tool may print the workspace path as given or as its realpath, so both are replaced, the
+    // longer first (macOS tmpdir paths print as both `/var/...` and `/private/var/...`).
+    const paths = [...new Set([workspace, realpathSync(workspace)])].sort((a, b) => b.length - a.length);
     let ranSj = false;
     const results = steps.map((step) => {
-      const { context, output, raw } = count(root, pins, task, sessionStart, workspace, step);
+      const { context, output, raw } = count(root, pins, task, sessionStart, workspace, paths, step);
       const command = step.kind === "run" ? gainCommand(step.command!) : undefined;
       if (gain && command && raw !== undefined) {
         addGain(gain.totals, command, "replay", raw);
@@ -150,19 +158,62 @@ const START_COMMIT = {
   GIT_COMMITTER_DATE: "2026-01-01T00:00:00Z",
 };
 
+/** Thrown when the workspace's start commit fails; the replay stops and writes no results. */
+export class StartCommitError extends Error {}
+
 /**
- * Makes the workspace a git repo with the start files committed on `main`. The user's hooks and
- * signing are turned off so their git config can't change the commit.
+ * The environment without the variables that point git at another repo, as a git hook or CI
+ * wrapper may set them: git's own `rev-parse --local-env-vars` list and `GIT_CEILING_DIRECTORIES`.
+ */
+function workspaceEnv(): NodeJS.ProcessEnv {
+  const env = { ...process.env };
+  for (const name of [
+    "GIT_ALTERNATE_OBJECT_DIRECTORIES",
+    "GIT_CONFIG",
+    "GIT_CONFIG_PARAMETERS",
+    "GIT_CONFIG_COUNT",
+    "GIT_OBJECT_DIRECTORY",
+    "GIT_DIR",
+    "GIT_WORK_TREE",
+    "GIT_IMPLICIT_WORK_TREE",
+    "GIT_GRAFT_FILE",
+    "GIT_INDEX_FILE",
+    "GIT_NO_REPLACE_OBJECTS",
+    "GIT_REPLACE_REF_BASE",
+    "GIT_PREFIX",
+    "GIT_SHALLOW_FILE",
+    "GIT_COMMON_DIR",
+    "GIT_CEILING_DIRECTORIES",
+  ]) {
+    delete env[name];
+  }
+  return env;
+}
+
+/**
+ * Makes the workspace a git repo with the start files committed on `main`. Global and system git
+ * config and init templates are ignored, and hooks and signing turned off, so nothing about the
+ * machine changes the commit's hash.
  */
 function commitStart(workspace: string): void {
-  const git = (...args: string[]) =>
-    spawnSync("git", ["-c", "core.hooksPath=", "-c", "commit.gpgsign=false", ...args], {
+  const env = { ...workspaceEnv(), ...START_COMMIT, GIT_CONFIG_GLOBAL: "/dev/null", GIT_CONFIG_NOSYSTEM: "1" };
+  for (const args of [
+    ["init", "-q", "--template=", "-b", "main"],
+    ["add", "-A"],
+    ["commit", "-q", "--no-verify", "-m", "fixture start"],
+  ]) {
+    const git = spawnSync("git", ["-c", "core.hooksPath=", "-c", "commit.gpgsign=false", ...args], {
       cwd: workspace,
-      env: { ...process.env, ...START_COMMIT },
+      env,
+      encoding: "utf8",
     });
-  git("init", "-q", "-b", "main");
-  git("add", "-A");
-  git("commit", "-q", "--no-verify", "-m", "fixture start");
+    if (git.error || git.status !== 0) {
+      // git prints most failures to stderr, but "nothing to commit" as stdout's last line.
+      const lines = (text: string | undefined) => (text ?? "").split("\n").map((line) => line.trim()).filter(Boolean);
+      const reason = git.error?.message ?? lines(git.stderr)[0] ?? lines(git.stdout).at(-1);
+      throw new StartCommitError(`start commit failed: ${reason ?? `git ${args[0]} exited ${git.status}`}`);
+    }
+  }
 }
 
 function label(step: Step): Pick<StepResult, "kind" | "path" | "command"> {
@@ -173,13 +224,8 @@ function loadBytes(root: string, pins: Pins, step: Step): number {
   return statSync(join(root, ".bench", "tools", `${step.tool}@${pins[step.tool!]}`, step.path!)).size;
 }
 
-/**
- * Counts output with every duration as `0ms`, every clock time as `00:00:00` and the workspace's
- * path as `/workspace`. The path is replaced as given and as its realpath (macOS tmpdir paths
- * print as both `/var/...` and `/private/var/...`), the longer first.
- */
-function normalizedBytes(output: Buffer, workspace: string): number {
-  const paths = [...new Set([workspace, realpathSync(workspace)])].sort((a, b) => b.length - a.length);
+/** Counts output with every duration as `0ms`, every clock time as `00:00:00` and each of `paths` as `/workspace`. */
+function normalizedBytes(output: Buffer, paths: string[]): number {
   const text = paths
     .reduce((out, path) => out.split(path).join("/workspace"), output.toString("utf8"))
     .replace(/\b\d+(\.\d+)?(ms|s)\b/g, "0ms")
@@ -193,6 +239,7 @@ function count(
   task: string,
   sessionStart: number,
   workspace: string,
+  paths: string[],
   step: Step,
 ): { context: number; output: number; raw?: number } {
   switch (step.kind) {
@@ -202,11 +249,12 @@ function count(
       return { context: statSync(join(workspace, step.path!)).size, output: 0 };
     case "run": {
       const bin = sjBin(root, pins);
-      const env = bin ? { ...process.env, PATH: `${bin}${delimiter}${process.env.PATH ?? ""}` } : process.env;
+      const env = workspaceEnv();
+      if (bin) env.PATH = `${bin}${delimiter}${process.env.PATH ?? ""}`;
       const run = spawnSync(step.command!, { cwd: workspace, shell: true, env });
       // `sj gain` counts what was printed, before normalisation.
       return {
-        context: normalizedBytes(run.stdout, workspace) + normalizedBytes(run.stderr, workspace),
+        context: normalizedBytes(run.stdout, paths) + normalizedBytes(run.stderr, paths),
         output: 0,
         raw: run.stdout.length + run.stderr.length,
       };

@@ -2,7 +2,7 @@ import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { checkFixtureStates } from "./fixture.ts";
 import { checkPins, loadPins } from "./pins.ts";
-import { replayAll } from "./replay.ts";
+import { replayAll, StartCommitError } from "./replay.ts";
 import { drift, gainMismatches, resultsMarkdown } from "./report.ts";
 import type { Gain, Results } from "./replay.ts";
 import {
@@ -54,12 +54,18 @@ for (const error of errors) console.error(error);
 if (errors.length > 0) {
   process.exitCode = 1;
 } else {
-  if (process.argv.includes("--check")) {
-    checkDrift(root);
-  } else {
-    const { results, gain } = replayAll(root, loadPins(root), loadTasks(root));
-    if (reportGain(gain)) write(root, results);
-    else process.exitCode = 1;
+  try {
+    if (process.argv.includes("--check")) {
+      checkDrift(root);
+    } else {
+      const { results, gain } = replayAll(root, loadPins(root), loadTasks(root));
+      if (reportGain(gain)) write(root, results);
+      else process.exitCode = 1;
+    }
+  } catch (error) {
+    if (!(error instanceof StartCommitError)) throw error;
+    console.error(error.message);
+    process.exitCode = 1;
   }
 }
 
