@@ -1,9 +1,10 @@
-import { mkdirSync, writeFileSync } from "node:fs";
+import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { checkFixtureStates } from "./fixture.ts";
 import { checkPins, loadPins } from "./pins.ts";
 import { replayAll } from "./replay.ts";
-import { resultsMarkdown } from "./report.ts";
+import { drift, resultsMarkdown } from "./report.ts";
+import type { Results } from "./replay.ts";
 import {
   WORKFLOWS,
   checkLoads,
@@ -52,6 +53,19 @@ if (errors.length > 0) {
   process.exitCode = 1;
 } else {
   const results = replayAll(root, loadPins(root), loadTasks(root));
+  if (process.argv.includes("--check")) {
+    // Compares with the committed results without writing results/.
+    const committed = JSON.parse(readFileSync(join(root, "results", "results.json"), "utf8")) as Results;
+    const lines = drift(committed, results);
+    for (const line of lines) console.log(line);
+    if (lines.length === 0) console.log("results match");
+    process.exitCode = lines.length > 0 ? 1 : 0;
+  } else {
+    write(root, results);
+  }
+}
+
+function write(root: string, results: Results): void {
   mkdirSync(join(root, "results"), { recursive: true });
   writeFileSync(join(root, "results", "results.json"), `${JSON.stringify(results, null, 2)}\n`);
   writeFileSync(join(root, "results", "results.md"), resultsMarkdown(results));

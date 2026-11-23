@@ -30,3 +30,34 @@ export function resultsMarkdown(results: Results): string {
   lines.push("", `specjutsu saves ${savings.join(", ")}`);
   return `${lines.join("\n")}\n`;
 }
+
+/**
+ * How `fresh` differs from the `committed` results: every changed pin, then the first step
+ * whose bytes differ, counting steps from 1. Empty when they match.
+ */
+export function drift(committed: Results, fresh: Results): string[] {
+  const tools = [...new Set([...Object.keys(committed.pins), ...Object.keys(fresh.pins)])].sort();
+  const lines = tools
+    .filter((tool) => committed.pins[tool] !== fresh.pins[tool])
+    .map((tool) => `pin ${tool} ${committed.pins[tool] ?? "none"} → ${fresh.pins[tool] ?? "none"}`);
+  const step = firstStepDrift(committed, fresh);
+  if (step) lines.push(step);
+  if (lines.length === 0 && JSON.stringify(committed) !== JSON.stringify(fresh)) lines.push("results differ");
+  return lines;
+}
+
+function firstStepDrift(committed: Results, fresh: Results): string | undefined {
+  for (const [tool, tasks] of Object.entries(fresh.workflows)) {
+    for (const [task, script] of Object.entries(tasks)) {
+      const old = committed.workflows[tool]?.[task]?.steps ?? [];
+      for (let i = 0; i < Math.max(old.length, script.steps.length); i++) {
+        for (const field of ["context", "output"] as const) {
+          const before = old[i]?.[field] ?? 0;
+          const after = script.steps[i]?.[field] ?? 0;
+          if (before !== after) return `${tool}/${task} step ${i + 1}: ${field} ${before} → ${after}`;
+        }
+      }
+    }
+  }
+  return undefined;
+}
