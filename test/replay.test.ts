@@ -463,7 +463,7 @@ it("REPLAY-017 records the same context bytes for a run step with GITHUB_ACTIONS
   const root = benchRoot({
     "steps/speckit/feature.yaml":
       "steps:\n" +
-      step(`run\n    command: node -e "process.stdout.write(['unset', 'GITHUB_ACTIONS is set'][+!!process.env.GITHUB_ACTIONS])"\n`),
+      step(`run\n    command: node -e "process.stdout.write(['unset', 'GITHUB_ACTIONS is set'][+!!process.env.GITHUB_ACTIONS] + ['', ' notifier off'][+(process.env.npm_config_update_notifier === 'false')])"\n`),
   });
   const runContext = (vars: { GITHUB_ACTIONS?: string; CI?: string }) => {
     const saved = { GITHUB_ACTIONS: process.env.GITHUB_ACTIONS, CI: process.env.CI };
@@ -488,7 +488,8 @@ it("REPLAY-017 records the same context bytes for a run step with GITHUB_ACTIONS
     const ci = runContext({ GITHUB_ACTIONS: "true", CI: "true" });
     const none = runContext({});
 
-    expect(none).toBe(5);
+    // "unset" and " notifier off": npm's update notice is turned off in the step.
+    expect(none).toBe(18);
     expect(ci).toBe(none);
   } finally {
     rmSync(root, { recursive: true, force: true });

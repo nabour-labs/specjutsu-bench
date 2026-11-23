@@ -10,11 +10,18 @@ export const SUITE_TIMEOUT_MS = 5 * 60 * 1000;
 const ALLOWED_ENV = ["PATH", "HOME", "TMPDIR", "LANG", "LC_ALL"];
 
 /**
- * The allowlisted part of this process's environment, so CI detection (`CI`, `GITHUB_ACTIONS`)
- * and other machine settings can't change what a command prints.
+ * npm's update, fund and audit notices are off: with `CI` dropped, npm would otherwise print an
+ * update notice that depends on its latest release and on when it last checked.
+ */
+const NPM_QUIET = { npm_config_update_notifier: "false", npm_config_fund: "false", npm_config_audit: "false" };
+
+/**
+ * The allowlisted part of this process's environment, plus `NPM_QUIET`, so CI detection (`CI`,
+ * `GITHUB_ACTIONS`) and other machine settings can't change what a command prints.
  */
 export function allowlistedEnv(): NodeJS.ProcessEnv {
-  return Object.fromEntries(ALLOWED_ENV.filter((name) => process.env[name] !== undefined).map((name) => [name, process.env[name]]));
+  const kept = ALLOWED_ENV.filter((name) => process.env[name] !== undefined).map((name) => [name, process.env[name]]);
+  return { ...Object.fromEntries(kept), ...NPM_QUIET };
 }
 
 /** The shell command that runs the fixture's own test suite: the `test` key of fixture/tasks.json. */
