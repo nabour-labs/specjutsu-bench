@@ -1,5 +1,6 @@
 import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
+import { checkFixtureStates } from "./fixture.ts";
 import { checkPins, loadPins } from "./pins.ts";
 import { replayAll } from "./replay.ts";
 import {
@@ -37,7 +38,8 @@ function check(root: string): string[] {
 }
 
 const root = process.cwd();
-const errors = check(root);
+const staticErrors = check(root);
+const errors = staticErrors.length > 0 ? staticErrors : checkFixtureStates(root, loadTasks(root));
 for (const error of errors) console.error(error);
 if (errors.length > 0) {
   process.exitCode = 1;
