@@ -57,7 +57,10 @@ the count does not depend on how long the command took or when it ran. It SHALL 
 workspace's absolute path with `/workspace`, so the count does not depend on the machine's temp
 directory. A `run` step SHALL run with no user or system git configuration (`GIT_CONFIG_GLOBAL`
 pointing at an empty file and `GIT_CONFIG_NOSYSTEM=1`) and with `COLUMNS=80`, so a command's
-output does not depend on the machine's git settings or terminal width.
+output does not depend on the machine's git settings or terminal width. A `run` step SHALL see only
+an allowlisted environment (`PATH`, `HOME`, `TMPDIR`, `LANG`, `LC_ALL` and the variables the replay
+sets), so CI detection such as `CI` or `GITHUB_ACTIONS` can't change what a command prints, and its
+output SHALL be counted in full, whatever its size.
 
 #### Scenario: REPLAY-005 Two runs, identical results
 - **WHEN** the user runs `npm run replay` twice on the same commit and pins
@@ -74,6 +77,14 @@ output does not depend on the machine's git settings or terminal width.
 #### Scenario: REPLAY-016 A user's git config doesn't change a run step's count
 - **WHEN** the user's global git config sets `diff.noprefix = true` and a `run` step runs `git diff` on a changed file
 - **THEN** the step records the same context bytes as when there is no global git config
+
+#### Scenario: REPLAY-017 CI variables don't change a run step's count
+- **WHEN** the replay runs with `GITHUB_ACTIONS=true` and `CI=true` set and a `run` step prints whether `GITHUB_ACTIONS` is set
+- **THEN** the step records the same context bytes as when neither is set
+
+#### Scenario: REPLAY-018 Large run output is counted in full
+- **WHEN** a `run` step's command prints 2,000,000 bytes
+- **THEN** the step records context 2,000,000
 
 ### Requirement: CI fails when results drift from the committed ones
 `npm run replay -- --check` SHALL run the replay without writing `results/`, compare its results

@@ -39,6 +39,6 @@ None.
 
 - New code in `src/` (the replay), data in `fixture/`, `steps/`, `pins.json` and `results/`.
 - New dev dependency: `yaml` for the step scripts.
-- CI installs the pinned tools: `sj` (built from its pinned commit or release), Spec Kit's
-  `specify` CLI through `uv`, OpenSpec through npm, and a Superpowers checkout at its pinned commit.
+- CI installs the pinned tools with `npm run install-tools`: each tool's repository at its pinned
+  tag or commit, and `sj`'s release binary. The rivals' CLIs aren't installed (see design.md).
 - README: how to run the replay and read the results.

@@ -10,8 +10,8 @@ the other tools' maintainers can challenge a step script while it is cheap to fi
 **Goals:**
 
 - The same three tasks, on the same app, for every tool.
-- Every byte counted comes from running the pinned tool or reading a pinned file, never from a
-  number typed into a script.
+- Every byte counted comes from running a command or reading a pinned file, never from a number
+  typed into a script.
 - Every step cites where the workflow says to do it.
 - Results that change only when a script, the fixture or a pin changes.
 
@@ -45,12 +45,13 @@ the other tools' maintainers can challenge a step script while it is cheap to fi
   otherwise a task is one session. Rejected: one session per phase for every tool, which charges
   bootstrap costs to tools that don't ask for a fresh start, and one per task for every tool,
   which ignores tools that do.
-- **Pins allow an exact version or a full commit.** `sj` with `sj gain` is on specjutsu's main
-  branch but not yet in a release, and Superpowers is consumed from git, so a commit pin is needed.
+- **Pins allow an exact version or a full commit.** A version pin installs the tool's tag
+  `v<pin>`; a commit pin installs that commit, for a tool whose needed change isn't released yet.
+  specjutsu's `sj` binary comes from its release, so specjutsu takes a version pin.
   Rejected: npm-style ranges, which would let results drift without a change in this repo.
 - **Tools install into `.bench/tools/<tool>@<pin>/`, outside `results/`.** CI caches it by
   `pins.json` hash. The install path never appears in the results. Each install is the tool's
-  own git repository checked out at tag `v<pin>` (github/spec-kit, Fission-AI/OpenSpec,
+  own git repository checked out at the pinned tag or commit (github/spec-kit, Fission-AI/OpenSpec,
   obra/superpowers, nabour-labs/specjutsu), so a `load` step's `path` is a path in that
   repository and its `source` is `<tool>@<pin>:<path>`. specjutsu's install also holds the built
   `bin/sj`. Rejected: loading files that each tool's `init` generates, which would need the
@@ -112,10 +113,20 @@ the other tools' maintainers can challenge a step script while it is cheap to fi
   that shows it, is the same everywhere. Rejected: passing `--base` to `sj`, which an unborn HEAD
   can't satisfy and which no tool's docs tell the agent to do.
 
+- **Only specjutsu's CLI runs; the rivals' CLIs don't.** The replay runs `sj`, the fixture's
+  test suite and git. Spec Kit's `specify` and OpenSpec's `openspec` aren't installed, so where a
+  rival's docs prescribe one of their commands, the script leaves its output out and says so in
+  the step's `note`. That makes the rivals' counts lower bounds. Rejected: installing them through
+  `uv` and npm, which adds two toolchains to CI to count bytes that would only raise the rivals'
+  totals.
+- **Installed-form overhead is not counted for any tool.** A `load` step counts the file as it is in
+  the tool's repository, not the copy `init` installs: specjutsu's begin/end markers and generated
+  hash lines, and Superpowers' hook wrapper text, are left out alike.
+
 ## Risks / Trade-offs
 
 - [Run steps keep the machine's locale] → A git built with gettext prints translated messages under
-  a non-English `LANG`. CI's runner uses `C.UTF-8`, and the committed results are checked there.
+  a non-English `LANG`. CI's runner uses `C.UTF-8`, and `--check` runs there on every pull request.
 - [Normalising durations changes the counted bytes slightly] → The difference is a few bytes per
   timing line and applies the same rule to every tool.
 

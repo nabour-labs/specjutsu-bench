@@ -23,7 +23,8 @@ Status: layer 1 (the replay) runs in CI. Its current results are in
 
 ## Running the replay
 
-You need Node 22.18 or later, git 2.29 or later and curl.
+You need Node 22.21.1 (the version CI and the committed results use), git 2.29 or later, curl and
+tar. `sj` release binaries exist for macOS and Linux on x64 and arm64.
 
 ```bash
 npm ci
@@ -38,16 +39,18 @@ npm run replay
   fresh workspace, and writes `results/results.json` and `results/results.md`. It exits 1 and
   writes nothing if any check fails.
 - `npm run replay -- --check` replays without writing and compares against the committed results.
-  It prints `results match`, or the first difference (a pin change first, then the first step
-  whose bytes moved), and exits 1. CI runs this on every pull request.
+  On a match it prints `results match` and exits 0. Otherwise it prints every changed pin, then
+  the first difference (the first step whose bytes moved, a `<tool>/<task>: missing` or `added`
+  script, or `results differ`), and exits 1. CI runs this on every pull request.
 
 ## Reading the results
 
 `results/results.md` has one row per tool and task, and a total per tool:
 
 - **context bytes:** what the workflow put into the agent's context: every file loaded or read,
-  and the output of every command run. Run output is counted after durations, clock times and the
-  workspace path are replaced with fixed values, so it is the same on every machine.
+  and the output of every command run. Commands run with a fixed environment, and their output is
+  counted after durations, clock times and the workspace path are replaced with fixed values, so
+  it doesn't depend on the machine's temp directory, git config or CI variables.
 - **context tokens:** context bytes / 4, an estimate, as in `sj gain`.
 - **output bytes:** the files the agent writes. Every tool writes the same code and tests, and its
   own spec documents carrying the same requirements, so this column is roughly equal by design.
@@ -72,11 +75,15 @@ The headline compares context bytes only: `specjutsu saves N% vs speckit, M% vs 
   - `session`: a new agent session, which pays the session-start files again.
 - The specjutsu scripts' `sj` command bytes are also checked against what `sj gain --json`
   recorded for the same runs.
+- Only specjutsu's CLI runs. Where a rival's docs prescribe its own CLI (`specify`, `openspec`), the
+  step is left out and its `note` says so, so the rivals' totals are lower bounds. For every tool a
+  `load` step counts the file as it is in the tool's repository, without the markers or wrapper
+  text its installer adds.
 
 ## Challenging a step
 
-Every step has a `source`, `<tool>@<pin>:<path>#L<a>-L<b>` or a URL, naming the doc line that
-prescribes it. Where a tool's docs leave a choice, the script takes the reading that costs that
+Every step has a `source`, `<tool>@<pin>:<path>` (often with `#L<a>-L<b>`) or a URL, naming the doc
+that prescribes it. Where a tool's docs leave a choice, the script takes the reading that costs that
 tool the least and says so in the step's `note`. If a step misreads a tool's docs, open an issue
 or a pull request that changes the step and cites the doc. CI will show how the results move.
 
