@@ -336,20 +336,31 @@ it("REPLAY-015 commits the start state on main as one fixture start commit with 
     "fixture/start/.specjutsu/ledger/gain.jsonl": "{}\n",
     "fixture/start/node_modules/left-out/index.js": "\n",
   });
-  // A machine whose git config would change the commit: an excludes file and a template that
-  // leave start files out, another commit encoding and default branch, and a GIT_DIR pointing
-  // elsewhere, as inside a git hook.
+  // A machine whose git setup would change the commit: a default ignore file and a template that
+  // leave start files out, default attributes and a clean filter that rewrite blobs, another
+  // commit encoding (in the global config and as `git -c` config in the env) and default branch,
+  // and a GIT_DIR pointing elsewhere, as inside a git hook.
   const machine = mkdtempSync(join(tmpdir(), "replay-015-machine-"));
   mkdirSync(join(machine, "template", "info"), { recursive: true });
   writeFileSync(join(machine, "template", "info", "exclude"), "file-3.md\n");
-  writeFileSync(join(machine, "excludes"), "file-2.md\n");
+  mkdirSync(join(machine, "xdg", "git"), { recursive: true });
+  writeFileSync(join(machine, "xdg", "git", "ignore"), "file-2.md\n");
+  writeFileSync(join(machine, "xdg", "git", "attributes"), "* text eol=crlf\n*.md filter=upper\n");
   writeFileSync(
     join(machine, "gitconfig"),
-    `[core]\n\texcludesFile = ${join(machine, "excludes")}\n\tautocrlf = true\n` +
+    `[core]\n\tautocrlf = true\n` +
       `[init]\n\tdefaultBranch = trunk\n\ttemplateDir = ${join(machine, "template")}\n` +
-      `[i18n]\n\tcommitEncoding = latin1\n`,
+      `[i18n]\n\tcommitEncoding = latin1\n` +
+      `[filter "upper"]\n\tclean = tr a-z A-Z\n`,
   );
-  const hostile = { GIT_CONFIG_GLOBAL: join(machine, "gitconfig"), GIT_DIR: join(machine, "elsewhere.git") };
+  const hostile = {
+    GIT_CONFIG_GLOBAL: join(machine, "gitconfig"),
+    XDG_CONFIG_HOME: join(machine, "xdg"),
+    GIT_CONFIG_COUNT: "1",
+    GIT_CONFIG_KEY_0: "i18n.commitEncoding",
+    GIT_CONFIG_VALUE_0: "latin1",
+    GIT_DIR: join(machine, "elsewhere.git"),
+  };
   const runOnce = (n: number) => {
     const out = join(machine, `run-${n}`);
     mkdirSync(out);
@@ -382,6 +393,7 @@ it("REPLAY-015 commits the start state on main as one fixture start commit with 
       HOME: repo,
       GIT_CONFIG_GLOBAL: "/dev/null",
       GIT_CONFIG_NOSYSTEM: "1",
+      GIT_ATTR_NOSYSTEM: "1",
       GIT_AUTHOR_NAME: "bench",
       GIT_AUTHOR_EMAIL: "bench@localhost",
       GIT_COMMITTER_NAME: "bench",

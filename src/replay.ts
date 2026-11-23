@@ -163,15 +163,13 @@ export class StartCommitError extends Error {}
 
 /**
  * The environment without the variables that point git at another repo, as a git hook or CI
- * wrapper may set them: git's own `rev-parse --local-env-vars` list and `GIT_CEILING_DIRECTORIES`.
+ * wrapper may set them: git's own `rev-parse --local-env-vars` list, less its `git -c` config
+ * variables, and `GIT_CEILING_DIRECTORIES`.
  */
 function workspaceEnv(): NodeJS.ProcessEnv {
   const env = { ...process.env };
   for (const name of [
     "GIT_ALTERNATE_OBJECT_DIRECTORIES",
-    "GIT_CONFIG",
-    "GIT_CONFIG_PARAMETERS",
-    "GIT_CONFIG_COUNT",
     "GIT_OBJECT_DIRECTORY",
     "GIT_DIR",
     "GIT_WORK_TREE",
@@ -191,28 +189,48 @@ function workspaceEnv(): NodeJS.ProcessEnv {
 }
 
 /**
- * Makes the workspace a git repo with the start files committed on `main`. Global and system git
- * config and init templates are ignored, and hooks and signing turned off, so nothing about the
- * machine changes the commit's hash.
+ * Makes the workspace a git repo with the start files committed on `main`, so that nothing about
+ * the machine changes the commit's hash:
+ * - every `GIT_*` variable is dropped (repo location, `git -c` config, `GIT_ATTR_SOURCE`, …);
+ * - no global, system or `git -c` config is read, nor the system attributes;
+ * - `HOME` and `XDG_CONFIG_HOME` are an empty dir, so no `~/.gitconfig` or `~/.config/git/*`;
+ * - init uses no template.
  */
 function commitStart(workspace: string): void {
-  const env = { ...workspaceEnv(), ...START_COMMIT, GIT_CONFIG_GLOBAL: "/dev/null", GIT_CONFIG_NOSYSTEM: "1" };
-  for (const args of [
-    ["init", "-q", "--template=", "-b", "main"],
-    ["add", "-A"],
-    ["commit", "-q", "--no-verify", "-m", "fixture start"],
-  ]) {
-    const git = spawnSync("git", ["-c", "core.hooksPath=", "-c", "commit.gpgsign=false", ...args], {
-      cwd: workspace,
-      env,
-      encoding: "utf8",
+  const home = mkdtempSync(join(tmpdir(), "replay-git-home-"));
+  try {
+    const env: NodeJS.ProcessEnv = Object.fromEntries(
+      Object.entries(process.env).filter(([name]) => !name.startsWith("GIT_")),
+    );
+    Object.assign(env, START_COMMIT, {
+      HOME: home,
+      XDG_CONFIG_HOME: home,
+      GIT_CONFIG_GLOBAL: "/dev/null",
+      GIT_CONFIG_NOSYSTEM: "1",
+      GIT_ATTR_NOSYSTEM: "1",
     });
-    if (git.error || git.status !== 0) {
-      // git prints most failures to stderr, but "nothing to commit" as stdout's last line.
-      const lines = (text: string | undefined) => (text ?? "").split("\n").map((line) => line.trim()).filter(Boolean);
-      const reason = git.error?.message ?? lines(git.stderr)[0] ?? lines(git.stdout).at(-1);
-      throw new StartCommitError(`start commit failed: ${reason ?? `git ${args[0]} exited ${git.status}`}`);
+    // The default ignore and attributes files are turned off as well as moved, and fsmonitor
+    // can run a hook, so it is off too.
+    const config = ["core.hooksPath=", "commit.gpgsign=false", "core.excludesFile=", "core.attributesFile=", "core.fsmonitor=false"];
+    for (const args of [
+      ["init", "-q", "--template=", "-b", "main"],
+      ["add", "-A"],
+      ["commit", "-q", "--no-verify", "-m", "fixture start"],
+    ]) {
+      const git = spawnSync("git", [...config.flatMap((pair) => ["-c", pair]), ...args], {
+        cwd: workspace,
+        env,
+        encoding: "utf8",
+      });
+      if (git.error || git.status !== 0) {
+        // git prints most failures to stderr, but "nothing to commit" as stdout's last line.
+        const lines = (text: string | undefined) => (text ?? "").split("\n").map((line) => line.trim()).filter(Boolean);
+        const reason = git.error?.message ?? lines(git.stderr)[0] ?? lines(git.stdout).at(-1);
+        throw new StartCommitError(`start commit failed: ${reason ?? `git ${args[0]} exited ${git.status}`}`);
+      }
     }
+  } finally {
+    rmSync(home, { recursive: true, force: true });
   }
 }
 
