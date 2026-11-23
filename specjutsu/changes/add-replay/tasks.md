@@ -20,7 +20,7 @@
 - [x] 3.4 Run steps use the bench's installed packages, as the fixture check does (REPLAY-013)
 - [x] 3.5 Workspace start commit on main and workspace path normalised (REPLAY-014, REPLAY-015)
 - [x] 3.6 Run steps ignore the machine's git config and terminal width (REPLAY-016)
-- [ ] 3.7 Run steps see an allowlisted environment and are counted in full (REPLAY-017, REPLAY-018)
+- [x] 3.7 Run steps see an allowlisted environment and are counted in full (REPLAY-017, REPLAY-018)
 
 ## 4. Content
 
