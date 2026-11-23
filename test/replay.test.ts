@@ -1,5 +1,5 @@
 import { spawnSync } from "node:child_process";
-import { chmodSync, mkdtempSync, readFileSync } from "node:fs";
+import { chmodSync, mkdtempSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
@@ -225,15 +225,20 @@ it("REPLAY-013 records the bytes npx --no-install vitest --version prints in the
   // bench; without the update notice, the command prints only the version line.
   const command = "npx --no-install vitest --version";
   const root = benchRoot({ "steps/speckit/feature.yaml": "steps:\n" + step(`run\n    command: ${command}\n`) });
-  process.env.npm_config_cache = mkdtempSync(join(tmpdir(), "replay-npm-cache-"));
+  const cache = mkdtempSync(join(tmpdir(), "replay-npm-cache-"));
+  const saved = { npm_config_cache: process.env.npm_config_cache, npm_config_update_notifier: process.env.npm_config_update_notifier };
+  process.env.npm_config_cache = cache;
   process.env.npm_config_update_notifier = "false";
   let inRoot, run;
   try {
     inRoot = spawnSync(command, { cwd: root, shell: true });
     run = replay(root);
   } finally {
-    delete process.env.npm_config_cache;
-    delete process.env.npm_config_update_notifier;
+    for (const [key, value] of Object.entries(saved)) {
+      if (value === undefined) delete process.env[key];
+      else process.env[key] = value;
+    }
+    rmSync(cache, { recursive: true, force: true });
   }
   expect(inRoot.status).toBe(0);
   // The version line holds no duration or clock time, so normalising leaves its length as printed.

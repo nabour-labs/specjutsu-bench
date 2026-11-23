@@ -26,10 +26,12 @@ export function checkFixtureStates(root: string, tasks: string[]): string[] {
   return states.flatMap(([name, task]) => (statePasses(root, command, task) ? [] : [`${name}: tests fail`]));
 }
 
-/** Links the bench's `node_modules` into `dir`, when the bench has one and `dir` has none. */
-export function linkNodeModules(root: string, dir: string): void {
+/** Links the bench's `node_modules` into `dir`, when the bench has one and `dir` has none; true when it linked. */
+export function linkNodeModules(root: string, dir: string): boolean {
   const modules = join(root, "node_modules");
-  if (existsSync(modules) && !existsSync(join(dir, "node_modules"))) symlinkSync(modules, join(dir, "node_modules"));
+  if (!existsSync(modules) || existsSync(join(dir, "node_modules"))) return false;
+  symlinkSync(modules, join(dir, "node_modules"));
+  return true;
 }
 
 function statePasses(root: string, command: string, task: string | undefined): boolean {

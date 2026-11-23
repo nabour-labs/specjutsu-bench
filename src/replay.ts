@@ -1,5 +1,5 @@
 import { spawnSync } from "node:child_process";
-import { cpSync, mkdirSync, mkdtempSync, rmSync, statSync } from "node:fs";
+import { appendFileSync, cpSync, mkdirSync, mkdtempSync, rmSync, statSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { delimiter, dirname, join, sep } from "node:path";
 import { linkNodeModules } from "./fixture.ts";
@@ -112,7 +112,12 @@ function replayScript(
     cpSync(start, workspace, { recursive: true, filter: (src) => src !== ledger && !src.startsWith(`${ledger}${sep}`) });
     spawnSync("git", ["init", "-q"], { cwd: workspace });
     // Run steps use the bench's installed packages, as the fixture check does.
-    linkNodeModules(root, workspace);
+    // git's `node_modules/` patterns match only directories, so the link is excluded by name.
+    if (linkNodeModules(root, workspace)) {
+      const info = join(workspace, ".git", "info");
+      mkdirSync(info, { recursive: true });
+      appendFileSync(join(info, "exclude"), "/node_modules\n");
+    }
     let ranSj = false;
     const results = steps.map((step) => {
       const { context, output, raw } = count(root, pins, task, sessionStart, workspace, step);
