@@ -37,7 +37,10 @@ it("STEP-002 refuses a load step whose file is not in the pinned Superpowers ins
     "  - kind: load\n    tool: superpowers\n    path: skills/test-driven-development/SKILL.md\n    source: https://example.com/docs#load\n";
   const root = benchRoot({ "steps/speckit/feature.yaml": `${stepScript(1)}${load}` });
   const pin = (JSON.parse(readFileSync(join(root, "pins.json"), "utf8")) as { superpowers: string }).superpowers;
-  mkdirSync(join(root, ".bench", "tools", `superpowers@${pin}`, "skills"), { recursive: true });
+  // A directory at the path is not the file.
+  mkdirSync(join(root, ".bench", "tools", `superpowers@${pin}`, "skills", "test-driven-development", "SKILL.md"), {
+    recursive: true,
+  });
 
   const run = replay(root);
 
