@@ -19,7 +19,9 @@ export function replayAll(root: string, pins: Pins, tasks: string[]): Results {
       .reduce((sum, step) => sum + loadBytes(root, pins, step), 0);
     for (const task of tasks) {
       const steps = loadSteps(root, `steps/${workflow}/${task}.yaml`);
-      workflows[workflow][task] = replayScript(root, pins, task, sessionStart, steps);
+      // A script that declares no session runs as one session for the task.
+      const sessions: Step[] = steps.some((step) => step.kind === "session") ? steps : [{ kind: "session" }, ...steps];
+      workflows[workflow][task] = replayScript(root, pins, task, sessionStart, sessions);
     }
   }
   return { pins, workflows };

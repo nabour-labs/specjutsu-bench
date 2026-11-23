@@ -40,6 +40,13 @@ export function loadSessionSteps(root: string, workflow: string): Step[] {
   return existsSync(join(root, script)) ? loadSteps(root, script) : [];
 }
 
+/** Returns one error line per step of a session-start list that is not a load step. */
+export function checkSessionKinds(script: string, steps: Step[]): string[] {
+  return steps.flatMap((step, i) =>
+    step.kind === "load" ? [] : [`${script} step ${i + 1}: only load steps are allowed in session.yaml`],
+  );
+}
+
 export function loadSteps(root: string, script: string): Step[] {
   return (parse(readFileSync(join(root, script), "utf8")) as { steps: Step[] }).steps;
 }
