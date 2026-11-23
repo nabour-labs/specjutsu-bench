@@ -61,7 +61,7 @@ the other tools' maintainers can challenge a step script while it is cheap to fi
 
 ## Risks / Trade-offs
 - [Normalising durations changes the counted bytes slightly] → The difference is a few bytes per
-  timing line and is the same for every tool.
+  timing line and applies the same rule to every tool.
 
 - [The scripts are written by specjutsu's authors] → Every step cites its source, the repo is
   public, and layer 2 checks the replay against real agent runs.
