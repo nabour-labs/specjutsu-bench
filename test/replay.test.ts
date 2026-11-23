@@ -423,3 +423,37 @@ it("REPLAY-015 commits the start state on main as one fixture start commit with 
     for (const dir of [root, machine, repo]) rmSync(dir, { recursive: true, force: true });
   }
 });
+
+it("REPLAY-016 records the same git diff context bytes with a global diff.noprefix config as with none", () => {
+  const root = benchRoot({
+    "steps/speckit/feature.yaml":
+      "steps:\n" +
+      step(`run\n    command: node -e "require('fs').appendFileSync('file-1.md', 'changed\\\\n')"\n`) +
+      step("run\n    command: git diff\n"),
+  });
+  const machine = mkdtempSync(join(tmpdir(), "replay-016-machine-"));
+  writeFileSync(join(machine, "gitconfig"), `[diff]\n\tnoprefix = true\n[color]\n\tui = always\n`);
+  const diffContext = (globalConfig: string) => {
+    const saved = process.env.GIT_CONFIG_GLOBAL;
+    process.env.GIT_CONFIG_GLOBAL = globalConfig;
+    try {
+      const run = replay(root);
+      expect(run.stderr).toBe("");
+      expect(run.status).toBe(0);
+    } finally {
+      if (saved === undefined) delete process.env.GIT_CONFIG_GLOBAL;
+      else process.env.GIT_CONFIG_GLOBAL = saved;
+    }
+    return ownSteps(results(root).workflows.speckit.feature)[1].context;
+  };
+
+  try {
+    const hostile = diffContext(join(machine, "gitconfig"));
+    const none = diffContext("/dev/null");
+
+    expect(none).toBeGreaterThan(0);
+    expect(hostile).toBe(none);
+  } finally {
+    for (const dir of [root, machine]) rmSync(dir, { recursive: true, force: true });
+  }
+});
