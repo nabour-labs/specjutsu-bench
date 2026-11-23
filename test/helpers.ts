@@ -30,7 +30,7 @@ export function benchRoot(files: Record<string, string | null> = {}): string {
 
   const all: Record<string, string | null> = {
     "pins.json": JSON.stringify({ openspec: "1.2.0", superpowers: "0123456789abcdef0123456789abcdef01234567" }),
-    "fixture/tasks.json": JSON.stringify({ tasks: TASKS }),
+    "fixture/tasks.json": JSON.stringify({ tasks: TASKS, test: `node -e "process.exit(0)"` }),
   };
   // The start state holds the files the default scripts read.
   for (let i = 1; i <= 3; i++) all[`fixture/start/file-${i}.md`] = `file ${i}\n`;

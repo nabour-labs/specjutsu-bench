@@ -105,3 +105,19 @@ it("REPLAY-011 records one 4,000-byte session step before the own steps of a scr
     { kind: "read", path: "file-2.md", context: 7, output: 0 },
   ]);
 });
+
+it("REPLAY-009 refuses a bugfix golden end state whose tests fail, replaying no script", () => {
+  // The fixture's suite fails when broken.txt is present; only the bugfix golden dir adds it.
+  const root = benchRoot({
+    "fixture/tasks.json": JSON.stringify({ tasks: ["feature", "bugfix", "change"], test: "node check.mjs" }),
+    "fixture/start/check.mjs": `import { existsSync } from "node:fs";\nprocess.exit(existsSync("broken.txt") ? 1 : 0);\n`,
+    "fixture/golden/bugfix/broken.txt": "broken\n",
+    "results/results.json": "previous\n",
+  });
+
+  const run = replay(root);
+
+  expect(run.stderr.trim()).toBe("fixture bugfix end state: tests fail");
+  expect(run.status).toBe(1);
+  expect(readFileSync(join(root, "results", "results.json"), "utf8")).toBe("previous\n");
+});
