@@ -16,6 +16,10 @@ files carry the same content for every tool wherever the tools' formats allow.
 - **WHEN** a `write` step places a 2,000-byte golden `plan.md` and a later step reads `plan.md`
 - **THEN** the `write` step records output 2,000 and context 0, and the `read` step records context 2,000
 
+#### Scenario: REPLAY-013 A run step uses the bench's installed packages
+- **WHEN** a `run` step's command is `npx --no-install vitest --version`
+- **THEN** it records the same context bytes as that command prints in the bench root, because the workspace links the bench's `node_modules`
+
 ### Requirement: Session-start files are counted at every session
 Files a tool loads at the start of every agent session (a bootstrap skill, an always-on rules file,
 the generated instruction block), listed in `steps/<workflow>/session.yaml`, SHALL be counted at the start of each session its step script
