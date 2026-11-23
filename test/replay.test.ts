@@ -121,3 +121,59 @@ it("REPLAY-009 refuses a bugfix golden end state whose tests fail, replaying no 
   expect(run.status).toBe(1);
   expect(readFileSync(join(root, "results", "results.json"), "utf8")).toBe("previous\n");
 });
+
+/** One read step per task, each reading a start file of the given size. */
+function sizedScripts(sizes: Record<string, Record<string, number>>): Record<string, string> {
+  const files: Record<string, string> = {};
+  for (const [workflow, tasks] of Object.entries(sizes)) {
+    for (const [task, size] of Object.entries(tasks)) {
+      files[`steps/${workflow}/${task}.yaml`] = "steps:\n" + step(`read\n    path: ${workflow}-${task}.md\n`);
+      files[`fixture/start/${workflow}-${task}.md`] = "x".repeat(size);
+    }
+  }
+  return files;
+}
+
+it("REPLAY-004 shows per-task rows, totals of 10,000, 40,000 and 25,000 and the saving in results.md", () => {
+  const root = benchRoot(
+    sizedScripts({
+      specjutsu: { feature: 2000, bugfix: 3000, change: 5000 },
+      speckit: { feature: 10000, bugfix: 10000, change: 20000 },
+      openspec: { feature: 5000, bugfix: 10000, change: 10000 },
+    }),
+  );
+
+  const run = replay(root);
+
+  expect(run.stderr).toBe("");
+  expect(run.status).toBe(0);
+  const lines = readFileSync(join(root, "results", "results.md"), "utf8").split("\n");
+  expect(lines).toContain("| specjutsu | feature | 2000 | 500 | 0 |");
+  expect(lines).toContain("| speckit | change | 20000 | 5000 | 0 |");
+  expect(lines).toContain("| openspec | bugfix | 10000 | 2500 | 0 |");
+  expect(lines).toContain("| specjutsu | total | 10000 | 2500 | 0 |");
+  expect(lines).toContain("| speckit | total | 40000 | 10000 | 0 |");
+  expect(lines).toContain("| openspec | total | 25000 | 6250 | 0 |");
+  expect(lines).toContain("specjutsu saves 75% vs speckit, 60% vs openspec");
+});
+
+it("REPLAY-005 writes byte-identical results.json and results.md on two runs", () => {
+  const root = benchRoot({
+    "steps/speckit/feature.yaml":
+      "steps:\n" + step("write\n    path: plan.md\n") + step("read\n    path: plan.md\n") +
+      step(`run\n    command: node -e "process.stdout.write('ok')"\n`),
+    "fixture/golden/feature/plan.md": "plan\n",
+  });
+  const files = ["results.json", "results.md"];
+  const read = () => files.map((file) => readFileSync(join(root, "results", file)));
+
+  expect(replay(root).status).toBe(0);
+  const first = read();
+  expect(replay(root).status).toBe(0);
+  const second = read();
+
+  for (const [i, file] of files.entries()) {
+    expect(second[i].equals(first[i]), file).toBe(true);
+    expect(first[i].toString("utf8"), file).not.toContain(root);
+  }
+});
