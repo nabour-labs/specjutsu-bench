@@ -1,5 +1,5 @@
 import { spawnSync } from "node:child_process";
-import { appendFileSync, cpSync, mkdirSync, mkdtempSync, rmSync, statSync } from "node:fs";
+import { appendFileSync, cpSync, mkdirSync, mkdtempSync, realpathSync, rmSync, statSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { delimiter, dirname, join, sep } from "node:path";
 import { linkNodeModules } from "./fixture.ts";
@@ -110,7 +110,7 @@ function replayScript(
     // because `sj` records gain only inside one.
     const ledger = join(start, ".specjutsu", "ledger");
     cpSync(start, workspace, { recursive: true, filter: (src) => src !== ledger && !src.startsWith(`${ledger}${sep}`) });
-    spawnSync("git", ["init", "-q"], { cwd: workspace });
+    commitStart(workspace);
     // Run steps use the bench's installed packages, as the fixture check does.
     // git's `node_modules/` patterns match only directories, so the link is excluded by name.
     if (linkNodeModules(root, workspace)) {
@@ -140,6 +140,31 @@ function replayScript(
   }
 }
 
+/** The workspace's fixed author, committer and date, so the start commit's hash is the same everywhere. */
+const START_COMMIT = {
+  GIT_AUTHOR_NAME: "bench",
+  GIT_AUTHOR_EMAIL: "bench@localhost",
+  GIT_COMMITTER_NAME: "bench",
+  GIT_COMMITTER_EMAIL: "bench@localhost",
+  GIT_AUTHOR_DATE: "2026-01-01T00:00:00Z",
+  GIT_COMMITTER_DATE: "2026-01-01T00:00:00Z",
+};
+
+/**
+ * Makes the workspace a git repo with the start files committed on `main`. The user's hooks and
+ * signing are turned off so their git config can't change the commit.
+ */
+function commitStart(workspace: string): void {
+  const git = (...args: string[]) =>
+    spawnSync("git", ["-c", "core.hooksPath=", "-c", "commit.gpgsign=false", ...args], {
+      cwd: workspace,
+      env: { ...process.env, ...START_COMMIT },
+    });
+  git("init", "-q", "-b", "main");
+  git("add", "-A");
+  git("commit", "-q", "--no-verify", "-m", "fixture start");
+}
+
 function label(step: Step): Pick<StepResult, "kind" | "path" | "command"> {
   return { kind: step.kind, ...(step.path ? { path: step.path } : {}), ...(step.command ? { command: step.command } : {}) };
 }
@@ -148,10 +173,15 @@ function loadBytes(root: string, pins: Pins, step: Step): number {
   return statSync(join(root, ".bench", "tools", `${step.tool}@${pins[step.tool!]}`, step.path!)).size;
 }
 
-/** Counts output with every duration as `0ms` and every clock time as `00:00:00`. */
-function normalizedBytes(output: Buffer): number {
-  const text = output
-    .toString("utf8")
+/**
+ * Counts output with every duration as `0ms`, every clock time as `00:00:00` and the workspace's
+ * path as `/workspace`. The path is replaced as given and as its realpath (macOS tmpdir paths
+ * print as both `/var/...` and `/private/var/...`), the longer first.
+ */
+function normalizedBytes(output: Buffer, workspace: string): number {
+  const paths = [...new Set([workspace, realpathSync(workspace)])].sort((a, b) => b.length - a.length);
+  const text = paths
+    .reduce((out, path) => out.split(path).join("/workspace"), output.toString("utf8"))
     .replace(/\b\d+(\.\d+)?(ms|s)\b/g, "0ms")
     .replace(/\b\d{2}:\d{2}:\d{2}\b/g, "00:00:00");
   return Buffer.byteLength(text);
@@ -176,7 +206,7 @@ function count(
       const run = spawnSync(step.command!, { cwd: workspace, shell: true, env });
       // `sj gain` counts what was printed, before normalisation.
       return {
-        context: normalizedBytes(run.stdout) + normalizedBytes(run.stderr),
+        context: normalizedBytes(run.stdout, workspace) + normalizedBytes(run.stderr, workspace),
         output: 0,
         raw: run.stdout.length + run.stderr.length,
       };
