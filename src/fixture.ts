@@ -4,7 +4,18 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 
 /** Longest a fixture suite may run before its state counts as failing (a hang or watch mode). */
-const SUITE_TIMEOUT_MS = 5 * 60 * 1000;
+export const SUITE_TIMEOUT_MS = 5 * 60 * 1000;
+
+/** The variables a run step or fixture suite run sees from the machine; everything else is dropped. */
+const ALLOWED_ENV = ["PATH", "HOME", "TMPDIR", "LANG", "LC_ALL"];
+
+/**
+ * The allowlisted part of this process's environment, so CI detection (`CI`, `GITHUB_ACTIONS`)
+ * and other machine settings can't change what a command prints.
+ */
+export function allowlistedEnv(): NodeJS.ProcessEnv {
+  return Object.fromEntries(ALLOWED_ENV.filter((name) => process.env[name] !== undefined).map((name) => [name, process.env[name]]));
+}
 
 /** The shell command that runs the fixture's own test suite: the `test` key of fixture/tasks.json. */
 export function loadTestCommand(root: string): string | undefined {
@@ -43,7 +54,7 @@ function statePasses(root: string, command: string, task: string | undefined): b
     if (golden && existsSync(golden)) cpSync(golden, dir, { recursive: true });
     linkNodeModules(root, dir);
     // A timed-out run has a null status, so it reports as `<state>: tests fail`.
-    return spawnSync(command, { cwd: dir, shell: true, stdio: "ignore", timeout: SUITE_TIMEOUT_MS }).status === 0;
+    return spawnSync(command, { cwd: dir, shell: true, stdio: "ignore", timeout: SUITE_TIMEOUT_MS, env: allowlistedEnv() }).status === 0;
   } finally {
     rmSync(dir, { recursive: true, force: true });
   }

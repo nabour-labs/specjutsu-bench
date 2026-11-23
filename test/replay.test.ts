@@ -326,12 +326,15 @@ it("REPLAY-015 commits the start state on main as one fixture start commit with 
   // Later steps write the log and the committed files to files outside the workspace, so the
   // test can read them.
   const command = "git log --format=%H%n%s main";
+  const machine = mkdtempSync(join(tmpdir(), "replay-015-machine-"));
+  // Run steps see only allowlisted variables, so the output dir is written into the commands.
+  const out = join(machine, "out");
   const root = benchRoot({
     "steps/speckit/feature.yaml":
       "steps:\n" +
       step(`run\n    command: ${command}\n`) +
-      step(`run\n    command: ${command} > "$REPLAY_015_OUT/log"\n`) +
-      step(`run\n    command: git ls-files > "$REPLAY_015_OUT/files"\n`),
+      step(`run\n    command: ${command} > "${out}/log"\n`) +
+      step(`run\n    command: git ls-files > "${out}/files"\n`),
     // Neither the ledger nor an installed node_modules belongs in the start commit.
     "fixture/start/.specjutsu/ledger/gain.jsonl": "{}\n",
     "fixture/start/node_modules/left-out/index.js": "\n",
@@ -340,7 +343,6 @@ it("REPLAY-015 commits the start state on main as one fixture start commit with 
   // leave start files out, default attributes and a clean filter that rewrite blobs, another
   // commit encoding (in the global config and as `git -c` config in the env) and default branch,
   // and a GIT_DIR pointing elsewhere, as inside a git hook.
-  const machine = mkdtempSync(join(tmpdir(), "replay-015-machine-"));
   mkdirSync(join(machine, "template", "info"), { recursive: true });
   writeFileSync(join(machine, "template", "info", "exclude"), "file-3.md\n");
   mkdirSync(join(machine, "xdg", "git"), { recursive: true });
@@ -361,17 +363,16 @@ it("REPLAY-015 commits the start state on main as one fixture start commit with 
     GIT_CONFIG_VALUE_0: "latin1",
     GIT_DIR: join(machine, "elsewhere.git"),
   };
-  const runOnce = (n: number) => {
-    const out = join(machine, `run-${n}`);
+  const runOnce = () => {
+    rmSync(out, { recursive: true, force: true });
     mkdirSync(out);
     const saved = Object.fromEntries(Object.keys(hostile).map((key) => [key, process.env[key]]));
-    Object.assign(process.env, hostile, { REPLAY_015_OUT: out });
+    Object.assign(process.env, hostile);
     try {
       const run = replay(root);
       expect(run.stderr).toBe("");
       expect(run.status).toBe(0);
     } finally {
-      delete process.env.REPLAY_015_OUT;
       for (const [key, value] of Object.entries(saved)) {
         if (value === undefined) delete process.env[key];
         else process.env[key] = value;
@@ -409,8 +410,8 @@ it("REPLAY-015 commits the start state on main as one fixture start commit with 
 
   const repo = mkdtempSync(join(tmpdir(), "replay-015-repo-"));
   try {
-    const first = runOnce(1);
-    const second = runOnce(2);
+    const first = runOnce();
+    const second = runOnce();
     const hash = expectedHash(repo);
 
     expect(hash).toMatch(/^[0-9a-f]{40}$/);

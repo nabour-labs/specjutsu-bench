@@ -2,7 +2,7 @@ import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { checkFixtureStates } from "./fixture.ts";
 import { checkPins, loadPins } from "./pins.ts";
-import { replayAll, StartCommitError } from "./replay.ts";
+import { replayAll, RunStepError, StartCommitError } from "./replay.ts";
 import { drift, gainMismatches, resultsMarkdown } from "./report.ts";
 import type { Gain, Results } from "./replay.ts";
 import {
@@ -63,7 +63,7 @@ if (errors.length > 0) {
       else process.exitCode = 1;
     }
   } catch (error) {
-    if (!(error instanceof StartCommitError)) throw error;
+    if (!(error instanceof StartCommitError || error instanceof RunStepError)) throw error;
     console.error(error.message);
     process.exitCode = 1;
   }

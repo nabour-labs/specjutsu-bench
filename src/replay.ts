@@ -2,7 +2,7 @@ import { spawnSync } from "node:child_process";
 import { appendFileSync, cpSync, mkdirSync, mkdtempSync, realpathSync, rmSync, statSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { delimiter, dirname, join, sep } from "node:path";
-import { linkNodeModules } from "./fixture.ts";
+import { allowlistedEnv, linkNodeModules, SUITE_TIMEOUT_MS } from "./fixture.ts";
 import type { Pins } from "./pins.ts";
 import { WORKFLOWS, loadSessionSteps, loadSteps, type Step } from "./steps.ts";
 
@@ -39,6 +39,7 @@ export function replayAll(root: string, pins: Pins, tasks: string[]): { results:
       workflows[workflow][task] = replayScript(
         root,
         pins,
+        workflow,
         task,
         sessionStart,
         sessions,
@@ -98,6 +99,7 @@ function addGainReport(root: string, pins: Pins, script: string, workspace: stri
 function replayScript(
   root: string,
   pins: Pins,
+  workflow: string,
   task: string,
   sessionStart: number,
   steps: Step[],
@@ -133,8 +135,9 @@ function replayScript(
     // longer first (macOS tmpdir paths print as both `/var/...` and `/private/var/...`).
     const paths = [...new Set([workspace, realpathSync(workspace)])].sort((a, b) => b.length - a.length);
     let ranSj = false;
-    const results = steps.map((step) => {
-      const { context, output, raw } = count(root, pins, task, sessionStart, workspace, env, paths, step);
+    const results = steps.map((step, index) => {
+      const at = `${workflow}/${task} step ${firstStep + index}`;
+      const { context, output, raw } = count(root, pins, task, sessionStart, workspace, env, paths, step, at);
       const command = step.kind === "run" ? gainCommand(step.command!) : undefined;
       if (gain && command && raw !== undefined) {
         addGain(gain.totals, command, "replay", raw);
@@ -168,42 +171,23 @@ const START_COMMIT = {
 /** Thrown when the workspace's start commit fails; the replay stops and writes no results. */
 export class StartCommitError extends Error {}
 
+/** Thrown when a run step's command can't be run to the end; the replay stops and writes no results. */
+export class RunStepError extends Error {}
+
+/** The most a run step may print, so its output is counted in full. */
+const RUN_MAX_BUFFER = 256 * 1024 * 1024;
+
 /**
  * The environment for a workspace's run steps and its `sj gain --json`, so that nothing about the
- * machine changes what they print:
- * - the variables that point git at another repo, as a git hook or CI wrapper may set them, are
- *   dropped: git's own `rev-parse --local-env-vars` list and `GIT_CEILING_DIRECTORIES`;
- * - no global, system or env (`GIT_CONFIG*`) config is read, nor the system attributes;
+ * machine changes what they print: only the allowlisted variables (`PATH`, `HOME`, `TMPDIR`,
+ * `LANG`, `LC_ALL`) are kept, so neither CI detection nor git's own variables get through, and
+ * - no global or system config is read, nor the system attributes;
  * - `XDG_CONFIG_HOME` is `xdgHome`, an empty dir, so no `~/.config/git/ignore` or `attributes`;
  *   `HOME` is kept, as npm, npx and sj may use it;
  * - `COLUMNS` is 80.
  */
 function workspaceEnv(xdgHome: string): NodeJS.ProcessEnv {
-  const env = { ...process.env };
-  for (const name of Object.keys(env)) {
-    if (/^GIT_CONFIG_(KEY|VALUE)_\d+$/.test(name)) delete env[name];
-  }
-  for (const name of [
-    "GIT_CONFIG",
-    "GIT_CONFIG_PARAMETERS",
-    "GIT_CONFIG_COUNT",
-    "GIT_ALTERNATE_OBJECT_DIRECTORIES",
-    "GIT_OBJECT_DIRECTORY",
-    "GIT_DIR",
-    "GIT_WORK_TREE",
-    "GIT_IMPLICIT_WORK_TREE",
-    "GIT_GRAFT_FILE",
-    "GIT_INDEX_FILE",
-    "GIT_NO_REPLACE_OBJECTS",
-    "GIT_REPLACE_REF_BASE",
-    "GIT_PREFIX",
-    "GIT_SHALLOW_FILE",
-    "GIT_COMMON_DIR",
-    "GIT_CEILING_DIRECTORIES",
-  ]) {
-    delete env[name];
-  }
-  return Object.assign(env, {
+  return Object.assign(allowlistedEnv(), {
     GIT_CONFIG_GLOBAL: "/dev/null",
     GIT_CONFIG_NOSYSTEM: "1",
     GIT_ATTR_NOSYSTEM: "1",
@@ -284,6 +268,8 @@ function count(
   env: NodeJS.ProcessEnv,
   paths: string[],
   step: Step,
+  /** The step as messages name it: `<tool>/<task> step <n>`. */
+  at: string,
 ): { context: number; output: number; raw?: number } {
   switch (step.kind) {
     case "load":
@@ -291,7 +277,9 @@ function count(
     case "read":
       return { context: statSync(join(workspace, step.path!)).size, output: 0 };
     case "run": {
-      const run = spawnSync(step.command!, { cwd: workspace, shell: true, env });
+      const run = spawnSync(step.command!, { cwd: workspace, shell: true, env, maxBuffer: RUN_MAX_BUFFER, timeout: SUITE_TIMEOUT_MS });
+      // Partial output is never counted: an overflow, a timeout or a failed spawn stops the replay.
+      if (run.error) throw new RunStepError(`${at}: run failed: ${run.error.message}`);
       // `sj gain` counts what was printed, before normalisation.
       return {
         context: normalizedBytes(run.stdout, paths) + normalizedBytes(run.stderr, paths),

@@ -65,6 +65,11 @@ the other tools' maintainers can challenge a step script while it is cheap to fi
   bytes every time. Rejected: requiring each `run` step to pass flags that hide timings, which
   would make the scripts differ from what each tool's docs tell the agent to run.
 
+- **A run step that can't finish stops the replay.** Its output is counted in full (up to 256 MiB,
+  within 5 minutes); on an overflow, a timeout or a failed spawn the replay prints
+  `<tool>/<task> step <n>: run failed: <error message>`, exit 1, writes no results and never
+  counts partial output.
+
 - **`--check` drift lines use the script's step numbers.** `speckit/feature step 6` is step 6
   of `steps/speckit/feature.yaml`, as in every other message. When the replay adds an implicit
   session step to a script that declares none, that step is `step 0`; the replay records each
