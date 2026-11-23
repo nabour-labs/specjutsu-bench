@@ -1,4 +1,4 @@
-import { existsSync, readFileSync } from "node:fs";
+import { existsSync, readFileSync, statSync } from "node:fs";
 import { isAbsolute, join, relative, resolve, sep } from "node:path";
 import { parse } from "yaml";
 import type { Pins } from "./pins.ts";
@@ -57,6 +57,6 @@ function loadError(root: string, pins: Pins, step: Step): string | undefined {
   if (isAbsolute(step.path) || rel === "" || rel === ".." || rel.startsWith(`..${sep}`)) {
     return `${step.path} is outside ${install}`;
   }
-  if (!existsSync(join(dir, rel))) return `${step.path} not found in ${install}`;
+  if (!statSync(join(dir, rel), { throwIfNoEntry: false })?.isFile()) return `${step.path} not found in ${install}`;
   return undefined;
 }
