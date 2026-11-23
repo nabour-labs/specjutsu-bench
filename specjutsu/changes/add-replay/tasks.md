@@ -15,7 +15,7 @@
 ## 3. Results
 
 - [x] 3.1 `results.json` and `results.md` with totals and the saving, byte-identical across runs (REPLAY-004, REPLAY-005, REPLAY-012)
-- [ ] 3.2 `--check` drift report (REPLAY-006..008)
+- [x] 3.2 `--check` drift report (REPLAY-006..008)
 - [ ] 3.3 Cross-check against `sj gain --json` (REPLAY-010)
 
 ## 4. Content
