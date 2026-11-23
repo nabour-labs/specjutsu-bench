@@ -1,0 +1,156 @@
+# change: raise the free-shipping threshold to $100.00, following specjutsu 0.5.0's own skills:
+# sj-propose, then sj-apply, sj-verify and sj-finish, in one session (no specjutsu doc asks for a
+# fresh session, so the replay adds the one implicit session step).
+steps:
+  - kind: write
+    path: specjutsu.toml
+    source: specjutsu@0.5.0:README.md#L449-L452
+    note: >-
+      Project setup, not part of the task. The fixture is an existing project with no
+      specjutsu.toml, and "`sj adopt` reads an existing one's manifests"; the file it writes for
+      the fixture is placed as output, costing no context, and adopt's own output is not counted.
+      The `.gitignore` line adopt also adds (`.specjutsu/ledger/`) is not written.
+  - kind: run
+    command: sj hook claude session-start
+    source: specjutsu@0.5.0:crates/sj-adapters/src/claude.rs#L62-L64
+    note: >-
+      The SessionStart hook the Claude adapter installs; its output goes into the session
+      (README.md#L787-L788). Here it prints `specjutsu: no open changes`.
+  - kind: run
+    command: sj status
+    source: specjutsu@0.5.0:crates/sj-adapters/assets/claude/CLAUDE.block.md#L5
+  - kind: load
+    tool: specjutsu
+    path: crates/sj-adapters/assets/skills/sj-propose/SKILL.md
+    source: specjutsu@0.5.0:crates/sj-adapters/assets/skills/sj-propose/SKILL.md
+    note: >-
+      The task's direction is agreed, which is sj-propose's trigger (its description, line 3).
+      sj-explore is skipped: the task leaves nothing vague to explore.
+  - kind: run
+    command: sj spec new raise-free-shipping-threshold
+    source: specjutsu@0.5.0:crates/sj-adapters/assets/skills/sj-propose/SKILL.md#L10-L14
+    note: >-
+      The scaffolded proposal, design and tasks templates are not read: the agent writes each
+      file whole from the skill's instructions, the smallest reading.
+  - kind: read
+    path: src/invoice.ts
+    source: specjutsu@0.5.0:crates/sj-adapters/assets/skills/sj-propose/SKILL.md#L24
+    note: >-
+      The proposal's Impact names the code touched; the agent reads the invoice module once,
+      here, and keeps it for implementing. Judgement: the skill names no files to read; only the
+      three files the change edits are read.
+  - kind: read
+    path: test/invoice.test.ts
+    source: specjutsu@0.5.0:crates/sj-adapters/assets/skills/sj-propose/SKILL.md#L24
+    note: The shipping tests the change updates. Read once, kept for implementing.
+  - kind: read
+    path: README.md
+    source: specjutsu@0.5.0:crates/sj-adapters/assets/skills/sj-propose/SKILL.md#L24
+    note: The README states the threshold and the change updates it. Read once, kept for the docs task.
+  - kind: write
+    path: specjutsu/changes/raise-free-shipping-threshold/proposal.md
+    source: specjutsu@0.5.0:crates/sj-adapters/assets/skills/sj-propose/SKILL.md#L19-L26
+  - kind: write
+    path: specjutsu/changes/raise-free-shipping-threshold/specs/shipping/spec.md
+    source: specjutsu@0.5.0:crates/sj-adapters/assets/skills/sj-propose/SKILL.md#L28-L48
+    note: >-
+      ADDED, not MODIFIED: the start state has no specs, so there is no current requirement to
+      copy. Exactly $100.00 ships free before and after the change, so SHIP-002 is a `[keep]`
+      scenario, the sj-debug form for behaviour that must not change.
+  - kind: write
+    path: specjutsu/changes/raise-free-shipping-threshold/design.md
+    source: specjutsu@0.5.0:crates/sj-adapters/assets/skills/sj-propose/SKILL.md#L50-L57
+    note: The fixture has no specjutsu/principles.md, so there is nothing to check the design against.
+  - kind: write
+    path: specjutsu/changes/raise-free-shipping-threshold/tasks.md
+    source: specjutsu@0.5.0:crates/sj-adapters/assets/skills/sj-propose/SKILL.md#L59-L75
+  - kind: run
+    command: sj spec validate raise-free-shipping-threshold
+    source: specjutsu@0.5.0:crates/sj-adapters/assets/skills/sj-propose/SKILL.md#L80-L84
+  - kind: run
+    command: sj spec check raise-free-shipping-threshold
+    source: specjutsu@0.5.0:crates/sj-adapters/assets/skills/sj-propose/SKILL.md#L80-L85
+  - kind: run
+    command: sj status raise-free-shipping-threshold
+    source: specjutsu@0.5.0:crates/sj-adapters/assets/skills/sj-propose/SKILL.md#L87-L89
+    note: The proposal is shown to the user from what is already in context; nothing is re-read.
+  - kind: load
+    tool: specjutsu
+    path: crates/sj-adapters/assets/skills/sj-apply/SKILL.md
+    source: specjutsu@0.5.0:crates/sj-adapters/assets/skills/sj-apply/SKILL.md
+    note: Implementing the change's tasks is sj-apply's trigger (its description, line 3).
+  - kind: run
+    command: sj next
+    source: specjutsu@0.5.0:crates/sj-adapters/assets/skills/sj-apply/SKILL.md#L14-L22
+  - kind: write
+    path: test/invoice.test.ts
+    source: specjutsu@0.5.0:crates/sj-adapters/assets/skills/sj-apply/SKILL.md#L24-L30
+  - kind: run
+    command: sj test SHIP-001
+    source: specjutsu@0.5.0:crates/sj-adapters/assets/skills/sj-apply/SKILL.md#L35-L43
+    note: Records red, exit 1 expected ($99.99 and $50.00 still ship free). One run per scenario, as `sj next` prints one `sj test <ID>` per scenario.
+  - kind: run
+    command: sj test SHIP-002
+    source: specjutsu@0.5.0:crates/sj-adapters/assets/skills/sj-apply/SKILL.md#L35-L43
+    note: Exit 0, as a `[keep]` scenario passes before the change, the skill's "the behaviour already exists" case.
+  - kind: run
+    command: sj test SHIP-003
+    source: specjutsu@0.5.0:crates/sj-adapters/assets/skills/sj-apply/SKILL.md#L35-L43
+    note: Records red, exit 1 expected ($96.90 after discount still ships free).
+  - kind: write
+    path: src/invoice.ts
+    source: specjutsu@0.5.0:crates/sj-adapters/assets/skills/sj-apply/SKILL.md#L47-L49
+  - kind: run
+    command: sj test SHIP-001
+    source: specjutsu@0.5.0:crates/sj-adapters/assets/skills/sj-apply/SKILL.md#L49-L56
+    note: Green. No refactor, so no third run.
+  - kind: run
+    command: sj test SHIP-002
+    source: specjutsu@0.5.0:crates/sj-adapters/assets/skills/sj-apply/SKILL.md#L49-L56
+  - kind: run
+    command: sj test SHIP-003
+    source: specjutsu@0.5.0:crates/sj-adapters/assets/skills/sj-apply/SKILL.md#L49-L56
+  - kind: run
+    command: sj task done raise-free-shipping-threshold 1.1
+    source: specjutsu@0.5.0:crates/sj-adapters/assets/skills/sj-apply/SKILL.md#L58-L65
+    note: The skill's commits are git commands and put nothing measurable into context.
+  - kind: run
+    command: sj next
+    source: specjutsu@0.5.0:crates/sj-adapters/assets/skills/sj-apply/SKILL.md#L14-L18
+    note: The loop's next task, 1.2, the README (no-scenario).
+  - kind: write
+    path: README.md
+    source: specjutsu@0.5.0:crates/sj-adapters/assets/skills/sj-apply/SKILL.md#L12
+    note: A no-scenario docs task has no test, so it goes straight from `sj next` to the edit and `sj task done`.
+  - kind: run
+    command: sj task done raise-free-shipping-threshold 1.2
+    source: specjutsu@0.5.0:crates/sj-adapters/assets/skills/sj-apply/SKILL.md#L58-L65
+    note: The last task, so the loop ends without another `sj next`.
+  - kind: load
+    tool: specjutsu
+    path: crates/sj-adapters/assets/skills/sj-verify/SKILL.md
+    source: specjutsu@0.5.0:crates/sj-adapters/assets/skills/sj-apply/SKILL.md#L86
+  - kind: run
+    command: sj verify
+    source: specjutsu@0.5.0:crates/sj-adapters/assets/skills/sj-verify/SKILL.md#L10-L14
+  - kind: load
+    tool: specjutsu
+    path: crates/sj-adapters/assets/skills/sj-finish/SKILL.md
+    source: specjutsu@0.5.0:crates/sj-adapters/assets/skills/sj-finish/SKILL.md
+    note: >-
+      Landing the finished change is sj-finish's trigger (its description, line 3). Its branch
+      and worktree setup, commits, push and PR are git and GitHub steps with no sj output, and
+      are left out; sj-review is optional before a PR and is skipped.
+  - kind: run
+    command: sj verify raise-free-shipping-threshold
+    source: specjutsu@0.5.0:crates/sj-adapters/assets/skills/sj-finish/SKILL.md#L20-L26
+    note: sj-finish runs verify again for the change, as its step 1 says, although sj-verify just ran it.
+  - kind: run
+    command: sj status raise-free-shipping-threshold
+    source: specjutsu@0.5.0:crates/sj-adapters/assets/skills/sj-finish/SKILL.md#L27
+  - kind: run
+    command: sj spec archive raise-free-shipping-threshold
+    source: specjutsu@0.5.0:crates/sj-adapters/assets/skills/sj-finish/SKILL.md#L29-L33
+  - kind: run
+    command: sj spec validate
+    source: specjutsu@0.5.0:crates/sj-adapters/assets/skills/sj-finish/SKILL.md#L40

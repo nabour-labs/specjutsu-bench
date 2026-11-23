@@ -1,0 +1,11 @@
+schema = 1
+spec_root = "specjutsu"
+mode = "guided"
+
+[[package]]
+path = "."
+sources = ["**"]
+
+[[package.suite]]
+runner = "vitest"
+tests = ["**/*.{test,spec}.{ts,tsx,js,jsx,mts,cts}"]

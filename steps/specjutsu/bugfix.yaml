@@ -1,0 +1,118 @@
+# bugfix: the bulk discount skips lines of exactly 10 units, following specjutsu 0.5.0's own
+# skills: sj-debug, then sj-verify and sj-finish, in one session (no specjutsu doc asks for a
+# fresh session, so the replay adds the one implicit session step).
+steps:
+  - kind: write
+    path: specjutsu.toml
+    source: specjutsu@0.5.0:README.md#L449-L452
+    note: >-
+      Project setup, not part of the task. The fixture is an existing project with no
+      specjutsu.toml, and "`sj adopt` reads an existing one's manifests"; the file it writes for
+      the fixture is placed as output, costing no context, and adopt's own output is not counted.
+      The `.gitignore` line adopt also adds (`.specjutsu/ledger/`) is not written.
+  - kind: run
+    command: sj hook claude session-start
+    source: specjutsu@0.5.0:crates/sj-adapters/src/claude.rs#L62-L64
+    note: >-
+      The SessionStart hook the Claude adapter installs; its output goes into the session
+      (README.md#L787-L788). Here it prints `specjutsu: no open changes`.
+  - kind: run
+    command: sj status
+    source: specjutsu@0.5.0:crates/sj-adapters/assets/claude/CLAUDE.block.md#L5
+  - kind: load
+    tool: specjutsu
+    path: crates/sj-adapters/assets/skills/sj-debug/SKILL.md
+    source: specjutsu@0.5.0:crates/sj-adapters/assets/skills/sj-debug/SKILL.md
+    note: A bug report is sj-debug's trigger (its description, line 3).
+  - kind: run
+    command: sj test .
+    source: specjutsu@0.5.0:crates/sj-adapters/assets/skills/sj-debug/SKILL.md#L13-L14
+    note: >-
+      Reproduce: no scenario covers the discount yet, so the narrowest existing tests are the
+      package's (`sj test <package>`; the fixture's one package is `.`). They pass: no existing
+      test has a line of exactly 10 units.
+  - kind: read
+    path: src/invoice.ts
+    source: specjutsu@0.5.0:crates/sj-adapters/assets/skills/sj-debug/SKILL.md#L17-L26
+    note: >-
+      Root cause: the first hypothesis (`lineDiscount` compares with `>`) is confirmed by reading
+      the discount code, so no further hypotheses, logs or `git log -p`. The smallest reading.
+  - kind: read
+    path: test/invoice.test.ts
+    source: specjutsu@0.5.0:crates/sj-adapters/assets/skills/sj-debug/SKILL.md#L32-L33
+    note: The existing discount tests, which the new case joins.
+  - kind: run
+    command: sj spec new fix-bulk-discount --bug
+    source: specjutsu@0.5.0:crates/sj-adapters/assets/skills/sj-debug/SKILL.md#L34-L36
+    note: >-
+      No scenario describes the discount, so a bug change is created. sj-debug does not send the
+      agent to sj-propose or ask for a design, so the scaffolded design.md is left as it is and
+      the templates are not read: the smallest reading.
+  - kind: write
+    path: specjutsu/changes/fix-bulk-discount/proposal.md
+    source: specjutsu@0.5.0:crates/sj-adapters/assets/skills/sj-debug/SKILL.md#L34-L39
+  - kind: write
+    path: specjutsu/changes/fix-bulk-discount/specs/pricing/spec.md
+    source: specjutsu@0.5.0:crates/sj-adapters/assets/skills/sj-debug/SKILL.md#L34-L39
+    note: DISC-001 with the concrete failing values, and DISC-002, a `[keep]` scenario for the line next to the bug.
+  - kind: write
+    path: specjutsu/changes/fix-bulk-discount/tasks.md
+    source: specjutsu@0.5.0:crates/sj-adapters/assets/skills/sj-debug/SKILL.md#L35-L36
+    note: "\"name it in a task\""
+  - kind: write
+    path: test/invoice.test.ts
+    source: specjutsu@0.5.0:crates/sj-adapters/assets/skills/sj-debug/SKILL.md#L41
+  - kind: run
+    command: sj test DISC-001
+    source: specjutsu@0.5.0:crates/sj-adapters/assets/skills/sj-debug/SKILL.md#L41-L47
+    note: Records red, exit 1 expected (10 units get no discount).
+  - kind: run
+    command: sj test DISC-002
+    source: specjutsu@0.5.0:crates/sj-adapters/assets/skills/sj-debug/SKILL.md#L37-L39
+    note: The `[keep]` test must pass before the fix, so it is run once here; exit 0.
+  - kind: write
+    path: src/invoice.ts
+    source: specjutsu@0.5.0:crates/sj-adapters/assets/skills/sj-debug/SKILL.md#L51
+  - kind: run
+    command: sj test DISC-001
+    source: specjutsu@0.5.0:crates/sj-adapters/assets/skills/sj-debug/SKILL.md#L51
+    note: Green.
+  - kind: run
+    command: sj test .
+    source: specjutsu@0.5.0:crates/sj-adapters/assets/skills/sj-debug/SKILL.md#L51-L52
+    note: The package's tests, to check nothing else broke; DISC-002 runs among them.
+  - kind: run
+    command: sj task done fix-bulk-discount 1.1
+    source: specjutsu@0.5.0:crates/sj-adapters/assets/claude/CLAUDE.block.md#L10
+    note: >-
+      sj-debug names the scenario in a task but does not say how to close it; the CLAUDE.md
+      block does. The skill's commits and its five-line report put nothing measurable into context.
+  - kind: load
+    tool: specjutsu
+    path: crates/sj-adapters/assets/skills/sj-verify/SKILL.md
+    source: specjutsu@0.5.0:crates/sj-adapters/assets/skills/sj-verify/SKILL.md#L3
+    note: Before saying the bug is fixed (sj-verify's description; CLAUDE.block.md line 11).
+  - kind: run
+    command: sj verify
+    source: specjutsu@0.5.0:crates/sj-adapters/assets/skills/sj-verify/SKILL.md#L10-L14
+  - kind: load
+    tool: specjutsu
+    path: crates/sj-adapters/assets/skills/sj-finish/SKILL.md
+    source: specjutsu@0.5.0:crates/sj-adapters/assets/skills/sj-finish/SKILL.md
+    note: >-
+      Landing the finished change is sj-finish's trigger (its description, line 3). Its branch
+      and worktree setup, commits, push and PR are git and GitHub steps with no sj output, and
+      are left out; sj-review is optional before a PR and is skipped.
+  - kind: run
+    command: sj verify fix-bulk-discount
+    source: specjutsu@0.5.0:crates/sj-adapters/assets/skills/sj-finish/SKILL.md#L20-L26
+    note: sj-finish runs verify again for the change, as its step 1 says, although sj-verify just ran it.
+  - kind: run
+    command: sj status fix-bulk-discount
+    source: specjutsu@0.5.0:crates/sj-adapters/assets/skills/sj-finish/SKILL.md#L27
+  - kind: run
+    command: sj spec archive fix-bulk-discount
+    source: specjutsu@0.5.0:crates/sj-adapters/assets/skills/sj-finish/SKILL.md#L29-L33
+  - kind: run
+    command: sj spec validate
+    source: specjutsu@0.5.0:crates/sj-adapters/assets/skills/sj-finish/SKILL.md#L40

@@ -1,0 +1,252 @@
+# Spec Kit 1.4.3 + Superpowers 7.0.2: raise the free-shipping threshold (change).
+# Path: "How to evolve specifications in an existing project"
+# (speckit@1.4.3:docs/how-to/evolving-specs.md): assess the change, then /speckit-specify,
+# /speckit-plan, /speckit-tasks, /speckit-analyze, then deliver with /speckit-implement and
+# /speckit-converge. The workspace has no earlier feature artifacts, so /speckit-specify creates a
+# new feature directory, one of the two options the guide gives. Superpowers'
+# test-driven-development and verification-before-completion skills apply while implementing. No
+# doc says to start a fresh session or clear context, so the task is one session.
+#
+# Workspace: the plain fixture, without the files `specify init` writes; setup scripts, hooks and
+# the constitution are handled as in steps/speckit/feature.yaml (scripts that output a template
+# become a load of that template; path-only JSON, hook checks and constitution loads are left
+# out).
+steps:
+  # Assess the change
+  - kind: read
+    path: README.md
+    source: speckit@1.4.3:docs/how-to/evolving-specs.md
+    note: >-
+      "Assess the Change": review the "implementation, tests, and maintained design or product
+      documentation". The README holds the pricing rules.
+  - kind: read
+    path: src/invoice.ts
+    source: speckit@1.4.3:docs/how-to/evolving-specs.md
+    note: '"Assess the Change": the implementation. Only the module that holds the threshold.'
+  - kind: read
+    path: test/invoice.test.ts
+    source: speckit@1.4.3:docs/how-to/evolving-specs.md
+    note: '"Assess the Change": the tests. Only the file that covers shipping.'
+
+  # /speckit-specify
+  - kind: load
+    tool: speckit
+    path: templates/commands/specify.md
+    source: speckit@1.4.3:docs/how-to/evolving-specs.md
+    note: >-
+      Step 1, /speckit.specify. Superpowers' brainstorming skill is not loaded: the user invoked
+      Spec Kit's command, and using-superpowers puts direct user instructions ahead of skills.
+  - kind: load
+    tool: speckit
+    path: templates/spec-template.md
+    source: speckit@1.4.3:templates/commands/specify.md
+    note: >-
+      Stands in for `scripts/bash/resolve-template.sh spec-template --json` (TEMPLATE_CONTENT),
+      which is not in the workspace; counted without its JSON wrapping, a lower bound.
+  - kind: write
+    path: specs/001-free-shipping-threshold/spec.md
+    source: speckit@1.4.3:templates/commands/specify.md
+    note: Steps 3 and 7; only the final spec is counted, once.
+  - kind: write
+    path: .specify/feature.json
+    source: speckit@1.4.3:templates/commands/specify.md
+    note: Step 3 persists the feature directory.
+  - kind: write
+    path: specs/001-free-shipping-threshold/checklists/requirements.md
+    source: speckit@1.4.3:templates/commands/specify.md
+    note: Step 8a; items inline in the command, all passing on the first validation.
+
+  # /speckit-plan
+  - kind: load
+    tool: speckit
+    path: templates/commands/plan.md
+    source: speckit@1.4.3:docs/how-to/evolving-specs.md
+    note: Step 2, /speckit.plan.
+  - kind: load
+    tool: speckit
+    path: templates/plan-template.md
+    source: speckit@1.4.3:templates/commands/plan.md
+    note: >-
+      Step 2, "Load IMPL_PLAN template (already copied)" by setup-plan.sh, which is not in the
+      workspace; its path-only JSON is left out.
+  - kind: read
+    path: specs/001-free-shipping-threshold/spec.md
+    source: speckit@1.4.3:templates/commands/plan.md
+    note: Step 2, "Read FEATURE_SPEC".
+  - kind: write
+    path: specs/001-free-shipping-threshold/research.md
+    source: speckit@1.4.3:templates/commands/plan.md
+    note: Phase 0; no NEEDS CLARIFICATION items, so no research agents.
+  - kind: write
+    path: specs/001-free-shipping-threshold/quickstart.md
+    source: speckit@1.4.3:templates/commands/plan.md
+    note: >-
+      Phase 1, step 3. Smallest reading of steps 1 and 2: the spec names no key entities (the
+      threshold is a rule, not an entity or field), so no data-model.md; the public API's shape
+      is unchanged, so no contracts/.
+  - kind: write
+    path: specs/001-free-shipping-threshold/plan.md
+    source: speckit@1.4.3:templates/commands/plan.md
+    note: Step 3 fills the copied template; one write of the final plan.
+
+  # /speckit-tasks
+  - kind: load
+    tool: speckit
+    path: templates/commands/tasks.md
+    source: speckit@1.4.3:docs/how-to/evolving-specs.md
+    note: Step 3, /speckit.tasks.
+  - kind: load
+    tool: speckit
+    path: templates/tasks-template.md
+    source: speckit@1.4.3:templates/commands/tasks.md
+    note: >-
+      Stands in for `scripts/bash/setup-tasks.sh --json` (TASKS_TEMPLATE_CONTENT), which is not
+      in the workspace; counted without its JSON wrapping, a lower bound.
+  - kind: read
+    path: specs/001-free-shipping-threshold/plan.md
+    source: speckit@1.4.3:templates/commands/tasks.md
+    note: Step 2, required.
+  - kind: read
+    path: specs/001-free-shipping-threshold/spec.md
+    source: speckit@1.4.3:templates/commands/tasks.md
+    note: Step 2, required.
+  - kind: read
+    path: specs/001-free-shipping-threshold/research.md
+    source: speckit@1.4.3:templates/commands/tasks.md
+    note: Step 2, optional document, present.
+  - kind: read
+    path: specs/001-free-shipping-threshold/quickstart.md
+    source: speckit@1.4.3:templates/commands/tasks.md
+    note: Step 2, optional document, present.
+  - kind: write
+    path: specs/001-free-shipping-threshold/tasks.md
+    source: speckit@1.4.3:templates/commands/tasks.md
+    note: >-
+      Step 4, with test tasks because TDD is requested. Already marked [X]: implement's
+      [ ] -> [X] edits keep the byte count, so tasks.md is not written again.
+
+  # /speckit-analyze
+  - kind: load
+    tool: speckit
+    path: templates/commands/analyze.md
+    source: speckit@1.4.3:docs/how-to/evolving-specs.md
+    note: >-
+      Step 4, "Run /speckit.analyze to report cross-artifact inconsistencies before
+      implementation". Its check-prerequisites.sh prints only paths; left out.
+  - kind: read
+    path: specs/001-free-shipping-threshold/spec.md
+    source: speckit@1.4.3:templates/commands/analyze.md
+    note: Step 2, load artifacts. A whole-file read stands in for "only the minimal necessary context".
+  - kind: read
+    path: specs/001-free-shipping-threshold/plan.md
+    source: speckit@1.4.3:templates/commands/analyze.md
+    note: Step 2, load artifacts.
+  - kind: read
+    path: specs/001-free-shipping-threshold/tasks.md
+    source: speckit@1.4.3:templates/commands/analyze.md
+    note: >-
+      Step 2, load artifacts; no data-model.md exists. Analyze is read-only and finds no
+      issues, so nothing is written.
+
+  # /speckit-implement
+  - kind: load
+    tool: speckit
+    path: templates/commands/implement.md
+    source: speckit@1.4.3:docs/how-to/evolving-specs.md
+    note: Deliver step 1, /speckit.implement. Its check-prerequisites.sh prints only paths; left out.
+  - kind: read
+    path: specs/001-free-shipping-threshold/checklists/requirements.md
+    source: speckit@1.4.3:templates/commands/implement.md
+    note: Step 2, checklist gate; all items checked.
+  - kind: read
+    path: specs/001-free-shipping-threshold/tasks.md
+    source: speckit@1.4.3:templates/commands/implement.md
+    note: Step 3, required.
+  - kind: read
+    path: specs/001-free-shipping-threshold/plan.md
+    source: speckit@1.4.3:templates/commands/implement.md
+    note: Step 3, required.
+  - kind: read
+    path: specs/001-free-shipping-threshold/research.md
+    source: speckit@1.4.3:templates/commands/implement.md
+    note: Step 3, if exists.
+  - kind: read
+    path: specs/001-free-shipping-threshold/quickstart.md
+    source: speckit@1.4.3:templates/commands/implement.md
+    note: Step 3, if exists.
+  - kind: run
+    command: git rev-parse --git-dir 2>/dev/null
+    source: speckit@1.4.3:templates/commands/implement.md
+    note: Step 4, the command the template gives to detect a git repository.
+  - kind: write
+    path: .gitignore
+    source: speckit@1.4.3:templates/commands/implement.md
+    note: >-
+      Step 4: a git repo with no .gitignore, so one is created with the Node.js/TypeScript and
+      Universal patterns. No .npmignore: package.json is private, not published.
+  - kind: load
+    tool: superpowers
+    path: skills/test-driven-development/SKILL.md
+    source: superpowers@7.0.2:skills/using-superpowers/SKILL.md
+    note: >-
+      "Invoke relevant or requested skills BEFORE any response or action"; the skill is for
+      "implementing any feature or bugfix, before writing implementation code". Spec Kit's
+      implement also says "Follow TDD approach".
+  - kind: load
+    tool: superpowers
+    path: skills/test-driven-development/writing-good-tests.md
+    source: superpowers@7.0.2:skills/test-driven-development/SKILL.md
+    note: '"When writing or changing any test, read writing-good-tests.md".'
+  - kind: write
+    path: test/invoice.test.ts
+    source: superpowers@7.0.2:skills/test-driven-development/SKILL.md
+    note: >-
+      RED, task T001. The file was read while assessing the change, earlier in this session, so
+      it is not read again before the edit.
+  - kind: run
+    command: npx vitest run test/invoice.test.ts
+    source: superpowers@7.0.2:skills/test-driven-development/SKILL.md
+    note: Verify RED; the new-threshold tests fail.
+  - kind: write
+    path: src/invoice.ts
+    source: speckit@1.4.3:templates/commands/implement.md
+    note: GREEN, task T002. Read while assessing the change, so not read again.
+  - kind: write
+    path: README.md
+    source: speckit@1.4.3:templates/commands/implement.md
+    note: Task T003, the pricing rules. Read while assessing the change, so not read again.
+  - kind: load
+    tool: superpowers
+    path: skills/verification-before-completion/SKILL.md
+    source: superpowers@7.0.2:skills/using-superpowers/SKILL.md
+    note: Its description, "Use when about to claim work is complete, fixed, or passing".
+  - kind: run
+    command: npx vitest run
+    source: superpowers@7.0.2:skills/test-driven-development/SKILL.md
+    note: >-
+      "Before you call the change done, run the project's test command". Smallest reading: this
+      one full-suite run serves as TDD's Verify GREEN, implement's step 9, task T004 and
+      verification-before-completion's fresh evidence.
+
+  # /speckit-converge
+  - kind: load
+    tool: speckit
+    path: templates/commands/converge.md
+    source: speckit@1.4.3:docs/how-to/evolving-specs.md
+    note: Deliver step 3, /speckit.converge. Its check-prerequisites.sh prints only paths; left out.
+  - kind: read
+    path: specs/001-free-shipping-threshold/spec.md
+    source: speckit@1.4.3:templates/commands/converge.md
+    note: Step 2, load artifacts.
+  - kind: read
+    path: specs/001-free-shipping-threshold/plan.md
+    source: speckit@1.4.3:templates/commands/converge.md
+    note: Step 2, load artifacts.
+  - kind: read
+    path: specs/001-free-shipping-threshold/tasks.md
+    source: speckit@1.4.3:templates/commands/converge.md
+    note: >-
+      Step 2, load artifacts. Smallest reading of step 4's code assessment: the files in scope
+      (src/invoice.ts, test/invoice.test.ts, README.md) were all written earlier in this session
+      and the suite has just passed, so none is read again. Converged: tasks.md is left
+      unchanged, no write, and deliver step 4's repeat loop does not run.

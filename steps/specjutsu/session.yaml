@@ -1,0 +1,17 @@
+# Files a specjutsu project puts into every agent session, for Claude Code.
+# `sj init --agents claude` writes this block into CLAUDE.md (crates/sj-adapters/src/claude.rs:15,
+# `BLOCK_BODY = include_str!("../assets/claude/CLAUDE.block.md")`); Claude Code loads CLAUDE.md
+# at the start of every session.
+steps:
+  - kind: load
+    tool: specjutsu
+    path: crates/sj-adapters/assets/claude/CLAUDE.block.md
+    source: specjutsu@0.5.0:crates/sj-adapters/assets/claude/CLAUDE.block.md
+    note: >-
+      The generated CLAUDE.md block (README.md#L774-L776). The installed copy adds the
+      `<!-- specjutsu:begin -->` and `<!-- specjutsu:end -->` marker lines, which are not counted.
+      The SessionStart hook's output (`sj hook claude session-start`) is also put into every
+      session, but it is a command, so each task script runs it as its first `run` step. The
+      skills' name and description lines that Claude Code lists are not counted: a load step
+      can only count a whole file, and the smallest reading counts none of them until a skill
+      is read.
