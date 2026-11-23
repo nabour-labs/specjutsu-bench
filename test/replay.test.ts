@@ -83,3 +83,25 @@ it("REPLAY-003 counts a 4,000-byte bootstrap at each of 2 declared sessions as t
   // file-1.md holds "file 1\n", 7 bytes.
   expect(feature.context).toBe(8007);
 });
+
+it("REPLAY-011 records one 4,000-byte session step before the own steps of a script with no session step", () => {
+  const bootstrap = "skills/using-superpowers/SKILL.md";
+  const session = "steps:\n" + step(`load\n    tool: superpowers\n    path: ${bootstrap}\n`);
+  const script = "steps:\n" + step("read\n    path: file-1.md\n") + step("read\n    path: file-2.md\n");
+  const root = benchRoot({
+    "steps/speckit/session.yaml": session,
+    "steps/speckit/feature.yaml": script,
+    [`.bench/tools/superpowers@${SUPERPOWERS}/${bootstrap}`]: "b".repeat(4000),
+  });
+
+  const run = replay(root);
+
+  expect(run.stderr).toBe("");
+  expect(run.status).toBe(0);
+  const feature = results(root).workflows.speckit.feature;
+  expect(feature.steps).toEqual([
+    { kind: "session", context: 4000, output: 0 },
+    { kind: "read", path: "file-1.md", context: 7, output: 0 },
+    { kind: "read", path: "file-2.md", context: 7, output: 0 },
+  ]);
+});

@@ -86,3 +86,18 @@ it("STEP-007 refuses a load step without a tool", () => {
   expect(run.stderr).toContain("steps/openspec/change.yaml step 3: load step missing tool");
   expect(run.status).toBe(1);
 });
+
+it("STEP-008 refuses a read step as the second step of steps/speckit/session.yaml", () => {
+  const pin = "0123456789abcdef0123456789abcdef01234567";
+  const bootstrap = "skills/using-superpowers/SKILL.md";
+  const session = `steps:\n${loadStep(`    tool: superpowers\n    path: ${bootstrap}\n`)}${stepScript(1).replace("steps:\n", "")}`;
+  const root = benchRoot({
+    "steps/speckit/session.yaml": session,
+    [`.bench/tools/superpowers@${pin}/${bootstrap}`]: "b".repeat(10),
+  });
+
+  const run = replay(root);
+
+  expect(run.stderr).toContain("steps/speckit/session.yaml step 2: only load steps are allowed in session.yaml");
+  expect(run.status).toBe(1);
+});
