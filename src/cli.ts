@@ -3,7 +3,7 @@ import { join } from "node:path";
 import { checkFixtureStates } from "./fixture.ts";
 import { checkPins, loadPins } from "./pins.ts";
 import { replayAll } from "./replay.ts";
-import { drift, resultsMarkdown } from "./report.ts";
+import { drift, gainMismatches, resultsMarkdown } from "./report.ts";
 import type { Results } from "./replay.ts";
 import {
   WORKFLOWS,
@@ -55,7 +55,11 @@ if (errors.length > 0) {
   if (process.argv.includes("--check")) {
     checkDrift(root);
   } else {
-    write(root, replayAll(root, loadPins(root), loadTasks(root)));
+    const { results, gain } = replayAll(root, loadPins(root), loadTasks(root));
+    const mismatches = gainMismatches(gain);
+    for (const line of mismatches) console.error(line);
+    if (mismatches.length > 0) process.exitCode = 1;
+    else write(root, results);
   }
 }
 
@@ -73,10 +77,13 @@ function checkDrift(root: string): void {
     process.exitCode = 1;
     return;
   }
-  const lines = drift(committed, replayAll(root, loadPins(root), loadTasks(root)));
+  const { results, gain } = replayAll(root, loadPins(root), loadTasks(root));
+  const mismatches = gainMismatches(gain);
+  for (const line of mismatches) console.error(line);
+  const lines = drift(committed, results);
   for (const line of lines) console.log(line);
   if (lines.length === 0) console.log("results match");
-  process.exitCode = lines.length > 0 ? 1 : 0;
+  process.exitCode = lines.length > 0 || mismatches.length > 0 ? 1 : 0;
 }
 
 /** The committed results, or undefined when they are not JSON with `pins` and `workflows`. */

@@ -1,7 +1,7 @@
 import { spawnSync } from "node:child_process";
 import { cpSync, mkdirSync, mkdtempSync, rmSync, statSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { dirname, join } from "node:path";
+import { delimiter, dirname, join } from "node:path";
 import type { Pins } from "./pins.ts";
 import { WORKFLOWS, loadSessionSteps, loadSteps, type Step } from "./steps.ts";
 
@@ -9,10 +9,20 @@ export type StepResult = { kind: Step["kind"]; path?: string; command?: string; 
 /** `firstStep` is the script's number for `steps[0]`: 0 when the replay added the session step, else 1. */
 export type ScriptResult = { context: number; output: number; firstStep: number; steps: StepResult[] };
 export type Results = { pins: Pins; workflows: Record<string, Record<string, ScriptResult>> };
+/** Per `sj` command, the raw bytes the replay counted for its steps and the `printed` bytes `sj gain` reports. */
+export type GainTotals = Record<string, { replay: number; gain: number }>;
 
-/** Runs every workflow's script for every task and counts the bytes each step costs. */
-export function replayAll(root: string, pins: Pins, tasks: string[]): Results {
+/** The `sj` commands whose printed bytes `sj gain --json` reports. */
+const GAIN_COMMANDS = ["test", "verify", "next", "status"];
+
+/**
+ * Runs every workflow's script for every task and counts the bytes each step costs. `gain`
+ * compares the specjutsu scripts' `sj` steps with what the pinned `sj gain` recorded in their
+ * workspaces.
+ */
+export function replayAll(root: string, pins: Pins, tasks: string[]): { results: Results; gain: GainTotals } {
   const workflows: Results["workflows"] = {};
+  const gain: GainTotals = {};
   for (const workflow of WORKFLOWS) {
     workflows[workflow] = {};
     const sessionStart = loadSessionSteps(root, workflow)
@@ -23,10 +33,51 @@ export function replayAll(root: string, pins: Pins, tasks: string[]): Results {
       // A script that declares no session runs as one session for the task.
       const implicit = !steps.some((step) => step.kind === "session");
       const sessions: Step[] = implicit ? [{ kind: "session" }, ...steps] : steps;
-      workflows[workflow][task] = replayScript(root, pins, task, sessionStart, sessions, implicit ? 0 : 1);
+      workflows[workflow][task] = replayScript(
+        root,
+        pins,
+        task,
+        sessionStart,
+        sessions,
+        implicit ? 0 : 1,
+        workflow === "specjutsu" ? gain : undefined,
+      );
     }
   }
-  return { pins, workflows };
+  return { results: { pins, workflows }, gain };
+}
+
+/** The pinned specjutsu install's `bin/`, put first on PATH for run steps. */
+function sjBin(root: string, pins: Pins): string | undefined {
+  return pins.specjutsu ? join(root, ".bench", "tools", `specjutsu@${pins.specjutsu}`, "bin") : undefined;
+}
+
+/** The `sj` command a run step calls, when `sj gain` reports it. */
+function gainCommand(command: string): string | undefined {
+  const name = /^sj (\w+)\b/.exec(command)?.[1];
+  return name && GAIN_COMMANDS.includes(name) ? name : undefined;
+}
+
+function addGain(gain: GainTotals, command: string, side: "replay" | "gain", bytes: number): void {
+  gain[command] ??= { replay: 0, gain: 0 };
+  gain[command][side] += bytes;
+}
+
+/** Adds the `printed` bytes the pinned `sj gain --json` reports for the runs in `workspace`. */
+function addGainReport(root: string, pins: Pins, workspace: string, gain: GainTotals): void {
+  const run = spawnSync(join(sjBin(root, pins) ?? "", "sj"), ["gain", "--json", "--root", workspace], {
+    cwd: workspace,
+    encoding: "utf8",
+  });
+  let commands: { command: string; printed: number }[] = [];
+  try {
+    commands = (JSON.parse(run.stdout) as { commands: typeof commands }).commands;
+  } catch {
+    // Unreadable output counts as no runs, so every counted command shows as a mismatch.
+  }
+  for (const { command, printed } of commands) {
+    if (GAIN_COMMANDS.includes(command)) addGain(gain, command, "gain", printed);
+  }
 }
 
 /** Runs one script in a fresh copy of `fixture/start/`, removed afterwards. */
@@ -37,11 +88,22 @@ function replayScript(
   sessionStart: number,
   steps: Step[],
   firstStep: number,
+  gain: GainTotals | undefined,
 ): ScriptResult {
   const workspace = mkdtempSync(join(tmpdir(), "replay-workspace-"));
   try {
     cpSync(join(root, "fixture", "start"), workspace, { recursive: true });
-    const results = steps.map((step) => ({ ...label(step), ...count(root, pins, task, sessionStart, workspace, step) }));
+    let ranSj = false;
+    const results = steps.map((step) => {
+      const { context, output, raw } = count(root, pins, task, sessionStart, workspace, step);
+      const command = step.kind === "run" ? gainCommand(step.command!) : undefined;
+      if (gain && command && raw !== undefined) {
+        addGain(gain, command, "replay", raw);
+        ranSj = true;
+      }
+      return { ...label(step), context, output };
+    });
+    if (gain && ranSj) addGainReport(root, pins, workspace, gain);
     return {
       context: results.reduce((sum, step) => sum + step.context, 0),
       output: results.reduce((sum, step) => sum + step.output, 0),
@@ -77,15 +139,22 @@ function count(
   sessionStart: number,
   workspace: string,
   step: Step,
-): { context: number; output: number } {
+): { context: number; output: number; raw?: number } {
   switch (step.kind) {
     case "load":
       return { context: loadBytes(root, pins, step), output: 0 };
     case "read":
       return { context: statSync(join(workspace, step.path!)).size, output: 0 };
     case "run": {
-      const run = spawnSync(step.command!, { cwd: workspace, shell: true });
-      return { context: normalizedBytes(run.stdout) + normalizedBytes(run.stderr), output: 0 };
+      const bin = sjBin(root, pins);
+      const env = bin ? { ...process.env, PATH: `${bin}${delimiter}${process.env.PATH ?? ""}` } : process.env;
+      const run = spawnSync(step.command!, { cwd: workspace, shell: true, env });
+      // `sj gain` counts what was printed, before normalisation.
+      return {
+        context: normalizedBytes(run.stdout) + normalizedBytes(run.stderr),
+        output: 0,
+        raw: run.stdout.length + run.stderr.length,
+      };
     }
     case "write": {
       const target = join(workspace, step.path!);

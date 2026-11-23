@@ -71,6 +71,18 @@ the other tools' maintainers can challenge a step script while it is cheap to fi
   `results/results.json: unreadable`, both exit 1. Rejected: numbering the recorded steps, which
   shifts every step by one in scripts with no session step.
 
+- **`sj` is the pinned `.bench/tools/specjutsu@<pin>/bin/sj`, and the replay cross-checks it with
+  `sj gain`.** Run steps get that `bin/` first on PATH. `sj gain` keeps its records per
+  workspace (`<repo>/.specjutsu/ledger/gain.jsonl`), so after each specjutsu script that ran an
+  `sj test`, `verify`, `next` or `status` step the replay asks `sj gain --json --root <workspace>`
+  in that script's own workspace, never the developer's history, and sums `printed` per command
+  across the scripts. The replay's side is the raw stdout and stderr bytes of those steps, before
+  durations and clock times are normalised, because `sj gain` counts what was printed. A
+  difference prints `sj gain mismatch for <command>: replay <n>, sj gain <m>` and exits 1; a plain
+  replay then writes no results, and `--check` runs the same check beside the drift report, so CI
+  catches it too. Rejected: comparing normalised bytes, which differ from `printed` whenever `sj`
+  prints a timing.
+
 ## Risks / Trade-offs
 - [Normalising durations changes the counted bytes slightly] → The difference is a few bytes per
   timing line and applies the same rule to every tool.

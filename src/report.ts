@@ -1,4 +1,4 @@
-import type { Results } from "./replay.ts";
+import type { GainTotals, Results } from "./replay.ts";
 
 /** Tokens are estimated as bytes / 4, as in `sj gain`. */
 function tokens(bytes: number): number {
@@ -71,4 +71,11 @@ function firstScriptDrift(committed: Results, fresh: Results): string | undefine
     }
   }
   return undefined;
+}
+
+/** One line per `sj` command whose bytes in the replay differ from what `sj gain` reports. */
+export function gainMismatches(gain: GainTotals): string[] {
+  return Object.entries(gain)
+    .filter(([, totals]) => totals.replay !== totals.gain)
+    .map(([command, totals]) => `sj gain mismatch for ${command}: replay ${totals.replay}, sj gain ${totals.gain}`);
 }
