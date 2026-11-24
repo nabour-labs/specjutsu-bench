@@ -99,3 +99,22 @@ it("AGENT-002 gives each run a fresh, empty CLAUDE_CONFIG_DIR in its own tempora
   }
   expect(new Set(calls.map((call) => call.config?.path)).size).toBe(9);
 });
+
+it("AGENT-003 stops the benchmark when the first speckit setup command exits 1", () => {
+  const root = agentRoot({
+    "agents/speckit/setup.yaml": [
+      "steps:",
+      '  - command: "exit 1"',
+      "    source: https://example.com/docs#setup",
+      "",
+    ].join("\n"),
+  });
+
+  const run = agents(root);
+
+  expect(run.stderr).toContain("speckit setup step 1: exited 1");
+  expect(run.status).toBe(1);
+  expect(existsSync(join(root, "results", "agent"))).toBe(false);
+  // Only specjutsu, which runs first, reached claude: no speckit or openspec prompt was sent.
+  expect(fakeCalls(root)).toHaveLength(3);
+});
