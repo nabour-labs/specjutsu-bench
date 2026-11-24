@@ -107,6 +107,12 @@ function scriptCitingInStep2(source: string): string {
   return stepScript(3).replace("https://example.com/docs#step-2", source);
 }
 
+const speckitPins = JSON.stringify({
+  openspec: "1.2.0",
+  superpowers: "0123456789abcdef0123456789abcdef01234567",
+  speckit: "1.4.3",
+});
+
 it("STEP-009 refuses a source that is neither <tool>@<pin>:<path> nor an https:// URL", () => {
   const root = benchRoot({ "steps/speckit/feature.yaml": scriptCitingInStep2("spec-kit README") });
 
@@ -120,7 +126,7 @@ it("STEP-009 refuses a source that is neither <tool>@<pin>:<path> nor an https:/
 
 it("STEP-010 refuses a source citing speckit@1.4.2 when speckit is pinned to 1.4.3", () => {
   const root = benchRoot({
-    "pins.json": JSON.stringify({ openspec: "1.2.0", superpowers: "0123456789abcdef0123456789abcdef01234567", speckit: "1.4.3" }),
+    "pins.json": speckitPins,
     "steps/speckit/feature.yaml": scriptCitingInStep2("speckit@1.4.2:templates/spec-template.md"),
     // Both versions hold the file, so only the version mismatch is wrong.
     ".bench/tools/speckit@1.4.2/templates/spec-template.md": "spec\n",
@@ -133,12 +139,6 @@ it("STEP-010 refuses a source citing speckit@1.4.2 when speckit is pinned to 1.4
     "steps/speckit/feature.yaml step 2: source cites speckit@1.4.2, but speckit is pinned to 1.4.3",
   );
   expect(run.status).toBe(1);
-});
-
-const speckitPins = JSON.stringify({
-  openspec: "1.2.0",
-  superpowers: "0123456789abcdef0123456789abcdef01234567",
-  speckit: "1.4.3",
 });
 
 it("STEP-011 refuses a source citing a file missing from the pinned Spec Kit checkout", () => {
