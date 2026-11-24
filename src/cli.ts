@@ -39,7 +39,7 @@ function check(root: string): string[] {
     ...checkSources(script, steps),
     ...checkCitations(root, pins, script, steps),
     ...checkLoads(root, pins, script, steps),
-    ...checkPaths(script, steps),
+    ...checkPaths(root, script, steps),
     ...checkSjRuns(root, pins, script, steps),
   ]);
   return [...pinErrors, ...missing.map((script) => `missing ${script}`), ...sessionErrors, ...stepErrors];

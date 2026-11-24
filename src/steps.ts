@@ -1,5 +1,5 @@
 import { existsSync, readFileSync, statSync } from "node:fs";
-import { isAbsolute, join, relative, resolve, sep } from "node:path";
+import { basename, isAbsolute, join, relative, resolve, sep } from "node:path";
 import { parse } from "yaml";
 import type { Pins } from "./pins.ts";
 
@@ -131,11 +131,22 @@ function inside(dir: string, path: string): string | undefined {
 /** Stands in for a replay's workspace, which exists only while its script runs. */
 const WORKSPACE = resolve(sep, "workspace");
 
-/** Returns one error line per read or write step whose path leaves the workspace. */
-export function checkPaths(script: string, steps: Step[]): string[] {
+/**
+ * Returns one error line per read or write step whose path leaves the workspace, and per write
+ * step whose golden file, `fixture/golden/<task>/<path>`, is not a file; the task is the script's
+ * file name.
+ */
+export function checkPaths(root: string, script: string, steps: Step[]): string[] {
+  const golden = `fixture/golden/${basename(script, ".yaml")}`;
   return steps.flatMap((step, i) => {
     if ((step.kind !== "read" && step.kind !== "write") || step.path === undefined) return [];
-    return inside(WORKSPACE, step.path) === undefined ? [`${script} step ${i + 1}: ${step.path} is outside the workspace`] : [];
+    const at = `${script} step ${i + 1}`;
+    const rel = inside(WORKSPACE, step.path);
+    if (rel === undefined) return [`${at}: ${step.path} is outside the workspace`];
+    if (step.kind === "write" && !statSync(join(root, golden, rel), { throwIfNoEntry: false })?.isFile()) {
+      return [`${at}: ${step.path} not found in ${golden}`];
+    }
+    return [];
   });
 }
 
