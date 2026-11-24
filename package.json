@@ -10,6 +10,7 @@
   },
   "scripts": {
     "replay": "node src/cli.ts",
+    "agents": "node src/agents/cli.ts",
     "install-tools": "node scripts/install-tools.mjs",
     "test": "vitest run",
     "typecheck": "tsc --noEmit"
