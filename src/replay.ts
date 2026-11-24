@@ -172,6 +172,9 @@ export class StartCommitError extends Error {}
 /** Thrown when a run step's command can't be run to the end; the replay stops and writes no results. */
 export class RunStepError extends Error {}
 
+/** Thrown when a read step's file is not in the workspace; the replay stops and writes no results. */
+export class ReadStepError extends Error {}
+
 /** The most a run step may print, so its output is counted in full. */
 const RUN_MAX_BUFFER = 256 * 1024 * 1024;
 
@@ -296,8 +299,11 @@ function count(
   switch (step.kind) {
     case "load":
       return { context: loadBytes(root, pins, step), output: 0 };
-    case "read":
-      return { context: statSync(join(workspace, step.path!)).size, output: 0 };
+    case "read": {
+      const file = statSync(join(workspace, step.path!), { throwIfNoEntry: false });
+      if (!file) throw new ReadStepError(`${at}: read failed: ${step.path} not found`);
+      return { context: file.size, output: 0 };
+    }
     case "run": {
       const run = spawnSync(step.command!, { cwd: workspace, shell: true, env, maxBuffer: RUN_MAX_BUFFER, timeout: SUITE_TIMEOUT_MS });
       // Partial output is never counted: an overflow, a timeout or a failed spawn stops the replay.
