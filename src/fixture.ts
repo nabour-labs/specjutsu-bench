@@ -7,7 +7,7 @@ import { join } from "node:path";
 export const SUITE_TIMEOUT_MS = 5 * 60 * 1000;
 
 /** The variables a run step or fixture suite run sees from the machine; everything else is dropped. */
-const ALLOWED_ENV = ["PATH", "HOME", "TMPDIR", "LANG", "LC_ALL"];
+const ALLOWED_ENV = ["PATH", "HOME", "TMPDIR"];
 
 /**
  * npm's update, fund and audit notices are off: with `CI` dropped, npm would otherwise print an
@@ -15,13 +15,16 @@ const ALLOWED_ENV = ["PATH", "HOME", "TMPDIR", "LANG", "LC_ALL"];
  */
 const NPM_QUIET = { npm_config_update_notifier: "false", npm_config_fund: "false", npm_config_audit: "false" };
 
+/** A fixed locale, so the machine's language settings can't change what a command prints. */
+const LOCALE = { LANG: "C.UTF-8", LC_ALL: "C.UTF-8" };
+
 /**
- * The allowlisted part of this process's environment, plus `NPM_QUIET`, so CI detection (`CI`,
+ * The allowlisted part of this process's environment, plus `NPM_QUIET` and `LOCALE`, so CI detection (`CI`,
  * `GITHUB_ACTIONS`) and other machine settings can't change what a command prints.
  */
 export function allowlistedEnv(): NodeJS.ProcessEnv {
   const kept = ALLOWED_ENV.filter((name) => process.env[name] !== undefined).map((name) => [name, process.env[name]]);
-  return { ...Object.fromEntries(kept), ...NPM_QUIET };
+  return { ...Object.fromEntries(kept), ...NPM_QUIET, ...LOCALE };
 }
 
 /** The shell command that runs the fixture's own test suite: the `test` key of fixture/tasks.json. */

@@ -180,9 +180,10 @@ const RUN_MAX_BUFFER = 256 * 1024 * 1024;
 
 /**
  * The environment for a workspace's run steps and its `sj gain --json`, so that nothing about the
- * machine changes what they print: only the allowlisted variables (`PATH`, `HOME`, `TMPDIR`,
- * `LANG`, `LC_ALL`) are kept, so neither CI detection nor git's own variables get through;
- * - npm's update, fund and audit notices are off (see `allowlistedEnv`);
+ * machine changes what they print: only the allowlisted variables (`PATH`, `HOME`, `TMPDIR`) are
+ * kept, so neither CI detection nor git's own variables get through;
+ * - npm's update, fund and audit notices are off and `LANG` and `LC_ALL` are `C.UTF-8` (see
+ *   `allowlistedEnv`);
  * - no global or system config is read, nor the system attributes;
  * - `XDG_CONFIG_HOME` is `xdgHome`, an empty dir, so no `~/.config/git/ignore` or `attributes`;
  *   `HOME` is kept, as npm, npx and sj may use it;
