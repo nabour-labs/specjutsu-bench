@@ -132,15 +132,16 @@ function inside(dir: string, path: string): string | undefined {
 const WORKSPACE = resolve(sep, "workspace");
 
 /**
- * Returns one error line per read or write step whose path leaves the workspace, and per write
- * step whose golden file, `fixture/golden/<task>/<path>`, is not a file; the task is the script's
- * file name.
+ * Returns one error line per read or write step without a path or whose path leaves the
+ * workspace, and per write step whose golden file, `fixture/golden/<task>/<path>`, is not a file;
+ * the task is the script's file name.
  */
 export function checkPaths(root: string, script: string, steps: Step[]): string[] {
   const golden = `fixture/golden/${basename(script, ".yaml")}`;
   return steps.flatMap((step, i) => {
-    if ((step.kind !== "read" && step.kind !== "write") || step.path === undefined) return [];
+    if (step.kind !== "read" && step.kind !== "write") return [];
     const at = `${script} step ${i + 1}`;
+    if (step.path === undefined) return [`${at}: ${step.kind} step missing path`];
     const rel = inside(WORKSPACE, step.path);
     if (rel === undefined) return [`${at}: ${step.path} is outside the workspace`];
     if (step.kind === "write" && !statSync(join(root, golden, rel), { throwIfNoEntry: false })?.isFile()) {
