@@ -970,7 +970,7 @@
     },
     "speckit": {
       "feature": {
-        "context": 139368,
+        "context": 139303,
         "output": 16682,
         "firstStep": 0,
         "steps": [
@@ -1192,7 +1192,7 @@
           {
             "kind": "run",
             "command": "npx vitest run test/terms.test.ts",
-            "context": 1101,
+            "context": 1036,
             "output": 0
           },
           {
@@ -1686,7 +1686,7 @@
     },
     "openspec": {
       "feature": {
-        "context": 107918,
+        "context": 107853,
         "output": 10160,
         "firstStep": 1,
         "steps": [
@@ -1817,7 +1817,7 @@
           {
             "kind": "run",
             "command": "npx vitest run test/terms.test.ts",
-            "context": 1101,
+            "context": 1036,
             "output": 0
           },
           {
