@@ -9,10 +9,10 @@
 
 ## 2. Paths
 
-- [ ] 2.1 Read and write paths stay inside the workspace (STEP-013, STEP-015)
-- [ ] 2.2 A write step's golden file must exist (STEP-014)
-- [ ] 2.3 A read of a missing file stops the replay (REPLAY-020)
-- [ ] 2.4 Recheck the existing byte-count scenarios (REPLAY-001, REPLAY-002, REPLAY-013, REPLAY-015)
+- [x] 2.1 Read and write paths stay inside the workspace (STEP-013, STEP-015)
+- [x] 2.2 A write step's golden file must exist (STEP-014)
+- [x] 2.3 A read of a missing file stops the replay (REPLAY-020)
+- [x] 2.4 Recheck the existing byte-count scenarios (REPLAY-001, REPLAY-002, REPLAY-013, REPLAY-015)
 
 ## 3. Locale
 
