@@ -18,9 +18,11 @@ export const SETUP_SCRIPT = `steps:\n  - command: "true"\n    source: https://ex
 /**
  * A fake `claude`: it appends one JSON line per call to `calls.jsonl` beside itself, holding its
  * argv, working directory, the session id it answers with (`session-<n>` for the n-th call) and
- * what it sees of `CLAUDE_CONFIG_DIR`; then it prints stream-json with that session id.
+ * what it sees of `CLAUDE_CONFIG_DIR` and `ANTHROPIC_API_KEY`, and the subjects `git log main` prints
+ * in its working directory (null when git fails); then it prints stream-json with that session id.
  */
 const FAKE_CLAUDE = `#!/usr/bin/env node
+import { spawnSync } from "node:child_process";
 import { appendFileSync, existsSync, readdirSync, readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -30,7 +32,10 @@ const n = existsSync(log) ? readFileSync(log, "utf8").split("\\n").filter(Boolea
 const sessionId = "session-" + n;
 const configDir = process.env.CLAUDE_CONFIG_DIR;
 const config = configDir === undefined ? undefined : { path: configDir, entries: existsSync(configDir) ? readdirSync(configDir) : null };
-appendFileSync(log, JSON.stringify({ argv: process.argv.slice(2), cwd: process.cwd(), sessionId, config }) + "\\n");
+const apiKey = process.env.ANTHROPIC_API_KEY;
+const git = spawnSync("git", ["log", "--format=%s", "main"], { encoding: "utf8" });
+const gitLog = git.status === 0 ? git.stdout.split("\\n").filter(Boolean) : null;
+appendFileSync(log, JSON.stringify({ argv: process.argv.slice(2), cwd: process.cwd(), sessionId, config, apiKey, gitLog }) + "\\n");
 const usage = { input_tokens: 100, cache_creation_input_tokens: 0, cache_read_input_tokens: 0, output_tokens: 10 };
 for (const line of [
   { type: "system", subtype: "init", session_id: sessionId },
@@ -44,6 +49,8 @@ export type FakeCall = {
   cwd: string;
   sessionId: string;
   config?: { path: string; entries: string[] | null };
+  apiKey?: string;
+  gitLog: string[] | null;
 };
 
 /** The calls the fake `claude` in `root` recorded, in order. */

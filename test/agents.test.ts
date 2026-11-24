@@ -1,4 +1,4 @@
-import { existsSync, mkdtempSync, writeFileSync } from "node:fs";
+import { existsSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { expect, it } from "vitest";
@@ -117,4 +117,35 @@ it("AGENT-003 stops the benchmark when the first speckit setup command exits 1",
   expect(existsSync(join(root, "results", "agent"))).toBe(false);
   // Only specjutsu, which runs first, reached claude: no speckit or openspec prompt was sent.
   expect(fakeCalls(root)).toHaveLength(3);
+});
+
+it("AGENT-014 passes ANTHROPIC_API_KEY to every claude call but not to setup commands", () => {
+  const root = agentRoot();
+  const saw = join(root, "setup-saw.txt");
+  const setup = [
+    "steps:",
+    `  - command: 'if [ -n "\${ANTHROPIC_API_KEY+x}" ]; then echo set; else echo unset; fi >> ${saw}'`,
+    "    source: https://example.com/docs#setup",
+    "",
+  ].join("\n");
+  for (const workflow of ["specjutsu", "speckit", "openspec"]) writeFileSync(join(root, "agents", workflow, "setup.yaml"), setup);
+
+  const run = agents(root, [], { ANTHROPIC_API_KEY: "sk-test" });
+
+  expect(run.status).toBe(0);
+  expect(readFileSync(saw, "utf8")).toBe("unset\n".repeat(9));
+  const calls = fakeCalls(root);
+  expect(calls).toHaveLength(9);
+  expect(calls.map((call) => call.apiKey)).toEqual(Array(9).fill("sk-test"));
+});
+
+it("AGENT-015 the workspace is a git repo with the start state committed as fixture start", () => {
+  const root = agentRoot();
+
+  const run = agents(root);
+
+  expect(run.status).toBe(0);
+  const calls = fakeCalls(root);
+  expect(calls).toHaveLength(9);
+  for (const call of calls) expect(call.gitLog).toEqual(["fixture start"]);
 });
