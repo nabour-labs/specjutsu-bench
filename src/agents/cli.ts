@@ -1,4 +1,5 @@
 import { loadPins } from "../pins.ts";
+import { StartCommitError } from "../replay.ts";
 import { loadTasks } from "../steps.ts";
 import { runAll, SetupError } from "./run.ts";
 import { checkAgentScripts } from "./scripts.ts";
@@ -13,7 +14,7 @@ if (errors.length > 0) {
   try {
     runAll(root, tasks);
   } catch (error) {
-    if (!(error instanceof SetupError)) throw error;
+    if (!(error instanceof SetupError || error instanceof StartCommitError)) throw error;
     console.error(error.message);
     process.exitCode = 1;
   }

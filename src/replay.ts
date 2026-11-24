@@ -117,12 +117,7 @@ function replayScript(
     // The workspace is a git repo because `sj` records gain only inside one.
     commitStart(workspace);
     // Run steps use the bench's installed packages, as the fixture check does.
-    // git's `node_modules/` patterns match only directories, so the link is excluded by name.
-    if (linkNodeModules(root, workspace)) {
-      const info = join(workspace, ".git", "info");
-      mkdirSync(info, { recursive: true });
-      appendFileSync(join(info, "exclude"), "/node_modules\n");
-    }
+    linkExcludedNodeModules(root, workspace);
     const paths = replacedPaths(root, workspace);
     let ranSj = false;
     const results = steps.map((step, index) => {
@@ -159,6 +154,17 @@ export function copyStart(root: string, workspace: string): void {
     recursive: true,
     filter: (src) => !left.some((path) => src === path || src.startsWith(`${path}${sep}`)),
   });
+}
+
+/**
+ * Links the bench's `node_modules` into a committed workspace and excludes the link from git:
+ * git's `node_modules/` patterns match only directories, so the link is excluded by name.
+ */
+export function linkExcludedNodeModules(root: string, workspace: string): void {
+  if (!linkNodeModules(root, workspace)) return;
+  const info = join(workspace, ".git", "info");
+  mkdirSync(info, { recursive: true });
+  appendFileSync(join(info, "exclude"), "/node_modules\n");
 }
 
 /** The workspace's fixed author, committer and date, so the start commit's hash is the same everywhere. */
@@ -212,7 +218,7 @@ function workspaceEnv(xdgHome: string): NodeJS.ProcessEnv {
  * - `HOME` and `XDG_CONFIG_HOME` are an empty dir, so no `~/.gitconfig` or `~/.config/git/*`;
  * - init uses no template.
  */
-function commitStart(workspace: string): void {
+export function commitStart(workspace: string): void {
   const home = mkdtempSync(join(tmpdir(), "replay-git-home-"));
   try {
     const env: NodeJS.ProcessEnv = Object.fromEntries(

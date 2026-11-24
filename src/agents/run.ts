@@ -2,8 +2,8 @@ import { spawnSync } from "node:child_process";
 import { mkdirSync, mkdtempSync, realpathSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { allowlistedEnv, linkNodeModules } from "../fixture.ts";
-import { copyStart } from "../replay.ts";
+import { allowlistedEnv } from "../fixture.ts";
+import { commitStart, copyStart, linkExcludedNodeModules } from "../replay.ts";
 import { WORKFLOWS } from "../steps.ts";
 import { loadAgentConfig, loadPrompts, loadSetup } from "./scripts.ts";
 
@@ -36,10 +36,14 @@ export function runAgent(root: string, model: string, workflow: string, task: st
   try {
     const workspace = join(area, "workspace");
     mkdirSync(workspace);
+    // The workspace is a git repo with the start state committed, as a user's checkout would be.
     copyStart(root, workspace);
-    linkNodeModules(root, workspace);
+    commitStart(workspace);
+    linkExcludedNodeModules(root, workspace);
     const env = runEnv(join(area, "claude-config"));
     setUp(root, workflow, workspace, env);
+    // Only `claude` needs the API key; setup commands run third-party installers.
+    if (process.env.ANTHROPIC_API_KEY !== undefined) env.ANTHROPIC_API_KEY = process.env.ANTHROPIC_API_KEY;
     const calls: Call[] = [];
     // A prompt resumes the previous call's session unless a `session` entry came since.
     let resume: string | undefined;
@@ -75,14 +79,13 @@ function setUp(root: string, workflow: string, workspace: string, env: NodeJS.Pr
 }
 
 /**
- * The environment for a run's calls: the allowlisted variables (`PATH`, which finds `claude`,
- * `HOME`, `TMPDIR`), `ANTHROPIC_API_KEY` when set, and `CLAUDE_CONFIG_DIR` as `configDir`, created
- * empty, so the machine's Claude Code settings, memory and plugins never enter the run.
+ * The environment for a run's setup commands and calls: the allowlisted variables (`PATH`, which
+ * finds `claude`, `HOME`, `TMPDIR`) and `CLAUDE_CONFIG_DIR` as `configDir`, created empty, so the
+ * machine's Claude Code settings, memory and plugins never enter the run.
  */
 function runEnv(configDir: string): NodeJS.ProcessEnv {
   mkdirSync(configDir);
   const env = allowlistedEnv();
-  if (process.env.ANTHROPIC_API_KEY !== undefined) env.ANTHROPIC_API_KEY = process.env.ANTHROPIC_API_KEY;
   env.CLAUDE_CONFIG_DIR = configDir;
   return env;
 }
