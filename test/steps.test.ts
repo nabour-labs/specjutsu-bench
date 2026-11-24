@@ -211,3 +211,28 @@ it("STEP-019 refuses a source path outside the pinned Spec Kit install", () => {
   expect(run.stderr).toContain("steps/speckit/feature.yaml step 2: source ../../pins.json is outside speckit@1.4.3");
   expect(run.status).toBe(1);
 });
+
+function pathStep(kind: "read" | "write", path: string): string {
+  return `  - kind: ${kind}\n    path: ${path}\n    source: https://example.com/docs#${kind}\n`;
+}
+
+it("STEP-013 refuses a read path outside the workspace", () => {
+  const root = benchRoot({
+    "steps/speckit/bugfix.yaml": `${stepScript(4)}${pathStep("read", "../../pins.json")}`,
+    "fixture/start/file-4.md": "file 4\n",
+  });
+
+  const run = replay(root);
+
+  expect(run.stderr).toContain("steps/speckit/bugfix.yaml step 5: ../../pins.json is outside the workspace");
+  expect(run.status).toBe(1);
+});
+
+it("STEP-015 refuses a write path outside the workspace", () => {
+  const root = benchRoot({ "steps/openspec/change.yaml": `${stepScript(1)}${pathStep("write", "../escape.md")}` });
+
+  const run = replay(root);
+
+  expect(run.stderr).toContain("steps/openspec/change.yaml step 2: ../escape.md is outside the workspace");
+  expect(run.status).toBe(1);
+});
