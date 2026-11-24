@@ -56,6 +56,32 @@ export function checkSources(script: string, steps: Step[]): string[] {
   return steps.flatMap((step, i) => (step.source ? [] : [`${script} step ${i + 1}: missing source`]));
 }
 
+/** `<tool>@<pin>:<path>`, optionally ending `#L<a>` or `#L<a>-L<b>`. */
+const PINNED_SOURCE = /^([^@:\s]+)@([^:\s]+):([^#\s]+)(?:#L(\d+)(?:-L(\d+))?)?$/;
+
+/**
+ * Returns one error line per step whose source is neither `<tool>@<pin>:<path>` nor an
+ * `https://` URL, or cites a tool at a version other than its pin. Steps with no source are
+ * left to `checkSources`.
+ */
+export function checkCitations(pins: Pins, script: string, steps: Step[]): string[] {
+  return steps.flatMap((step, i) => {
+    if (!step.source) return [];
+    const error = citationError(pins, step.source);
+    return error ? [`${script} step ${i + 1}: ${error}`] : [];
+  });
+}
+
+function citationError(pins: Pins, source: string): string | undefined {
+  if (source.startsWith("https://")) return undefined;
+  const match = PINNED_SOURCE.exec(source);
+  if (!match) return `source "${source}" is not <tool>@<pin>:<path> or an https:// URL`;
+  const [, tool, pin] = match;
+  if (!Object.hasOwn(pins, tool)) return `tool ${tool} is not pinned`;
+  if (pins[tool] !== pin) return `source cites ${tool}@${pin}, but ${tool} is pinned to ${pins[tool]}`;
+  return undefined;
+}
+
 /** Returns one error line per load step whose file is not in `.bench/tools/<tool>@<pin>/`. */
 export function checkLoads(root: string, pins: Pins, script: string, steps: Step[]): string[] {
   return steps.flatMap((step, i) => {

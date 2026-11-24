@@ -7,6 +7,7 @@ import { drift, gainMismatches, resultsMarkdown } from "./report.ts";
 import type { Gain, Results } from "./replay.ts";
 import {
   WORKFLOWS,
+  checkCitations,
   checkLoads,
   checkSessionKinds,
   checkSjRuns,
@@ -35,6 +36,7 @@ function check(root: string): string[] {
   );
   const stepErrors = checked.flatMap(([script, steps]) => [
     ...checkSources(script, steps),
+    ...checkCitations(pins, script, steps),
     ...checkLoads(root, pins, script, steps),
     ...checkSjRuns(root, pins, script, steps),
   ]);
