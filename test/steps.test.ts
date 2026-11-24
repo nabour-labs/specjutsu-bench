@@ -236,3 +236,13 @@ it("STEP-015 refuses a write path outside the workspace", () => {
   expect(run.stderr).toContain("steps/openspec/change.yaml step 2: ../escape.md is outside the workspace");
   expect(run.status).toBe(1);
 });
+
+it("STEP-014 refuses a write step whose golden file is missing", () => {
+  const start = Object.fromEntries([4, 5, 6].map((n) => [`fixture/start/file-${n}.md`, `file ${n}\n`]));
+  const root = benchRoot({ ...start, "steps/speckit/feature.yaml": `${stepScript(6)}${pathStep("write", "src/terms.ts")}` });
+
+  const run = replay(root);
+
+  expect(run.stderr).toContain("steps/speckit/feature.yaml step 7: src/terms.ts not found in fixture/golden/feature");
+  expect(run.status).toBe(1);
+});
