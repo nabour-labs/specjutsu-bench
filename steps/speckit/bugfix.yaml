@@ -1,0 +1,128 @@
+# Spec Kit 1.4.3 + Superpowers 7.0.2: fix the bulk discount boundary (bugfix).
+# Path: Spec Kit's bug-fixing quickstart (speckit@1.4.3:docs/guides/bugfix.md), the bundled,
+# opt-in bug extension's assess -> fix -> test: /speckit-bug-assess, /speckit-bug-fix,
+# /speckit-bug-test, each writing one report under .specify/bugs/<slug>/. The guide says the SDD
+# feature workflow is not needed first. `specify extension add bug` counts as done at install
+# time. Superpowers' systematic-debugging applies to the assessment ("Fix this bug" ->
+# systematic-debugging first, in using-superpowers), then test-driven-development for the fix and
+# verification-before-completion before the verdict. No doc says to start a fresh session or
+# clear context between the three commands, so the task is one session.
+#
+# Workspace: the plain fixture, without the files `specify init` writes. There is no
+# .specify/extensions.yml (the bug extension declares no hooks), so every hook check is skipped.
+steps:
+  # /speckit-bug-assess
+  - kind: load
+    tool: speckit
+    path: extensions/bug/commands/speckit.bug.assess.md
+    source: speckit@1.4.3:docs/guides/bugfix.md
+    note: >-
+      /speckit-bug-assess with the bug description and slug=bulk-discount-boundary, as the guide
+      shows. The pinned command file is counted for the installed skill.
+  - kind: load
+    tool: superpowers
+    path: skills/systematic-debugging/SKILL.md
+    source: superpowers@7.0.2:skills/using-superpowers/SKILL.md
+    note: >-
+      Skill Priority: '"Fix this bug" -> superpowers:systematic-debugging first'. Its supporting
+      files are not loaded: root-cause-tracing.md is "WHEN error is deep in call stack", and the
+      others cover other kinds of bug.
+  - kind: read
+    path: src/invoice.ts
+    source: speckit@1.4.3:extensions/bug/commands/speckit.bug.assess.md
+    note: >-
+      Step 3, locate the suspected code paths: lineDiscount and BULK_QUANTITY, whose comment
+      states the rule. Smallest reading of step 3 and of systematic-debugging's Phase 1 and 2:
+      the one module shows the strict comparison and the rule it breaks, so no search, git
+      history check (the workspace has no commits) or test run precedes it, and no README or
+      test file is read; the failing test written in /speckit-bug-fix is the reproduction.
+  - kind: write
+    path: .specify/bugs/bulk-discount-boundary/assessment.md
+    source: speckit@1.4.3:extensions/bug/commands/speckit.bug.assess.md
+    note: Step 6.
+
+  # /speckit-bug-fix
+  - kind: load
+    tool: speckit
+    path: extensions/bug/commands/speckit.bug.fix.md
+    source: speckit@1.4.3:docs/guides/bugfix.md
+    note: /speckit-bug-fix slug=bulk-discount-boundary.
+  - kind: read
+    path: .specify/bugs/bulk-discount-boundary/assessment.md
+    source: speckit@1.4.3:extensions/bug/commands/speckit.bug.fix.md
+    note: Prerequisites, "Read BUG_DIR/assessment.md in full".
+  - kind: load
+    tool: superpowers
+    path: skills/test-driven-development/SKILL.md
+    source: superpowers@7.0.2:skills/systematic-debugging/SKILL.md
+    note: >-
+      Phase 4, step 1, "Create Failing Test Case ... Use the superpowers:test-driven-development
+      skill for writing proper failing tests".
+  - kind: load
+    tool: superpowers
+    path: skills/test-driven-development/writing-good-tests.md
+    source: superpowers@7.0.2:skills/test-driven-development/SKILL.md
+    note: '"When writing or changing any test, read writing-good-tests.md".'
+  - kind: read
+    path: test/invoice.test.ts
+    source: speckit@1.4.3:extensions/bug/commands/speckit.bug.fix.md
+    note: Step 2, "Add or update the tests called out in the assessment"; read before it is edited.
+  - kind: write
+    path: test/invoice.test.ts
+    source: superpowers@7.0.2:skills/test-driven-development/SKILL.md
+    note: RED, the two boundary tests.
+  - kind: run
+    command: npx vitest run test/invoice.test.ts
+    source: superpowers@7.0.2:skills/test-driven-development/SKILL.md
+    note: Verify RED; the exactly-10 test fails.
+  - kind: write
+    path: src/invoice.ts
+    source: speckit@1.4.3:extensions/bug/commands/speckit.bug.fix.md
+    note: Step 2, apply the remediation (`>` becomes `>=`). src/invoice.ts was read during assess.
+  - kind: run
+    command: npx vitest run test/invoice.test.ts
+    source: speckit@1.4.3:extensions/bug/commands/speckit.bug.fix.md
+    note: >-
+      Step 3, "run the tests that exercise the changed paths", which is also TDD's Verify GREEN.
+      The full suite runs once, in /speckit-bug-test.
+  - kind: write
+    path: .specify/bugs/bulk-discount-boundary/fix.md
+    source: speckit@1.4.3:extensions/bug/commands/speckit.bug.fix.md
+    note: Step 4.
+
+  # /speckit-bug-test
+  - kind: load
+    tool: speckit
+    path: extensions/bug/commands/speckit.bug.test.md
+    source: speckit@1.4.3:docs/guides/bugfix.md
+    note: /speckit-bug-test slug=bulk-discount-boundary.
+  - kind: read
+    path: .specify/bugs/bulk-discount-boundary/assessment.md
+    source: speckit@1.4.3:extensions/bug/commands/speckit.bug.test.md
+    note: Prerequisites, "Read both assessment.md and fix.md in full".
+  - kind: read
+    path: .specify/bugs/bulk-discount-boundary/fix.md
+    source: speckit@1.4.3:extensions/bug/commands/speckit.bug.test.md
+    note: Prerequisites, "Read both assessment.md and fix.md in full".
+  - kind: load
+    tool: superpowers
+    path: skills/verification-before-completion/SKILL.md
+    source: superpowers@7.0.2:skills/systematic-debugging/SKILL.md
+    note: >-
+      Phase 4, step 3, "Use the superpowers:verification-before-completion skill before claiming
+      success"; the verdict is such a claim.
+  - kind: run
+    command: npx vitest run
+    source: speckit@1.4.3:extensions/bug/commands/speckit.bug.test.md
+    note: >-
+      Steps 1 and 2: the reproduction (the exactly-10 test), the added tests and the regression
+      suite, all covered by one full run. Also TDD's "run the project's test command" before
+      calling the change done.
+  - kind: run
+    command: npx tsc --noEmit
+    source: speckit@1.4.3:extensions/bug/commands/speckit.bug.test.md
+    note: Step 1, "Lint / type-check if the project uses them"; package.json has a typecheck script.
+  - kind: write
+    path: .specify/bugs/bulk-discount-boundary/test.md
+    source: speckit@1.4.3:extensions/bug/commands/speckit.bug.test.md
+    note: Step 4, result verified.

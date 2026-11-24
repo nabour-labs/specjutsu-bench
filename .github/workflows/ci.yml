@@ -15,6 +15,22 @@ jobs:
       - uses: actions/checkout@v4
         with: { fetch-depth: 0 }
       - uses: actions/setup-node@v4
-        with: { node-version: 22, cache: npm }
+        with: { node-version: 22.21.1, cache: npm }
       - run: npm ci
       - uses: nabour-labs/specjutsu@v0
+
+  replay:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22.21.1, cache: npm }
+      - run: npm ci
+      - uses: actions/cache@v4
+        with:
+          path: .bench/tools
+          key: bench-tools-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('pins.json', 'scripts/install-tools.mjs') }}
+      - run: npm run install-tools
+      - run: npm run replay -- --check

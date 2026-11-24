@@ -1,0 +1,25 @@
+# What Claude Code loads at the start of every session with Spec Kit 1.4.3 (`--integration claude`)
+# and Superpowers 7.0.2 installed. Superpowers' SessionStart hook (hooks/hooks.json, matcher
+# startup|clear|compact) runs hooks/session-start, which injects the full text of the
+# using-superpowers skill. Spec Kit 1.4.3 loads no file per session: the Claude integration
+# installs skills in .claude/skills/speckit-<command>/SKILL.md and writes no CLAUDE.md block, and
+# the constitution (.specify/memory/constitution.md) is read by the commands ("IF EXISTS: Load
+# /memory/constitution.md"), not loaded per session. See the notes for what is left out.
+steps:
+  - kind: load
+    tool: superpowers
+    path: skills/using-superpowers/SKILL.md
+    source: superpowers@7.0.2:hooks/session-start
+    note: >-
+      The hook wraps this file in about 200 bytes of fixed text (an EXTREMELY_IMPORTANT block and
+      a one-line introduction) and JSON-escapes it; only the file is counted, the smaller reading.
+      Claude Code's listing of installed skill names and descriptions (Spec Kit's model-invocable
+      speckit-* skills, per docs/integrations/claude.md, and Superpowers' skills) is also left
+      out: it is harness text, not a pinned file, and the same for every tool.
+  - kind: load
+    tool: superpowers
+    path: skills/using-superpowers/references/claude-code-tools.md
+    source: superpowers@7.0.2:skills/using-superpowers/SKILL.md
+    note: >-
+      Platform Adaptation: "If your harness appears here, read its reference file"; Claude Code's
+      is references/claude-code-tools.md.

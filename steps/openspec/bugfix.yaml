@@ -1,0 +1,179 @@
+# OpenSpec 2.1.1 + Superpowers 7.0.2: fix the bulk discount at exactly 10 units (bugfix).
+# Path: propose, then apply in a fresh session, then archive (sync, then move), from
+# openspec@2.1.1:docs/existing-projects.md and docs-lab/start/quickstart.md. OpenSpec's docs give
+# no separate bug-fix path, so this takes the same smallest documented path as the feature. Superpowers' systematic-debugging applies before the
+# fix is proposed, and its TDD and verification skills while implementing. Steps that need the OpenSpec CLI are left out
+# and named in the notes; their output would only add to OpenSpec's count.
+steps:
+  # Session 1: propose.
+  - kind: session
+    source: openspec@2.1.1:docs-lab/start/quickstart.md
+    note: Step 2, Propose, runs in the AI chat; step 4 starts a fresh session for apply.
+  - kind: load
+    tool: superpowers
+    path: skills/systematic-debugging/SKILL.md
+    source: superpowers@7.0.2:skills/using-superpowers/SKILL.md
+    note: >-
+      Skill Priority: "Fix this bug" goes to systematic-debugging first. Its supporting files
+      (root-cause-tracing.md and others) are for errors deep in a call stack, flaky waits and
+      layered validation; none applies, so none is loaded.
+  - kind: load
+    tool: openspec
+    path: skills/openspec-propose/SKILL.md
+    source: openspec@2.1.1:docs/existing-projects.md
+    note: >-
+      /opsx:propose (2.1.1 installs it as the openspec-propose skill; init writes no command
+      files). The optional /opsx:explore is skipped. Left out because they need the OpenSpec CLI:
+      `openspec list --json` (project check), `openspec context --json`, `openspec new change`,
+      `openspec status --change <id> --json` before and after each artifact, and the final
+      `openspec status`. `openspec init` counts as done at install time, and openspec/config.yaml
+      as absent, so the skill continues without project context and reads no config. Superpowers'
+      writing-plans skill is not loaded: the user asked for OpenSpec's propose, and
+      using-superpowers puts user instructions first; tasks.md is the plan.
+  - kind: read
+    path: src/invoice.ts
+    source: openspec@2.1.1:skills/openspec-propose/SKILL.md
+    note: >-
+      "Inspect the relevant project before drafting", which is also systematic-debugging's
+      Phase 1 root-cause read: `lineDiscount` compares with `>`. Smallest reading: only this
+      file. Reproducing the bug needs a new test, so the TDD red run in apply is the
+      reproduction; no separate run here.
+  - kind: load
+    tool: openspec
+    path: schemas/spec-driven/templates/proposal.md
+    source: openspec@2.1.1:skills/openspec-propose/SKILL.md
+    note: >-
+      Stands in for `openspec instructions proposal --change <id> --json`, whose JSON carries
+      this template plus the proposal instruction from schemas/spec-driven/schema.yaml. Only the
+      template is counted, a lower bound.
+  - kind: write
+    path: openspec/changes/fix-bulk-discount-threshold/proposal.md
+    source: openspec@2.1.1:schemas/spec-driven/schema.yaml
+  - kind: read
+    path: openspec/changes/fix-bulk-discount-threshold/proposal.md
+    source: openspec@2.1.1:skills/openspec-propose/SKILL.md
+    note: '"Read any completed dependency files for context - always re-read them from disk"; specs requires proposal.'
+  - kind: load
+    tool: openspec
+    path: schemas/spec-driven/templates/spec.md
+    source: openspec@2.1.1:skills/openspec-propose/SKILL.md
+    note: Stands in for `openspec instructions specs --change <id> --json`; template only, a lower bound.
+  - kind: write
+    path: openspec/changes/fix-bulk-discount-threshold/specs/bulk-discount/spec.md
+    source: openspec@2.1.1:schemas/spec-driven/schema.yaml
+  - kind: read
+    path: openspec/changes/fix-bulk-discount-threshold/specs/bulk-discount/spec.md
+    source: openspec@2.1.1:skills/openspec-propose/SKILL.md
+    note: >-
+      Dependency of tasks, re-read from disk. design.md is skipped: schema.yaml says "create only
+      if" the change is cross-cutting, adds a dependency or data-model, security or migration
+      complexity, or needs technical decisions, and none applies. The `openspec instructions
+      design` call that shows this is left out with the other CLI calls.
+  - kind: load
+    tool: openspec
+    path: schemas/spec-driven/templates/tasks.md
+    source: openspec@2.1.1:skills/openspec-propose/SKILL.md
+    note: Stands in for `openspec instructions tasks --change <id> --json`; template only, a lower bound.
+  - kind: write
+    path: openspec/changes/fix-bulk-discount-threshold/tasks.md
+    source: openspec@2.1.1:schemas/spec-driven/schema.yaml
+    note: >-
+      The golden tasks.md has its boxes checked; `[x]` and `[ ]` are the same size, so this
+      write counts what propose writes.
+  # Session 2: apply and archive.
+  - kind: session
+    source: openspec@2.1.1:docs-lab/start/quickstart.md
+    note: '"Start a fresh chat session, since implementation goes better on a clean context window."'
+  - kind: load
+    tool: openspec
+    path: skills/openspec-apply-change/SKILL.md
+    source: openspec@2.1.1:docs/existing-projects.md
+    note: >-
+      /opsx:apply. Left out because they need the OpenSpec CLI: `openspec status --change <id>
+      --json`, `openspec instructions apply --change <id> --json`, and its rerun after each task.
+  - kind: read
+    path: openspec/changes/fix-bulk-discount-threshold/proposal.md
+    source: openspec@2.1.1:skills/openspec-apply-change/SKILL.md
+    note: Read every file under contextFiles (spec-driven, no design.md).
+  - kind: read
+    path: openspec/changes/fix-bulk-discount-threshold/specs/bulk-discount/spec.md
+    source: openspec@2.1.1:skills/openspec-apply-change/SKILL.md
+  - kind: read
+    path: openspec/changes/fix-bulk-discount-threshold/tasks.md
+    source: openspec@2.1.1:skills/openspec-apply-change/SKILL.md
+  - kind: read
+    path: test/invoice.test.ts
+    source: openspec@2.1.1:skills/openspec-apply-change/SKILL.md
+    note: '"Make the code changes required": a fresh session reads the files it edits; only those two.'
+  - kind: read
+    path: src/invoice.ts
+    source: openspec@2.1.1:skills/openspec-apply-change/SKILL.md
+  - kind: load
+    tool: superpowers
+    path: skills/test-driven-development/SKILL.md
+    source: superpowers@7.0.2:skills/using-superpowers/SKILL.md
+    note: >-
+      "Use when implementing any feature or bugfix, before writing implementation code."
+      executing-plans is not loaded: OpenSpec's apply skill drives the task list.
+  - kind: load
+    tool: superpowers
+    path: skills/test-driven-development/writing-good-tests.md
+    source: superpowers@7.0.2:skills/test-driven-development/SKILL.md
+    note: '"When writing or changing any test, read writing-good-tests.md."'
+  - kind: write
+    path: test/invoice.test.ts
+    source: superpowers@7.0.2:skills/test-driven-development/SKILL.md
+    note: >-
+      Smallest reading: one red-green cycle for the change, with all its tests written first,
+      rather than one cycle per test. The red run is also the regression test's
+      watched failure that verification-before-completion asks for, so the fix is not reverted
+      and rerun.
+  - kind: run
+    command: npx vitest run test/invoice.test.ts
+    source: superpowers@7.0.2:skills/test-driven-development/SKILL.md
+    note: Verify RED, on the changed test file only.
+  - kind: write
+    path: src/invoice.ts
+    source: openspec@2.1.1:skills/openspec-apply-change/SKILL.md
+  - kind: load
+    tool: superpowers
+    path: skills/verification-before-completion/SKILL.md
+    source: superpowers@7.0.2:skills/using-superpowers/SKILL.md
+    note: '"Use when about to claim work is complete, fixed, or passing."'
+  - kind: run
+    command: npx vitest run
+    source: superpowers@7.0.2:skills/verification-before-completion/SKILL.md
+    note: >-
+      The full suite, fresh, before claiming completion. It is also TDD's Verify GREEN, so it
+      runs once.
+  - kind: write
+    path: openspec/changes/fix-bulk-discount-threshold/tasks.md
+    source: openspec@2.1.1:skills/openspec-apply-change/SKILL.md
+    note: Marks the tasks complete, `- [ ]` to `- [x]`; one write for both tasks.
+  - kind: load
+    tool: openspec
+    path: skills/openspec-archive-change/SKILL.md
+    source: openspec@2.1.1:docs/existing-projects.md
+    note: >-
+      /opsx:archive, in the apply session: the docs start a fresh session only for apply. Left
+      out because they need the OpenSpec CLI: `openspec instructions archive`, `openspec status`,
+      `openspec list --json` (task counts), `openspec instructions specs` before the sync, and
+      `openspec validate --specs` after it. The user takes the recommended "Sync now".
+  - kind: read
+    path: openspec/changes/fix-bulk-discount-threshold/specs/bulk-discount/spec.md
+    source: openspec@2.1.1:skills/openspec-archive-change/SKILL.md
+    note: >-
+      Compare the delta with its main spec, which does not exist yet (a new capability). Read
+      once, though the sync skill also says to read the delta: the smaller reading.
+  - kind: load
+    tool: openspec
+    path: skills/openspec-sync-specs/SKILL.md
+    source: openspec@2.1.1:skills/openspec-archive-change/SKILL.md
+    note: '"Run the openspec-sync-specs workflow inline if that skill is installed"; the core profile installs it.'
+  - kind: write
+    path: openspec/specs/bulk-discount/spec.md
+    source: openspec@2.1.1:skills/openspec-sync-specs/SKILL.md
+  - kind: run
+    command: mkdir -p openspec/changes/archive && mv openspec/changes/fix-bulk-discount-threshold openspec/changes/archive/2026-01-01-fix-bulk-discount-threshold
+    source: openspec@2.1.1:skills/openspec-archive-change/SKILL.md
+    note: Step 5's two commands, which print nothing. The date prefix is fixed so the replay stays deterministic.

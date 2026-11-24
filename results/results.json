@@ -1,0 +1,2299 @@
+{
+  "pins": {
+    "specjutsu": "0.5.1",
+    "speckit": "1.4.3",
+    "openspec": "2.1.1",
+    "superpowers": "7.0.2"
+  },
+  "workflows": {
+    "specjutsu": {
+      "feature": {
+        "context": 65389,
+        "output": 9248,
+        "firstStep": 1,
+        "steps": [
+          {
+            "kind": "session",
+            "context": 809,
+            "output": 0
+          },
+          {
+            "kind": "write",
+            "path": "specjutsu.toml",
+            "context": 0,
+            "output": 182
+          },
+          {
+            "kind": "run",
+            "command": "sj hook claude session-start",
+            "context": 27,
+            "output": 0
+          },
+          {
+            "kind": "run",
+            "command": "sj status",
+            "context": 16,
+            "output": 0
+          },
+          {
+            "kind": "load",
+            "path": "crates/sj-adapters/assets/skills/sj-propose/SKILL.md",
+            "context": 3657,
+            "output": 0
+          },
+          {
+            "kind": "run",
+            "command": "sj spec new add-payment-terms",
+            "context": 44,
+            "output": 0
+          },
+          {
+            "kind": "read",
+            "path": "src/invoice.ts",
+            "context": 2604,
+            "output": 0
+          },
+          {
+            "kind": "read",
+            "path": "src/index.ts",
+            "context": 351,
+            "output": 0
+          },
+          {
+            "kind": "write",
+            "path": "specjutsu/changes/add-payment-terms/proposal.md",
+            "context": 0,
+            "output": 821
+          },
+          {
+            "kind": "write",
+            "path": "specjutsu/changes/add-payment-terms/specs/payment-terms/spec.md",
+            "context": 0,
+            "output": 1380
+          },
+          {
+            "kind": "write",
+            "path": "specjutsu/changes/add-payment-terms/design.md",
+            "context": 0,
+            "output": 1053
+          },
+          {
+            "kind": "write",
+            "path": "specjutsu/changes/add-payment-terms/tasks.md",
+            "context": 0,
+            "output": 110
+          },
+          {
+            "kind": "run",
+            "command": "sj spec validate add-payment-terms",
+            "context": 13,
+            "output": 0
+          },
+          {
+            "kind": "run",
+            "command": "sj spec check add-payment-terms",
+            "context": 10,
+            "output": 0
+          },
+          {
+            "kind": "run",
+            "command": "sj status add-payment-terms",
+            "context": 200,
+            "output": 0
+          },
+          {
+            "kind": "load",
+            "path": "crates/sj-adapters/assets/skills/sj-apply/SKILL.md",
+            "context": 5989,
+            "output": 0
+          },
+          {
+            "kind": "run",
+            "command": "sj next add-payment-terms",
+            "context": 1398,
+            "output": 0
+          },
+          {
+            "kind": "run",
+            "command": "git rev-parse HEAD",
+            "context": 41,
+            "output": 0
+          },
+          {
+            "kind": "load",
+            "path": "crates/sj-adapters/assets/skills/sj-apply/implementer-prompt.md",
+            "context": 2575,
+            "output": 0
+          },
+          {
+            "kind": "session",
+            "context": 809,
+            "output": 0
+          },
+          {
+            "kind": "load",
+            "path": "crates/sj-adapters/assets/skills/sj-apply/implementer-prompt.md",
+            "context": 2575,
+            "output": 0
+          },
+          {
+            "kind": "run",
+            "command": "sj next add-payment-terms",
+            "context": 1398,
+            "output": 0
+          },
+          {
+            "kind": "load",
+            "path": "crates/sj-adapters/assets/skills/sj-apply/writing-good-tests.md",
+            "context": 4504,
+            "output": 0
+          },
+          {
+            "kind": "read",
+            "path": "src/invoice.ts",
+            "context": 2604,
+            "output": 0
+          },
+          {
+            "kind": "read",
+            "path": "src/index.ts",
+            "context": 351,
+            "output": 0
+          },
+          {
+            "kind": "write",
+            "path": "test/terms.test.ts",
+            "context": 0,
+            "output": 1579
+          },
+          {
+            "kind": "run",
+            "command": "sj test TERMS-001",
+            "context": 225,
+            "output": 0
+          },
+          {
+            "kind": "run",
+            "command": "sj test TERMS-002",
+            "context": 224,
+            "output": 0
+          },
+          {
+            "kind": "run",
+            "command": "sj test TERMS-003",
+            "context": 220,
+            "output": 0
+          },
+          {
+            "kind": "run",
+            "command": "sj test TERMS-004",
+            "context": 393,
+            "output": 0
+          },
+          {
+            "kind": "run",
+            "command": "sj test TERMS-005",
+            "context": 232,
+            "output": 0
+          },
+          {
+            "kind": "write",
+            "path": "src/terms.ts",
+            "context": 0,
+            "output": 750
+          },
+          {
+            "kind": "write",
+            "path": "src/invoice.ts",
+            "context": 0,
+            "output": 2934
+          },
+          {
+            "kind": "write",
+            "path": "src/index.ts",
+            "context": 0,
+            "output": 439
+          },
+          {
+            "kind": "run",
+            "command": "sj test TERMS-001",
+            "context": 24,
+            "output": 0
+          },
+          {
+            "kind": "run",
+            "command": "sj test TERMS-002",
+            "context": 24,
+            "output": 0
+          },
+          {
+            "kind": "run",
+            "command": "sj test TERMS-003",
+            "context": 24,
+            "output": 0
+          },
+          {
+            "kind": "run",
+            "command": "sj test TERMS-004",
+            "context": 24,
+            "output": 0
+          },
+          {
+            "kind": "run",
+            "command": "sj test TERMS-005",
+            "context": 24,
+            "output": 0
+          },
+          {
+            "kind": "run",
+            "command": "sj test .",
+            "context": 25,
+            "output": 0
+          },
+          {
+            "kind": "run",
+            "command": "git add -N src test && git diff -- src test",
+            "context": 4201,
+            "output": 0
+          },
+          {
+            "kind": "load",
+            "path": "crates/sj-adapters/assets/skills/sj-apply/task-reviewer-prompt.md",
+            "context": 2609,
+            "output": 0
+          },
+          {
+            "kind": "session",
+            "context": 809,
+            "output": 0
+          },
+          {
+            "kind": "load",
+            "path": "crates/sj-adapters/assets/skills/sj-apply/task-reviewer-prompt.md",
+            "context": 2609,
+            "output": 0
+          },
+          {
+            "kind": "run",
+            "command": "sj next add-payment-terms",
+            "context": 1497,
+            "output": 0
+          },
+          {
+            "kind": "run",
+            "command": "git add -N src test && git diff -- src test",
+            "context": 4201,
+            "output": 0
+          },
+          {
+            "kind": "run",
+            "command": "sj verify add-payment-terms",
+            "context": 11,
+            "output": 0
+          },
+          {
+            "kind": "load",
+            "path": "crates/sj-adapters/assets/skills/sj-verify/SKILL.md",
+            "context": 4194,
+            "output": 0
+          },
+          {
+            "kind": "run",
+            "command": "sj verify add-payment-terms",
+            "context": 11,
+            "output": 0
+          },
+          {
+            "kind": "run",
+            "command": "sj task done add-payment-terms 1.1",
+            "context": 85,
+            "output": 0
+          },
+          {
+            "kind": "session",
+            "context": 809,
+            "output": 0
+          },
+          {
+            "kind": "load",
+            "path": "crates/sj-adapters/assets/skills/sj-review/SKILL.md",
+            "context": 2397,
+            "output": 0
+          },
+          {
+            "kind": "run",
+            "command": "sj status add-payment-terms",
+            "context": 69,
+            "output": 0
+          },
+          {
+            "kind": "run",
+            "command": "sj verify add-payment-terms",
+            "context": 11,
+            "output": 0
+          },
+          {
+            "kind": "run",
+            "command": "git add -N specjutsu src test && git diff --stat -- specjutsu src test",
+            "context": 575,
+            "output": 0
+          },
+          {
+            "kind": "read",
+            "path": "specjutsu/changes/add-payment-terms/proposal.md",
+            "context": 821,
+            "output": 0
+          },
+          {
+            "kind": "read",
+            "path": "specjutsu/changes/add-payment-terms/design.md",
+            "context": 1053,
+            "output": 0
+          },
+          {
+            "kind": "read",
+            "path": "specjutsu/changes/add-payment-terms/specs/payment-terms/spec.md",
+            "context": 1380,
+            "output": 0
+          },
+          {
+            "kind": "run",
+            "command": "git diff -- src test",
+            "context": 4201,
+            "output": 0
+          },
+          {
+            "kind": "run",
+            "command": "sj verify",
+            "context": 11,
+            "output": 0
+          },
+          {
+            "kind": "load",
+            "path": "crates/sj-adapters/assets/skills/sj-finish/SKILL.md",
+            "context": 2099,
+            "output": 0
+          },
+          {
+            "kind": "run",
+            "command": "sj verify add-payment-terms",
+            "context": 11,
+            "output": 0
+          },
+          {
+            "kind": "run",
+            "command": "sj status add-payment-terms",
+            "context": 69,
+            "output": 0
+          },
+          {
+            "kind": "run",
+            "command": "sj spec archive add-payment-terms",
+            "context": 137,
+            "output": 0
+          },
+          {
+            "kind": "run",
+            "command": "sj spec validate",
+            "context": 105,
+            "output": 0
+          }
+        ]
+      },
+      "bugfix": {
+        "context": 24471,
+        "output": 6854,
+        "firstStep": 0,
+        "steps": [
+          {
+            "kind": "session",
+            "context": 809,
+            "output": 0
+          },
+          {
+            "kind": "write",
+            "path": "specjutsu.toml",
+            "context": 0,
+            "output": 182
+          },
+          {
+            "kind": "run",
+            "command": "sj hook claude session-start",
+            "context": 27,
+            "output": 0
+          },
+          {
+            "kind": "run",
+            "command": "sj status",
+            "context": 16,
+            "output": 0
+          },
+          {
+            "kind": "load",
+            "path": "crates/sj-adapters/assets/skills/sj-debug/SKILL.md",
+            "context": 5564,
+            "output": 0
+          },
+          {
+            "kind": "run",
+            "command": "sj test .",
+            "context": 25,
+            "output": 0
+          },
+          {
+            "kind": "run",
+            "command": "git log -p -- src/invoice.ts",
+            "context": 2955,
+            "output": 0
+          },
+          {
+            "kind": "load",
+            "path": "crates/sj-adapters/assets/skills/sj-debug/root-cause-tracing.md",
+            "context": 2623,
+            "output": 0
+          },
+          {
+            "kind": "read",
+            "path": "src/invoice.ts",
+            "context": 2604,
+            "output": 0
+          },
+          {
+            "kind": "read",
+            "path": "test/invoice.test.ts",
+            "context": 2661,
+            "output": 0
+          },
+          {
+            "kind": "run",
+            "command": "sj spec new fix-bulk-discount --bug",
+            "context": 44,
+            "output": 0
+          },
+          {
+            "kind": "write",
+            "path": "specjutsu/changes/fix-bulk-discount/proposal.md",
+            "context": 0,
+            "output": 487
+          },
+          {
+            "kind": "write",
+            "path": "specjutsu/changes/fix-bulk-discount/specs/pricing/spec.md",
+            "context": 0,
+            "output": 522
+          },
+          {
+            "kind": "write",
+            "path": "specjutsu/changes/fix-bulk-discount/tasks.md",
+            "context": 0,
+            "output": 96
+          },
+          {
+            "kind": "write",
+            "path": "test/invoice.test.ts",
+            "context": 0,
+            "output": 2962
+          },
+          {
+            "kind": "run",
+            "command": "sj test DISC-001",
+            "context": 341,
+            "output": 0
+          },
+          {
+            "kind": "run",
+            "command": "sj test DISC-002",
+            "context": 24,
+            "output": 0
+          },
+          {
+            "kind": "write",
+            "path": "src/invoice.ts",
+            "context": 0,
+            "output": 2605
+          },
+          {
+            "kind": "run",
+            "command": "sj test DISC-001",
+            "context": 24,
+            "output": 0
+          },
+          {
+            "kind": "run",
+            "command": "sj test .",
+            "context": 25,
+            "output": 0
+          },
+          {
+            "kind": "run",
+            "command": "sj task done fix-bulk-discount 1.1",
+            "context": 71,
+            "output": 0
+          },
+          {
+            "kind": "load",
+            "path": "crates/sj-adapters/assets/skills/sj-verify/SKILL.md",
+            "context": 4194,
+            "output": 0
+          },
+          {
+            "kind": "run",
+            "command": "sj verify",
+            "context": 11,
+            "output": 0
+          },
+          {
+            "kind": "load",
+            "path": "crates/sj-adapters/assets/skills/sj-finish/SKILL.md",
+            "context": 2099,
+            "output": 0
+          },
+          {
+            "kind": "run",
+            "command": "sj verify fix-bulk-discount",
+            "context": 11,
+            "output": 0
+          },
+          {
+            "kind": "run",
+            "command": "sj status fix-bulk-discount",
+            "context": 113,
+            "output": 0
+          },
+          {
+            "kind": "run",
+            "command": "sj spec archive fix-bulk-discount",
+            "context": 131,
+            "output": 0
+          },
+          {
+            "kind": "run",
+            "command": "sj spec validate",
+            "context": 99,
+            "output": 0
+          }
+        ]
+      },
+      "change": {
+        "context": 62897,
+        "output": 8722,
+        "firstStep": 1,
+        "steps": [
+          {
+            "kind": "session",
+            "context": 809,
+            "output": 0
+          },
+          {
+            "kind": "write",
+            "path": "specjutsu.toml",
+            "context": 0,
+            "output": 182
+          },
+          {
+            "kind": "run",
+            "command": "sj hook claude session-start",
+            "context": 27,
+            "output": 0
+          },
+          {
+            "kind": "run",
+            "command": "sj status",
+            "context": 16,
+            "output": 0
+          },
+          {
+            "kind": "load",
+            "path": "crates/sj-adapters/assets/skills/sj-propose/SKILL.md",
+            "context": 3657,
+            "output": 0
+          },
+          {
+            "kind": "run",
+            "command": "sj spec new raise-free-shipping-threshold",
+            "context": 56,
+            "output": 0
+          },
+          {
+            "kind": "read",
+            "path": "src/invoice.ts",
+            "context": 2604,
+            "output": 0
+          },
+          {
+            "kind": "read",
+            "path": "test/invoice.test.ts",
+            "context": 2661,
+            "output": 0
+          },
+          {
+            "kind": "read",
+            "path": "README.md",
+            "context": 558,
+            "output": 0
+          },
+          {
+            "kind": "write",
+            "path": "specjutsu/changes/raise-free-shipping-threshold/proposal.md",
+            "context": 0,
+            "output": 630
+          },
+          {
+            "kind": "write",
+            "path": "specjutsu/changes/raise-free-shipping-threshold/specs/shipping/spec.md",
+            "context": 0,
+            "output": 878
+          },
+          {
+            "kind": "write",
+            "path": "specjutsu/changes/raise-free-shipping-threshold/design.md",
+            "context": 0,
+            "output": 621
+          },
+          {
+            "kind": "write",
+            "path": "specjutsu/changes/raise-free-shipping-threshold/tasks.md",
+            "context": 0,
+            "output": 162
+          },
+          {
+            "kind": "run",
+            "command": "sj spec validate raise-free-shipping-threshold",
+            "context": 13,
+            "output": 0
+          },
+          {
+            "kind": "run",
+            "command": "sj spec check raise-free-shipping-threshold",
+            "context": 10,
+            "output": 0
+          },
+          {
+            "kind": "run",
+            "command": "sj status raise-free-shipping-threshold",
+            "context": 178,
+            "output": 0
+          },
+          {
+            "kind": "load",
+            "path": "crates/sj-adapters/assets/skills/sj-apply/SKILL.md",
+            "context": 5989,
+            "output": 0
+          },
+          {
+            "kind": "run",
+            "command": "sj next raise-free-shipping-threshold",
+            "context": 1059,
+            "output": 0
+          },
+          {
+            "kind": "run",
+            "command": "git rev-parse HEAD",
+            "context": 41,
+            "output": 0
+          },
+          {
+            "kind": "load",
+            "path": "crates/sj-adapters/assets/skills/sj-apply/implementer-prompt.md",
+            "context": 2575,
+            "output": 0
+          },
+          {
+            "kind": "session",
+            "context": 809,
+            "output": 0
+          },
+          {
+            "kind": "load",
+            "path": "crates/sj-adapters/assets/skills/sj-apply/implementer-prompt.md",
+            "context": 2575,
+            "output": 0
+          },
+          {
+            "kind": "run",
+            "command": "sj next raise-free-shipping-threshold",
+            "context": 1059,
+            "output": 0
+          },
+          {
+            "kind": "load",
+            "path": "crates/sj-adapters/assets/skills/sj-apply/writing-good-tests.md",
+            "context": 4504,
+            "output": 0
+          },
+          {
+            "kind": "read",
+            "path": "test/invoice.test.ts",
+            "context": 2661,
+            "output": 0
+          },
+          {
+            "kind": "read",
+            "path": "src/invoice.ts",
+            "context": 2604,
+            "output": 0
+          },
+          {
+            "kind": "write",
+            "path": "test/invoice.test.ts",
+            "context": 0,
+            "output": 3085
+          },
+          {
+            "kind": "run",
+            "command": "sj test SHIP-001",
+            "context": 621,
+            "output": 0
+          },
+          {
+            "kind": "run",
+            "command": "sj test SHIP-002",
+            "context": 24,
+            "output": 0
+          },
+          {
+            "kind": "run",
+            "command": "sj test SHIP-003",
+            "context": 329,
+            "output": 0
+          },
+          {
+            "kind": "write",
+            "path": "src/invoice.ts",
+            "context": 0,
+            "output": 2605
+          },
+          {
+            "kind": "run",
+            "command": "sj test SHIP-001",
+            "context": 24,
+            "output": 0
+          },
+          {
+            "kind": "run",
+            "command": "sj test SHIP-002",
+            "context": 24,
+            "output": 0
+          },
+          {
+            "kind": "run",
+            "command": "sj test SHIP-003",
+            "context": 24,
+            "output": 0
+          },
+          {
+            "kind": "run",
+            "command": "sj test .",
+            "context": 25,
+            "output": 0
+          },
+          {
+            "kind": "run",
+            "command": "git diff -- src test",
+            "context": 2099,
+            "output": 0
+          },
+          {
+            "kind": "load",
+            "path": "crates/sj-adapters/assets/skills/sj-apply/task-reviewer-prompt.md",
+            "context": 2609,
+            "output": 0
+          },
+          {
+            "kind": "session",
+            "context": 809,
+            "output": 0
+          },
+          {
+            "kind": "load",
+            "path": "crates/sj-adapters/assets/skills/sj-apply/task-reviewer-prompt.md",
+            "context": 2609,
+            "output": 0
+          },
+          {
+            "kind": "run",
+            "command": "sj next raise-free-shipping-threshold",
+            "context": 1130,
+            "output": 0
+          },
+          {
+            "kind": "run",
+            "command": "git diff -- src test",
+            "context": 2099,
+            "output": 0
+          },
+          {
+            "kind": "run",
+            "command": "sj verify raise-free-shipping-threshold",
+            "context": 11,
+            "output": 0
+          },
+          {
+            "kind": "load",
+            "path": "crates/sj-adapters/assets/skills/sj-verify/SKILL.md",
+            "context": 4194,
+            "output": 0
+          },
+          {
+            "kind": "run",
+            "command": "sj verify raise-free-shipping-threshold",
+            "context": 11,
+            "output": 0
+          },
+          {
+            "kind": "run",
+            "command": "sj task done raise-free-shipping-threshold 1.1",
+            "context": 76,
+            "output": 0
+          },
+          {
+            "kind": "run",
+            "command": "sj next raise-free-shipping-threshold",
+            "context": 467,
+            "output": 0
+          },
+          {
+            "kind": "run",
+            "command": "git rev-parse HEAD",
+            "context": 41,
+            "output": 0
+          },
+          {
+            "kind": "write",
+            "path": "README.md",
+            "context": 0,
+            "output": 559
+          },
+          {
+            "kind": "run",
+            "command": "sj verify raise-free-shipping-threshold",
+            "context": 11,
+            "output": 0
+          },
+          {
+            "kind": "run",
+            "command": "sj task done raise-free-shipping-threshold 1.2",
+            "context": 56,
+            "output": 0
+          },
+          {
+            "kind": "session",
+            "context": 809,
+            "output": 0
+          },
+          {
+            "kind": "load",
+            "path": "crates/sj-adapters/assets/skills/sj-review/SKILL.md",
+            "context": 2397,
+            "output": 0
+          },
+          {
+            "kind": "run",
+            "command": "sj status raise-free-shipping-threshold",
+            "context": 125,
+            "output": 0
+          },
+          {
+            "kind": "run",
+            "command": "sj verify raise-free-shipping-threshold",
+            "context": 11,
+            "output": 0
+          },
+          {
+            "kind": "run",
+            "command": "git add -N specjutsu && git diff --stat -- README.md specjutsu src test",
+            "context": 542,
+            "output": 0
+          },
+          {
+            "kind": "read",
+            "path": "specjutsu/changes/raise-free-shipping-threshold/proposal.md",
+            "context": 630,
+            "output": 0
+          },
+          {
+            "kind": "read",
+            "path": "specjutsu/changes/raise-free-shipping-threshold/design.md",
+            "context": 621,
+            "output": 0
+          },
+          {
+            "kind": "read",
+            "path": "specjutsu/changes/raise-free-shipping-threshold/specs/shipping/spec.md",
+            "context": 878,
+            "output": 0
+          },
+          {
+            "kind": "run",
+            "command": "git diff -- README.md src test",
+            "context": 2624,
+            "output": 0
+          },
+          {
+            "kind": "run",
+            "command": "sj verify",
+            "context": 11,
+            "output": 0
+          },
+          {
+            "kind": "load",
+            "path": "crates/sj-adapters/assets/skills/sj-finish/SKILL.md",
+            "context": 2099,
+            "output": 0
+          },
+          {
+            "kind": "run",
+            "command": "sj verify raise-free-shipping-threshold",
+            "context": 11,
+            "output": 0
+          },
+          {
+            "kind": "run",
+            "command": "sj status raise-free-shipping-threshold",
+            "context": 125,
+            "output": 0
+          },
+          {
+            "kind": "run",
+            "command": "sj spec archive raise-free-shipping-threshold",
+            "context": 156,
+            "output": 0
+          },
+          {
+            "kind": "run",
+            "command": "sj spec validate",
+            "context": 100,
+            "output": 0
+          }
+        ]
+      }
+    },
+    "speckit": {
+      "feature": {
+        "context": 139303,
+        "output": 16682,
+        "firstStep": 0,
+        "steps": [
+          {
+            "kind": "session",
+            "context": 4661,
+            "output": 0
+          },
+          {
+            "kind": "load",
+            "path": "templates/commands/specify.md",
+            "context": 18969,
+            "output": 0
+          },
+          {
+            "kind": "load",
+            "path": "templates/spec-template.md",
+            "context": 4556,
+            "output": 0
+          },
+          {
+            "kind": "write",
+            "path": "specs/001-payment-terms/spec.md",
+            "context": 0,
+            "output": 3395
+          },
+          {
+            "kind": "write",
+            "path": ".specify/feature.json",
+            "context": 0,
+            "output": 53
+          },
+          {
+            "kind": "write",
+            "path": "specs/001-payment-terms/checklists/requirements.md",
+            "context": 0,
+            "output": 1117
+          },
+          {
+            "kind": "load",
+            "path": "templates/commands/plan.md",
+            "context": 8047,
+            "output": 0
+          },
+          {
+            "kind": "load",
+            "path": "templates/plan-template.md",
+            "context": 3770,
+            "output": 0
+          },
+          {
+            "kind": "read",
+            "path": "specs/001-payment-terms/spec.md",
+            "context": 3395,
+            "output": 0
+          },
+          {
+            "kind": "write",
+            "path": "specs/001-payment-terms/research.md",
+            "context": 0,
+            "output": 880
+          },
+          {
+            "kind": "write",
+            "path": "specs/001-payment-terms/data-model.md",
+            "context": 0,
+            "output": 549
+          },
+          {
+            "kind": "write",
+            "path": "specs/001-payment-terms/contracts/terms.md",
+            "context": 0,
+            "output": 532
+          },
+          {
+            "kind": "write",
+            "path": "specs/001-payment-terms/quickstart.md",
+            "context": 0,
+            "output": 392
+          },
+          {
+            "kind": "write",
+            "path": "specs/001-payment-terms/plan.md",
+            "context": 0,
+            "output": 1722
+          },
+          {
+            "kind": "load",
+            "path": "templates/commands/tasks.md",
+            "context": 12595,
+            "output": 0
+          },
+          {
+            "kind": "load",
+            "path": "templates/tasks-template.md",
+            "context": 9182,
+            "output": 0
+          },
+          {
+            "kind": "read",
+            "path": "specs/001-payment-terms/plan.md",
+            "context": 1722,
+            "output": 0
+          },
+          {
+            "kind": "read",
+            "path": "specs/001-payment-terms/spec.md",
+            "context": 3395,
+            "output": 0
+          },
+          {
+            "kind": "read",
+            "path": "specs/001-payment-terms/data-model.md",
+            "context": 549,
+            "output": 0
+          },
+          {
+            "kind": "read",
+            "path": "specs/001-payment-terms/contracts/terms.md",
+            "context": 532,
+            "output": 0
+          },
+          {
+            "kind": "read",
+            "path": "specs/001-payment-terms/research.md",
+            "context": 880,
+            "output": 0
+          },
+          {
+            "kind": "read",
+            "path": "specs/001-payment-terms/quickstart.md",
+            "context": 392,
+            "output": 0
+          },
+          {
+            "kind": "write",
+            "path": "specs/001-payment-terms/tasks.md",
+            "context": 0,
+            "output": 2253
+          },
+          {
+            "kind": "load",
+            "path": "templates/commands/implement.md",
+            "context": 12779,
+            "output": 0
+          },
+          {
+            "kind": "read",
+            "path": "specs/001-payment-terms/checklists/requirements.md",
+            "context": 1117,
+            "output": 0
+          },
+          {
+            "kind": "read",
+            "path": "specs/001-payment-terms/tasks.md",
+            "context": 2253,
+            "output": 0
+          },
+          {
+            "kind": "read",
+            "path": "specs/001-payment-terms/plan.md",
+            "context": 1722,
+            "output": 0
+          },
+          {
+            "kind": "read",
+            "path": "specs/001-payment-terms/data-model.md",
+            "context": 549,
+            "output": 0
+          },
+          {
+            "kind": "read",
+            "path": "specs/001-payment-terms/contracts/terms.md",
+            "context": 532,
+            "output": 0
+          },
+          {
+            "kind": "read",
+            "path": "specs/001-payment-terms/research.md",
+            "context": 880,
+            "output": 0
+          },
+          {
+            "kind": "read",
+            "path": "specs/001-payment-terms/quickstart.md",
+            "context": 392,
+            "output": 0
+          },
+          {
+            "kind": "run",
+            "command": "git rev-parse --git-dir 2>/dev/null",
+            "context": 5,
+            "output": 0
+          },
+          {
+            "kind": "write",
+            "path": ".gitignore",
+            "context": 0,
+            "output": 87
+          },
+          {
+            "kind": "load",
+            "path": "skills/test-driven-development/SKILL.md",
+            "context": 9578,
+            "output": 0
+          },
+          {
+            "kind": "load",
+            "path": "skills/test-driven-development/writing-good-tests.md",
+            "context": 8268,
+            "output": 0
+          },
+          {
+            "kind": "write",
+            "path": "test/terms.test.ts",
+            "context": 0,
+            "output": 1579
+          },
+          {
+            "kind": "run",
+            "command": "npx vitest run test/terms.test.ts",
+            "context": 1036,
+            "output": 0
+          },
+          {
+            "kind": "read",
+            "path": "src/invoice.ts",
+            "context": 2604,
+            "output": 0
+          },
+          {
+            "kind": "read",
+            "path": "src/index.ts",
+            "context": 351,
+            "output": 0
+          },
+          {
+            "kind": "write",
+            "path": "src/terms.ts",
+            "context": 0,
+            "output": 750
+          },
+          {
+            "kind": "write",
+            "path": "src/invoice.ts",
+            "context": 0,
+            "output": 2934
+          },
+          {
+            "kind": "write",
+            "path": "src/index.ts",
+            "context": 0,
+            "output": 439
+          },
+          {
+            "kind": "load",
+            "path": "skills/verification-before-completion/SKILL.md",
+            "context": 3646,
+            "output": 0
+          },
+          {
+            "kind": "run",
+            "command": "npx vitest run",
+            "context": 357,
+            "output": 0
+          },
+          {
+            "kind": "load",
+            "path": "templates/commands/converge.md",
+            "context": 13219,
+            "output": 0
+          },
+          {
+            "kind": "read",
+            "path": "specs/001-payment-terms/spec.md",
+            "context": 3395,
+            "output": 0
+          },
+          {
+            "kind": "read",
+            "path": "specs/001-payment-terms/plan.md",
+            "context": 1722,
+            "output": 0
+          },
+          {
+            "kind": "read",
+            "path": "specs/001-payment-terms/tasks.md",
+            "context": 2253,
+            "output": 0
+          }
+        ]
+      },
+      "bugfix": {
+        "context": 82096,
+        "output": 8994,
+        "firstStep": 0,
+        "steps": [
+          {
+            "kind": "session",
+            "context": 4661,
+            "output": 0
+          },
+          {
+            "kind": "load",
+            "path": "extensions/bug/commands/speckit.bug.assess.md",
+            "context": 14764,
+            "output": 0
+          },
+          {
+            "kind": "load",
+            "path": "skills/systematic-debugging/SKILL.md",
+            "context": 9530,
+            "output": 0
+          },
+          {
+            "kind": "read",
+            "path": "src/invoice.ts",
+            "context": 2604,
+            "output": 0
+          },
+          {
+            "kind": "write",
+            "path": ".specify/bugs/bulk-discount-boundary/assessment.md",
+            "context": 0,
+            "output": 1634
+          },
+          {
+            "kind": "load",
+            "path": "extensions/bug/commands/speckit.bug.fix.md",
+            "context": 9723,
+            "output": 0
+          },
+          {
+            "kind": "read",
+            "path": ".specify/bugs/bulk-discount-boundary/assessment.md",
+            "context": 1634,
+            "output": 0
+          },
+          {
+            "kind": "load",
+            "path": "skills/test-driven-development/SKILL.md",
+            "context": 9578,
+            "output": 0
+          },
+          {
+            "kind": "load",
+            "path": "skills/test-driven-development/writing-good-tests.md",
+            "context": 8268,
+            "output": 0
+          },
+          {
+            "kind": "read",
+            "path": "test/invoice.test.ts",
+            "context": 2661,
+            "output": 0
+          },
+          {
+            "kind": "write",
+            "path": "test/invoice.test.ts",
+            "context": 0,
+            "output": 2962
+          },
+          {
+            "kind": "run",
+            "command": "npx vitest run test/invoice.test.ts",
+            "context": 1900,
+            "output": 0
+          },
+          {
+            "kind": "write",
+            "path": "src/invoice.ts",
+            "context": 0,
+            "output": 2605
+          },
+          {
+            "kind": "run",
+            "command": "npx vitest run test/invoice.test.ts",
+            "context": 243,
+            "output": 0
+          },
+          {
+            "kind": "write",
+            "path": ".specify/bugs/bulk-discount-boundary/fix.md",
+            "context": 0,
+            "output": 971
+          },
+          {
+            "kind": "load",
+            "path": "extensions/bug/commands/speckit.bug.test.md",
+            "context": 9960,
+            "output": 0
+          },
+          {
+            "kind": "read",
+            "path": ".specify/bugs/bulk-discount-boundary/assessment.md",
+            "context": 1634,
+            "output": 0
+          },
+          {
+            "kind": "read",
+            "path": ".specify/bugs/bulk-discount-boundary/fix.md",
+            "context": 971,
+            "output": 0
+          },
+          {
+            "kind": "load",
+            "path": "skills/verification-before-completion/SKILL.md",
+            "context": 3646,
+            "output": 0
+          },
+          {
+            "kind": "run",
+            "command": "npx vitest run",
+            "context": 319,
+            "output": 0
+          },
+          {
+            "kind": "run",
+            "command": "npx tsc --noEmit",
+            "context": 0,
+            "output": 0
+          },
+          {
+            "kind": "write",
+            "path": ".specify/bugs/bulk-discount-boundary/test.md",
+            "context": 0,
+            "output": 822
+          }
+        ]
+      },
+      "change": {
+        "context": 156982,
+        "output": 13575,
+        "firstStep": 0,
+        "steps": [
+          {
+            "kind": "session",
+            "context": 4661,
+            "output": 0
+          },
+          {
+            "kind": "read",
+            "path": "README.md",
+            "context": 558,
+            "output": 0
+          },
+          {
+            "kind": "read",
+            "path": "src/invoice.ts",
+            "context": 2604,
+            "output": 0
+          },
+          {
+            "kind": "read",
+            "path": "test/invoice.test.ts",
+            "context": 2661,
+            "output": 0
+          },
+          {
+            "kind": "load",
+            "path": "templates/commands/specify.md",
+            "context": 18969,
+            "output": 0
+          },
+          {
+            "kind": "load",
+            "path": "templates/spec-template.md",
+            "context": 4556,
+            "output": 0
+          },
+          {
+            "kind": "write",
+            "path": "specs/001-free-shipping-threshold/spec.md",
+            "context": 0,
+            "output": 2262
+          },
+          {
+            "kind": "write",
+            "path": ".specify/feature.json",
+            "context": 0,
+            "output": 63
+          },
+          {
+            "kind": "write",
+            "path": "specs/001-free-shipping-threshold/checklists/requirements.md",
+            "context": 0,
+            "output": 1129
+          },
+          {
+            "kind": "load",
+            "path": "templates/commands/plan.md",
+            "context": 8047,
+            "output": 0
+          },
+          {
+            "kind": "load",
+            "path": "templates/plan-template.md",
+            "context": 3770,
+            "output": 0
+          },
+          {
+            "kind": "read",
+            "path": "specs/001-free-shipping-threshold/spec.md",
+            "context": 2262,
+            "output": 0
+          },
+          {
+            "kind": "write",
+            "path": "specs/001-free-shipping-threshold/research.md",
+            "context": 0,
+            "output": 479
+          },
+          {
+            "kind": "write",
+            "path": "specs/001-free-shipping-threshold/quickstart.md",
+            "context": 0,
+            "output": 329
+          },
+          {
+            "kind": "write",
+            "path": "specs/001-free-shipping-threshold/plan.md",
+            "context": 0,
+            "output": 1619
+          },
+          {
+            "kind": "load",
+            "path": "templates/commands/tasks.md",
+            "context": 12595,
+            "output": 0
+          },
+          {
+            "kind": "load",
+            "path": "templates/tasks-template.md",
+            "context": 9182,
+            "output": 0
+          },
+          {
+            "kind": "read",
+            "path": "specs/001-free-shipping-threshold/plan.md",
+            "context": 1619,
+            "output": 0
+          },
+          {
+            "kind": "read",
+            "path": "specs/001-free-shipping-threshold/spec.md",
+            "context": 2262,
+            "output": 0
+          },
+          {
+            "kind": "read",
+            "path": "specs/001-free-shipping-threshold/research.md",
+            "context": 479,
+            "output": 0
+          },
+          {
+            "kind": "read",
+            "path": "specs/001-free-shipping-threshold/quickstart.md",
+            "context": 329,
+            "output": 0
+          },
+          {
+            "kind": "write",
+            "path": "specs/001-free-shipping-threshold/tasks.md",
+            "context": 0,
+            "output": 1358
+          },
+          {
+            "kind": "load",
+            "path": "templates/commands/analyze.md",
+            "context": 14954,
+            "output": 0
+          },
+          {
+            "kind": "read",
+            "path": "specs/001-free-shipping-threshold/spec.md",
+            "context": 2262,
+            "output": 0
+          },
+          {
+            "kind": "read",
+            "path": "specs/001-free-shipping-threshold/plan.md",
+            "context": 1619,
+            "output": 0
+          },
+          {
+            "kind": "read",
+            "path": "specs/001-free-shipping-threshold/tasks.md",
+            "context": 1358,
+            "output": 0
+          },
+          {
+            "kind": "load",
+            "path": "templates/commands/implement.md",
+            "context": 12779,
+            "output": 0
+          },
+          {
+            "kind": "read",
+            "path": "specs/001-free-shipping-threshold/checklists/requirements.md",
+            "context": 1129,
+            "output": 0
+          },
+          {
+            "kind": "read",
+            "path": "specs/001-free-shipping-threshold/tasks.md",
+            "context": 1358,
+            "output": 0
+          },
+          {
+            "kind": "read",
+            "path": "specs/001-free-shipping-threshold/plan.md",
+            "context": 1619,
+            "output": 0
+          },
+          {
+            "kind": "read",
+            "path": "specs/001-free-shipping-threshold/research.md",
+            "context": 479,
+            "output": 0
+          },
+          {
+            "kind": "read",
+            "path": "specs/001-free-shipping-threshold/quickstart.md",
+            "context": 329,
+            "output": 0
+          },
+          {
+            "kind": "run",
+            "command": "git rev-parse --git-dir 2>/dev/null",
+            "context": 5,
+            "output": 0
+          },
+          {
+            "kind": "write",
+            "path": ".gitignore",
+            "context": 0,
+            "output": 87
+          },
+          {
+            "kind": "load",
+            "path": "skills/test-driven-development/SKILL.md",
+            "context": 9578,
+            "output": 0
+          },
+          {
+            "kind": "load",
+            "path": "skills/test-driven-development/writing-good-tests.md",
+            "context": 8268,
+            "output": 0
+          },
+          {
+            "kind": "write",
+            "path": "test/invoice.test.ts",
+            "context": 0,
+            "output": 3085
+          },
+          {
+            "kind": "run",
+            "command": "npx vitest run test/invoice.test.ts",
+            "context": 4268,
+            "output": 0
+          },
+          {
+            "kind": "write",
+            "path": "src/invoice.ts",
+            "context": 0,
+            "output": 2605
+          },
+          {
+            "kind": "write",
+            "path": "README.md",
+            "context": 0,
+            "output": 559
+          },
+          {
+            "kind": "load",
+            "path": "skills/verification-before-completion/SKILL.md",
+            "context": 3646,
+            "output": 0
+          },
+          {
+            "kind": "run",
+            "command": "npx vitest run",
+            "context": 319,
+            "output": 0
+          },
+          {
+            "kind": "load",
+            "path": "templates/commands/converge.md",
+            "context": 13219,
+            "output": 0
+          },
+          {
+            "kind": "read",
+            "path": "specs/001-free-shipping-threshold/spec.md",
+            "context": 2262,
+            "output": 0
+          },
+          {
+            "kind": "read",
+            "path": "specs/001-free-shipping-threshold/plan.md",
+            "context": 1619,
+            "output": 0
+          },
+          {
+            "kind": "read",
+            "path": "specs/001-free-shipping-threshold/tasks.md",
+            "context": 1358,
+            "output": 0
+          }
+        ]
+      }
+    },
+    "openspec": {
+      "feature": {
+        "context": 107853,
+        "output": 10160,
+        "firstStep": 1,
+        "steps": [
+          {
+            "kind": "session",
+            "context": 4661,
+            "output": 0
+          },
+          {
+            "kind": "load",
+            "path": "skills/openspec-propose/SKILL.md",
+            "context": 16637,
+            "output": 0
+          },
+          {
+            "kind": "read",
+            "path": "src/invoice.ts",
+            "context": 2604,
+            "output": 0
+          },
+          {
+            "kind": "load",
+            "path": "schemas/spec-driven/templates/proposal.md",
+            "context": 1468,
+            "output": 0
+          },
+          {
+            "kind": "write",
+            "path": "openspec/changes/add-payment-terms/proposal.md",
+            "context": 0,
+            "output": 839
+          },
+          {
+            "kind": "read",
+            "path": "openspec/changes/add-payment-terms/proposal.md",
+            "context": 839,
+            "output": 0
+          },
+          {
+            "kind": "load",
+            "path": "schemas/spec-driven/templates/spec.md",
+            "context": 374,
+            "output": 0
+          },
+          {
+            "kind": "write",
+            "path": "openspec/changes/add-payment-terms/specs/payment-terms/spec.md",
+            "context": 0,
+            "output": 1458
+          },
+          {
+            "kind": "read",
+            "path": "openspec/changes/add-payment-terms/specs/payment-terms/spec.md",
+            "context": 1458,
+            "output": 0
+          },
+          {
+            "kind": "load",
+            "path": "schemas/spec-driven/templates/tasks.md",
+            "context": 218,
+            "output": 0
+          },
+          {
+            "kind": "write",
+            "path": "openspec/changes/add-payment-terms/tasks.md",
+            "context": 0,
+            "output": 346
+          },
+          {
+            "kind": "session",
+            "context": 4661,
+            "output": 0
+          },
+          {
+            "kind": "load",
+            "path": "skills/openspec-apply-change/SKILL.md",
+            "context": 11242,
+            "output": 0
+          },
+          {
+            "kind": "read",
+            "path": "openspec/changes/add-payment-terms/proposal.md",
+            "context": 839,
+            "output": 0
+          },
+          {
+            "kind": "read",
+            "path": "openspec/changes/add-payment-terms/specs/payment-terms/spec.md",
+            "context": 1458,
+            "output": 0
+          },
+          {
+            "kind": "read",
+            "path": "openspec/changes/add-payment-terms/tasks.md",
+            "context": 346,
+            "output": 0
+          },
+          {
+            "kind": "read",
+            "path": "src/invoice.ts",
+            "context": 2604,
+            "output": 0
+          },
+          {
+            "kind": "read",
+            "path": "src/index.ts",
+            "context": 351,
+            "output": 0
+          },
+          {
+            "kind": "load",
+            "path": "skills/test-driven-development/SKILL.md",
+            "context": 9578,
+            "output": 0
+          },
+          {
+            "kind": "load",
+            "path": "skills/test-driven-development/writing-good-tests.md",
+            "context": 8268,
+            "output": 0
+          },
+          {
+            "kind": "write",
+            "path": "test/terms.test.ts",
+            "context": 0,
+            "output": 1579
+          },
+          {
+            "kind": "run",
+            "command": "npx vitest run test/terms.test.ts",
+            "context": 1036,
+            "output": 0
+          },
+          {
+            "kind": "write",
+            "path": "src/terms.ts",
+            "context": 0,
+            "output": 750
+          },
+          {
+            "kind": "write",
+            "path": "src/invoice.ts",
+            "context": 0,
+            "output": 2934
+          },
+          {
+            "kind": "write",
+            "path": "src/index.ts",
+            "context": 0,
+            "output": 439
+          },
+          {
+            "kind": "load",
+            "path": "skills/verification-before-completion/SKILL.md",
+            "context": 3646,
+            "output": 0
+          },
+          {
+            "kind": "run",
+            "command": "npx vitest run",
+            "context": 357,
+            "output": 0
+          },
+          {
+            "kind": "write",
+            "path": "openspec/changes/add-payment-terms/tasks.md",
+            "context": 0,
+            "output": 346
+          },
+          {
+            "kind": "load",
+            "path": "skills/openspec-archive-change/SKILL.md",
+            "context": 17989,
+            "output": 0
+          },
+          {
+            "kind": "read",
+            "path": "openspec/changes/add-payment-terms/specs/payment-terms/spec.md",
+            "context": 1458,
+            "output": 0
+          },
+          {
+            "kind": "load",
+            "path": "skills/openspec-sync-specs/SKILL.md",
+            "context": 15761,
+            "output": 0
+          },
+          {
+            "kind": "write",
+            "path": "openspec/specs/payment-terms/spec.md",
+            "context": 0,
+            "output": 1469
+          },
+          {
+            "kind": "run",
+            "command": "mkdir -p openspec/changes/archive && mv openspec/changes/add-payment-terms openspec/changes/archive/2026-01-01-add-payment-terms",
+            "context": 0,
+            "output": 0
+          }
+        ]
+      },
+      "bugfix": {
+        "context": 117359,
+        "output": 7889,
+        "firstStep": 1,
+        "steps": [
+          {
+            "kind": "session",
+            "context": 4661,
+            "output": 0
+          },
+          {
+            "kind": "load",
+            "path": "skills/systematic-debugging/SKILL.md",
+            "context": 9530,
+            "output": 0
+          },
+          {
+            "kind": "load",
+            "path": "skills/openspec-propose/SKILL.md",
+            "context": 16637,
+            "output": 0
+          },
+          {
+            "kind": "read",
+            "path": "src/invoice.ts",
+            "context": 2604,
+            "output": 0
+          },
+          {
+            "kind": "load",
+            "path": "schemas/spec-driven/templates/proposal.md",
+            "context": 1468,
+            "output": 0
+          },
+          {
+            "kind": "write",
+            "path": "openspec/changes/fix-bulk-discount-threshold/proposal.md",
+            "context": 0,
+            "output": 611
+          },
+          {
+            "kind": "read",
+            "path": "openspec/changes/fix-bulk-discount-threshold/proposal.md",
+            "context": 611,
+            "output": 0
+          },
+          {
+            "kind": "load",
+            "path": "schemas/spec-driven/templates/spec.md",
+            "context": 374,
+            "output": 0
+          },
+          {
+            "kind": "write",
+            "path": "openspec/changes/fix-bulk-discount-threshold/specs/bulk-discount/spec.md",
+            "context": 0,
+            "output": 583
+          },
+          {
+            "kind": "read",
+            "path": "openspec/changes/fix-bulk-discount-threshold/specs/bulk-discount/spec.md",
+            "context": 583,
+            "output": 0
+          },
+          {
+            "kind": "load",
+            "path": "schemas/spec-driven/templates/tasks.md",
+            "context": 218,
+            "output": 0
+          },
+          {
+            "kind": "write",
+            "path": "openspec/changes/fix-bulk-discount-threshold/tasks.md",
+            "context": 0,
+            "output": 267
+          },
+          {
+            "kind": "session",
+            "context": 4661,
+            "output": 0
+          },
+          {
+            "kind": "load",
+            "path": "skills/openspec-apply-change/SKILL.md",
+            "context": 11242,
+            "output": 0
+          },
+          {
+            "kind": "read",
+            "path": "openspec/changes/fix-bulk-discount-threshold/proposal.md",
+            "context": 611,
+            "output": 0
+          },
+          {
+            "kind": "read",
+            "path": "openspec/changes/fix-bulk-discount-threshold/specs/bulk-discount/spec.md",
+            "context": 583,
+            "output": 0
+          },
+          {
+            "kind": "read",
+            "path": "openspec/changes/fix-bulk-discount-threshold/tasks.md",
+            "context": 267,
+            "output": 0
+          },
+          {
+            "kind": "read",
+            "path": "test/invoice.test.ts",
+            "context": 2661,
+            "output": 0
+          },
+          {
+            "kind": "read",
+            "path": "src/invoice.ts",
+            "context": 2604,
+            "output": 0
+          },
+          {
+            "kind": "load",
+            "path": "skills/test-driven-development/SKILL.md",
+            "context": 9578,
+            "output": 0
+          },
+          {
+            "kind": "load",
+            "path": "skills/test-driven-development/writing-good-tests.md",
+            "context": 8268,
+            "output": 0
+          },
+          {
+            "kind": "write",
+            "path": "test/invoice.test.ts",
+            "context": 0,
+            "output": 2962
+          },
+          {
+            "kind": "run",
+            "command": "npx vitest run test/invoice.test.ts",
+            "context": 1900,
+            "output": 0
+          },
+          {
+            "kind": "write",
+            "path": "src/invoice.ts",
+            "context": 0,
+            "output": 2605
+          },
+          {
+            "kind": "load",
+            "path": "skills/verification-before-completion/SKILL.md",
+            "context": 3646,
+            "output": 0
+          },
+          {
+            "kind": "run",
+            "command": "npx vitest run",
+            "context": 319,
+            "output": 0
+          },
+          {
+            "kind": "write",
+            "path": "openspec/changes/fix-bulk-discount-threshold/tasks.md",
+            "context": 0,
+            "output": 267
+          },
+          {
+            "kind": "load",
+            "path": "skills/openspec-archive-change/SKILL.md",
+            "context": 17989,
+            "output": 0
+          },
+          {
+            "kind": "read",
+            "path": "openspec/changes/fix-bulk-discount-threshold/specs/bulk-discount/spec.md",
+            "context": 583,
+            "output": 0
+          },
+          {
+            "kind": "load",
+            "path": "skills/openspec-sync-specs/SKILL.md",
+            "context": 15761,
+            "output": 0
+          },
+          {
+            "kind": "write",
+            "path": "openspec/specs/bulk-discount/spec.md",
+            "context": 0,
+            "output": 594
+          },
+          {
+            "kind": "run",
+            "command": "mkdir -p openspec/changes/archive && mv openspec/changes/fix-bulk-discount-threshold openspec/changes/archive/2026-01-01-fix-bulk-discount-threshold",
+            "context": 0,
+            "output": 0
+          }
+        ]
+      },
+      "change": {
+        "context": 112208,
+        "output": 9143,
+        "firstStep": 1,
+        "steps": [
+          {
+            "kind": "session",
+            "context": 4661,
+            "output": 0
+          },
+          {
+            "kind": "load",
+            "path": "skills/openspec-propose/SKILL.md",
+            "context": 16637,
+            "output": 0
+          },
+          {
+            "kind": "read",
+            "path": "src/invoice.ts",
+            "context": 2604,
+            "output": 0
+          },
+          {
+            "kind": "read",
+            "path": "README.md",
+            "context": 558,
+            "output": 0
+          },
+          {
+            "kind": "load",
+            "path": "schemas/spec-driven/templates/proposal.md",
+            "context": 1468,
+            "output": 0
+          },
+          {
+            "kind": "write",
+            "path": "openspec/changes/raise-free-shipping-threshold/proposal.md",
+            "context": 0,
+            "output": 718
+          },
+          {
+            "kind": "read",
+            "path": "openspec/changes/raise-free-shipping-threshold/proposal.md",
+            "context": 718,
+            "output": 0
+          },
+          {
+            "kind": "load",
+            "path": "schemas/spec-driven/templates/spec.md",
+            "context": 374,
+            "output": 0
+          },
+          {
+            "kind": "write",
+            "path": "openspec/changes/raise-free-shipping-threshold/specs/shipping/spec.md",
+            "context": 0,
+            "output": 806
+          },
+          {
+            "kind": "read",
+            "path": "openspec/changes/raise-free-shipping-threshold/specs/shipping/spec.md",
+            "context": 806,
+            "output": 0
+          },
+          {
+            "kind": "load",
+            "path": "schemas/spec-driven/templates/tasks.md",
+            "context": 218,
+            "output": 0
+          },
+          {
+            "kind": "write",
+            "path": "openspec/changes/raise-free-shipping-threshold/tasks.md",
+            "context": 0,
+            "output": 279
+          },
+          {
+            "kind": "session",
+            "context": 4661,
+            "output": 0
+          },
+          {
+            "kind": "load",
+            "path": "skills/openspec-apply-change/SKILL.md",
+            "context": 11242,
+            "output": 0
+          },
+          {
+            "kind": "read",
+            "path": "openspec/changes/raise-free-shipping-threshold/proposal.md",
+            "context": 718,
+            "output": 0
+          },
+          {
+            "kind": "read",
+            "path": "openspec/changes/raise-free-shipping-threshold/specs/shipping/spec.md",
+            "context": 806,
+            "output": 0
+          },
+          {
+            "kind": "read",
+            "path": "openspec/changes/raise-free-shipping-threshold/tasks.md",
+            "context": 279,
+            "output": 0
+          },
+          {
+            "kind": "read",
+            "path": "test/invoice.test.ts",
+            "context": 2661,
+            "output": 0
+          },
+          {
+            "kind": "read",
+            "path": "src/invoice.ts",
+            "context": 2604,
+            "output": 0
+          },
+          {
+            "kind": "read",
+            "path": "README.md",
+            "context": 558,
+            "output": 0
+          },
+          {
+            "kind": "load",
+            "path": "skills/test-driven-development/SKILL.md",
+            "context": 9578,
+            "output": 0
+          },
+          {
+            "kind": "load",
+            "path": "skills/test-driven-development/writing-good-tests.md",
+            "context": 8268,
+            "output": 0
+          },
+          {
+            "kind": "write",
+            "path": "test/invoice.test.ts",
+            "context": 0,
+            "output": 3085
+          },
+          {
+            "kind": "run",
+            "command": "npx vitest run test/invoice.test.ts",
+            "context": 4268,
+            "output": 0
+          },
+          {
+            "kind": "write",
+            "path": "src/invoice.ts",
+            "context": 0,
+            "output": 2605
+          },
+          {
+            "kind": "write",
+            "path": "README.md",
+            "context": 0,
+            "output": 559
+          },
+          {
+            "kind": "load",
+            "path": "skills/verification-before-completion/SKILL.md",
+            "context": 3646,
+            "output": 0
+          },
+          {
+            "kind": "run",
+            "command": "npx vitest run",
+            "context": 319,
+            "output": 0
+          },
+          {
+            "kind": "write",
+            "path": "openspec/changes/raise-free-shipping-threshold/tasks.md",
+            "context": 0,
+            "output": 279
+          },
+          {
+            "kind": "load",
+            "path": "skills/openspec-archive-change/SKILL.md",
+            "context": 17989,
+            "output": 0
+          },
+          {
+            "kind": "read",
+            "path": "openspec/changes/raise-free-shipping-threshold/specs/shipping/spec.md",
+            "context": 806,
+            "output": 0
+          },
+          {
+            "kind": "load",
+            "path": "skills/openspec-sync-specs/SKILL.md",
+            "context": 15761,
+            "output": 0
+          },
+          {
+            "kind": "write",
+            "path": "openspec/specs/shipping/spec.md",
+            "context": 0,
+            "output": 812
+          },
+          {
+            "kind": "run",
+            "command": "mkdir -p openspec/changes/archive && mv openspec/changes/raise-free-shipping-threshold openspec/changes/archive/2026-01-01-raise-free-shipping-threshold",
+            "context": 0,
+            "output": 0
+          }
+        ]
+      }
+    }
+  }
+}

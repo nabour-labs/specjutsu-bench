@@ -1,0 +1,9 @@
+{
+  "tasks": ["feature", "bugfix", "change"],
+  "test": "npx vitest run",
+  "descriptions": {
+    "feature": "Add payment terms to invoices (due on receipt, net 15, net 30) and a dueDate function that works out when an invoice is due.",
+    "bugfix": "Fix the bulk discount, which skips line items of exactly 10 units although the rule is 10 units or more.",
+    "change": "Raise the free-shipping threshold from $50.00 to $100.00 of discounted subtotal."
+  }
+}
