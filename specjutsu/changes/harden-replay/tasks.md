@@ -18,3 +18,8 @@
 
 - [x] 3.1 Run steps use a fixed locale (REPLAY-021)
 - [x] 3.2 Recheck determinism and regenerate results (REPLAY-005, REPLAY-012, REPLAY-014, REPLAY-016..019)
+
+## 4. Final review fixes
+
+- [ ] 4.1 A read or write step without a path is refused (STEP-020)
+- [ ] 4.2 README: citation checks and the fixed locale (no-scenario: docs)

@@ -1,7 +1,7 @@
 ## ADDED Requirements
 
 ### Requirement: Read and write steps stay inside the workspace
-A `read` or `write` step's `path` SHALL stay inside the workspace. A
+A `read` or `write` step SHALL name a `path`, and that path SHALL stay inside the workspace. A
 `write` step's golden file, `fixture/golden/<task>/<path>`, MUST exist as a file. The replay
 checks this before running anything; a failed check exits 1, names the script and step, and
 writes no results.
@@ -17,6 +17,10 @@ writes no results.
 #### Scenario: STEP-015 A write path outside the workspace is refused
 - **WHEN** a `write` step in `steps/openspec/change.yaml` has path `../escape.md`
 - **THEN** the replay prints the script, the step number and `../escape.md is outside the workspace`, and exits 1
+
+#### Scenario: STEP-020 A write step without a path is refused
+- **WHEN** the third step of `steps/speckit/change.yaml` is a `write` step with no `path`
+- **THEN** the replay prints `steps/speckit/change.yaml step 3: write step missing path` and exits 1
 
 ## MODIFIED Requirements
 
