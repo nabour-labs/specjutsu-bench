@@ -2,12 +2,14 @@ import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { checkFixtureStates } from "./fixture.ts";
 import { checkPins, loadPins } from "./pins.ts";
-import { replayAll, RunStepError, StartCommitError } from "./replay.ts";
+import { ReadStepError, replayAll, RunStepError, StartCommitError } from "./replay.ts";
 import { drift, gainMismatches, resultsMarkdown } from "./report.ts";
 import type { Gain, Results } from "./replay.ts";
 import {
   WORKFLOWS,
+  checkCitations,
   checkLoads,
+  checkPaths,
   checkSessionKinds,
   checkSjRuns,
   checkSources,
@@ -35,7 +37,9 @@ function check(root: string): string[] {
   );
   const stepErrors = checked.flatMap(([script, steps]) => [
     ...checkSources(script, steps),
+    ...checkCitations(root, pins, script, steps),
     ...checkLoads(root, pins, script, steps),
+    ...checkPaths(root, script, steps),
     ...checkSjRuns(root, pins, script, steps),
   ]);
   return [...pinErrors, ...missing.map((script) => `missing ${script}`), ...sessionErrors, ...stepErrors];
@@ -63,7 +67,7 @@ if (errors.length > 0) {
       else process.exitCode = 1;
     }
   } catch (error) {
-    if (!(error instanceof StartCommitError || error instanceof RunStepError)) throw error;
+    if (!(error instanceof StartCommitError || error instanceof RunStepError || error instanceof ReadStepError)) throw error;
     console.error(error.message);
     process.exitCode = 1;
   }

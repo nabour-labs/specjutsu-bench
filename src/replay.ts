@@ -172,14 +172,18 @@ export class StartCommitError extends Error {}
 /** Thrown when a run step's command can't be run to the end; the replay stops and writes no results. */
 export class RunStepError extends Error {}
 
+/** Thrown when a read step's file is not in the workspace; the replay stops and writes no results. */
+export class ReadStepError extends Error {}
+
 /** The most a run step may print, so its output is counted in full. */
 const RUN_MAX_BUFFER = 256 * 1024 * 1024;
 
 /**
  * The environment for a workspace's run steps and its `sj gain --json`, so that nothing about the
- * machine changes what they print: only the allowlisted variables (`PATH`, `HOME`, `TMPDIR`,
- * `LANG`, `LC_ALL`) are kept, so neither CI detection nor git's own variables get through;
- * - npm's update, fund and audit notices are off (see `allowlistedEnv`);
+ * machine changes what they print: only the allowlisted variables (`PATH`, `HOME`, `TMPDIR`) are
+ * kept, so neither CI detection nor git's own variables get through;
+ * - npm's update, fund and audit notices are off and `LANG` and `LC_ALL` are `C.UTF-8` (see
+ *   `allowlistedEnv`);
  * - no global or system config is read, nor the system attributes;
  * - `XDG_CONFIG_HOME` is `xdgHome`, an empty dir, so no `~/.config/git/ignore` or `attributes`;
  *   `HOME` is kept, as npm, npx and sj may use it;
@@ -296,8 +300,11 @@ function count(
   switch (step.kind) {
     case "load":
       return { context: loadBytes(root, pins, step), output: 0 };
-    case "read":
-      return { context: statSync(join(workspace, step.path!)).size, output: 0 };
+    case "read": {
+      const file = statSync(join(workspace, step.path!), { throwIfNoEntry: false });
+      if (!file) throw new ReadStepError(`${at}: read failed: ${step.path} not found`);
+      return { context: file.size, output: 0 };
+    }
     case "run": {
       const run = spawnSync(step.command!, { cwd: workspace, shell: true, env, maxBuffer: RUN_MAX_BUFFER, timeout: SUITE_TIMEOUT_MS });
       // Partial output is never counted: an overflow, a timeout or a failed spawn stops the replay.

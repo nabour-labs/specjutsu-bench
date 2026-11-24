@@ -101,3 +101,158 @@ it("STEP-008 refuses a read step as the second step of steps/speckit/session.yam
   expect(run.stderr).toContain("steps/speckit/session.yaml step 2: only load steps are allowed in session.yaml");
   expect(run.status).toBe(1);
 });
+
+/** The default three-step script with the second step citing `source`. */
+function scriptCitingInStep2(source: string): string {
+  return stepScript(3).replace("https://example.com/docs#step-2", source);
+}
+
+const speckitPins = JSON.stringify({
+  openspec: "1.2.0",
+  superpowers: "0123456789abcdef0123456789abcdef01234567",
+  speckit: "1.4.3",
+});
+
+it("STEP-009 refuses a source that is neither <tool>@<pin>:<path> nor an https:// URL", () => {
+  const root = benchRoot({ "steps/speckit/feature.yaml": scriptCitingInStep2("spec-kit README") });
+
+  const run = replay(root);
+
+  expect(run.stderr).toContain(
+    'steps/speckit/feature.yaml step 2: source "spec-kit README" is not <tool>@<pin>:<path> or an https:// URL',
+  );
+  expect(run.status).toBe(1);
+});
+
+it("STEP-010 refuses a source citing speckit@1.4.2 when speckit is pinned to 1.4.3", () => {
+  const root = benchRoot({
+    "pins.json": speckitPins,
+    "steps/speckit/feature.yaml": scriptCitingInStep2("speckit@1.4.2:templates/spec-template.md"),
+    // Both versions hold the file, so only the version mismatch is wrong.
+    ".bench/tools/speckit@1.4.2/templates/spec-template.md": "spec\n",
+    ".bench/tools/speckit@1.4.3/templates/spec-template.md": "spec\n",
+  });
+
+  const run = replay(root);
+
+  expect(run.stderr).toContain(
+    "steps/speckit/feature.yaml step 2: source cites speckit@1.4.2, but speckit is pinned to 1.4.3",
+  );
+  expect(run.status).toBe(1);
+});
+
+it("STEP-011 refuses a source citing a file missing from the pinned Spec Kit checkout", () => {
+  const root = benchRoot({
+    "pins.json": speckitPins,
+    "steps/speckit/feature.yaml": scriptCitingInStep2("speckit@1.4.3:templates/gone.md"),
+    ".bench/tools/speckit@1.4.3/templates/spec-template.md": "spec\n",
+  });
+
+  const run = replay(root);
+
+  expect(run.stderr).toContain("steps/speckit/feature.yaml step 2: source templates/gone.md not found in speckit@1.4.3");
+  expect(run.status).toBe(1);
+});
+
+it("STEP-012 refuses a source range L10-L90 in a file of 80 lines", () => {
+  const root = benchRoot({
+    "pins.json": speckitPins,
+    "steps/speckit/feature.yaml": scriptCitingInStep2("speckit@1.4.3:templates/spec-template.md#L10-L90"),
+    ".bench/tools/speckit@1.4.3/templates/spec-template.md": Array.from({ length: 80 }, (_, i) => `line ${i + 1}\n`).join(""),
+  });
+
+  const run = replay(root);
+
+  expect(run.stderr).toContain(
+    "steps/speckit/feature.yaml step 2: source templates/spec-template.md#L10-L90: the file has 80 lines",
+  );
+  expect(run.status).toBe(1);
+});
+
+/** A root pinning speckit 1.4.3, whose 80-line spec template step 2 of the speckit feature script cites as `source`. */
+function rootCitingSpecTemplate(source: string): string {
+  return benchRoot({
+    "pins.json": speckitPins,
+    "steps/speckit/feature.yaml": scriptCitingInStep2(source),
+    ".bench/tools/speckit@1.4.3/templates/spec-template.md": Array.from({ length: 80 }, (_, i) => `line ${i + 1}\n`).join(""),
+  });
+}
+
+it("STEP-016 refuses the source range L20-L10, which ends before it starts", () => {
+  const run = replay(rootCitingSpecTemplate("speckit@1.4.3:templates/spec-template.md#L20-L10"));
+
+  expect(run.stderr).toContain(
+    "steps/speckit/feature.yaml step 2: source templates/spec-template.md#L20-L10: not a valid line range",
+  );
+  expect(run.status).toBe(1);
+});
+
+it("STEP-017 refuses the source line L0, which does not exist", () => {
+  const run = replay(rootCitingSpecTemplate("speckit@1.4.3:templates/spec-template.md#L0"));
+
+  expect(run.stderr).toContain("steps/speckit/feature.yaml step 2: source templates/spec-template.md#L0: not a valid line range");
+  expect(run.status).toBe(1);
+});
+
+it("STEP-018 refuses a source citing kiro, which pins.json does not pin", () => {
+  const run = replay(rootCitingSpecTemplate("kiro@1.0.0:docs/spec.md"));
+
+  expect(run.stderr).toContain("steps/speckit/feature.yaml step 2: source cites kiro, which is not pinned");
+  expect(run.status).toBe(1);
+});
+
+it("STEP-019 refuses a source path outside the pinned Spec Kit install", () => {
+  const root = rootCitingSpecTemplate("speckit@1.4.3:../../pins.json");
+  // The path names a real file, so only leaving the install is wrong.
+  writeFileSync(join(root, ".bench", "pins.json"), "{}\n");
+
+  const run = replay(root);
+
+  expect(run.stderr).toContain("steps/speckit/feature.yaml step 2: source ../../pins.json is outside speckit@1.4.3");
+  expect(run.status).toBe(1);
+});
+
+function pathStep(kind: "read" | "write", path: string): string {
+  return `  - kind: ${kind}\n    path: ${path}\n    source: https://example.com/docs#${kind}\n`;
+}
+
+it("STEP-013 refuses a read path outside the workspace", () => {
+  const root = benchRoot({
+    "steps/speckit/bugfix.yaml": `${stepScript(4)}${pathStep("read", "../../pins.json")}`,
+    "fixture/start/file-4.md": "file 4\n",
+  });
+
+  const run = replay(root);
+
+  expect(run.stderr).toContain("steps/speckit/bugfix.yaml step 5: ../../pins.json is outside the workspace");
+  expect(run.status).toBe(1);
+});
+
+it("STEP-015 refuses a write path outside the workspace", () => {
+  const root = benchRoot({ "steps/openspec/change.yaml": `${stepScript(1)}${pathStep("write", "../escape.md")}` });
+
+  const run = replay(root);
+
+  expect(run.stderr).toContain("steps/openspec/change.yaml step 2: ../escape.md is outside the workspace");
+  expect(run.status).toBe(1);
+});
+
+it("STEP-020 refuses a write step without a path", () => {
+  const step = "  - kind: write\n    source: https://example.com/docs#write\n";
+  const root = benchRoot({ "steps/speckit/change.yaml": `${stepScript(2)}${step}` });
+
+  const run = replay(root);
+
+  expect(run.stderr).toContain("steps/speckit/change.yaml step 3: write step missing path");
+  expect(run.status).toBe(1);
+});
+
+it("STEP-014 refuses a write step whose golden file is missing", () => {
+  const start = Object.fromEntries([4, 5, 6].map((n) => [`fixture/start/file-${n}.md`, `file ${n}\n`]));
+  const root = benchRoot({ ...start, "steps/speckit/feature.yaml": `${stepScript(6)}${pathStep("write", "src/terms.ts")}` });
+
+  const run = replay(root);
+
+  expect(run.stderr).toContain("steps/speckit/feature.yaml step 7: src/terms.ts not found in fixture/golden/feature");
+  expect(run.status).toBe(1);
+});

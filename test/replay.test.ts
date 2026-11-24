@@ -3,7 +3,7 @@ import { chmodSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync 
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
-import { benchRoot, replay } from "./helpers.ts";
+import { benchRoot, replay, stepScript } from "./helpers.ts";
 
 const SUPERPOWERS = "0123456789abcdef0123456789abcdef01234567";
 
@@ -526,6 +526,43 @@ it("REPLAY-018 records context 2,000,000 for a run step that prints 2,000,000 by
     expect(run.status).toBe(0);
     expect(ownSteps(results(root).workflows.speckit.feature)[0].context).toBe(2000000);
   } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+it("REPLAY-020 stops at a read of notes.md, which nothing created, and leaves results/ unchanged", () => {
+  const read = "  - kind: read\n    path: notes.md\n    source: https://example.com/docs#read\n";
+  const root = benchRoot({
+    "steps/speckit/feature.yaml": `${stepScript(2)}${read}`,
+    "results/results.json": "previous\n",
+  });
+
+  const run = replay(root);
+
+  expect(run.stderr).toContain("speckit/feature step 3: read failed: notes.md not found");
+  expect(run.status).toBe(1);
+  expect(readFileSync(join(root, "results", "results.json"), "utf8")).toBe("previous\n");
+});
+
+it("REPLAY-021 records the bytes of C.UTF-8 C.UTF-8 and a newline for a run step printing $LANG $LC_ALL with a de_DE.UTF-8 locale set", () => {
+  const root = benchRoot({
+    "steps/speckit/feature.yaml": "steps:\n" + step(`run\n    command: echo "$LANG $LC_ALL"\n`),
+  });
+  const saved = { LANG: process.env.LANG, LC_ALL: process.env.LC_ALL };
+
+  try {
+    process.env.LANG = "de_DE.UTF-8";
+    process.env.LC_ALL = "de_DE.UTF-8";
+    const run = replay(root);
+
+    expect(run.stderr).toBe("");
+    expect(run.status).toBe(0);
+    expect(ownSteps(results(root).workflows.speckit.feature)[0].context).toBe(Buffer.byteLength("C.UTF-8 C.UTF-8\n"));
+  } finally {
+    for (const name of ["LANG", "LC_ALL"] as const) {
+      if (saved[name] === undefined) delete process.env[name];
+      else process.env[name] = saved[name];
+    }
     rmSync(root, { recursive: true, force: true });
   }
 });
