@@ -10,7 +10,7 @@ Workspaces symlink the bench's `node_modules`, and Vite resolves symlinks, so it
 
 ## Decisions
 
-- **Replace the bench checkout's path with `/bench`, absolute or `../`-relative.** The relative form is `(../)+` followed by the checkout's absolute path without its leading `/`; both the path as given and its realpath are matched. Rejected: copying `node_modules` into each workspace, which makes the relative path stable but costs a large copy per script; and Vite's `preserveSymlinks`, which would change the fixture's own config.
+- **Replace the bench checkout's path with `/bench`, absolute or `../`-relative.** The relative form is computed with `path.relative` from the workspace to the checkout, for the workspace and the checkout each as given and as its realpath, and replaced exactly. Rejected: a `(../)+<path>` pattern, which misses a relative path that shares a prefix with the workspace. Rejected: copying `node_modules` into each workspace, which makes the relative path stable but costs a large copy per script; and Vite's `preserveSymlinks`, which would change the fixture's own config.
 
 ## Risks / Trade-offs
 

@@ -322,6 +322,23 @@ it("REPLAY-014 counts the workspace path a run step prints as /workspace", () =>
   expect(printed.context).toBe(Buffer.byteLength("/workspace/test/terms.test.ts\n"));
 });
 
+it("REPLAY-019 counts the path from the workspace into the bench checkout as /bench", () => {
+  // Vite names a file in the linked node_modules by its path relative to the workspace. The link
+  // is read rather than resolved, since the test bench's own node_modules is itself a link.
+  const script =
+    "const p = require('path');" +
+    "const bench = p.dirname(require('fs').readlinkSync('node_modules'));" +
+    "console.log(p.relative(process.cwd(), p.join(bench, 'node_modules/vite/dist/node/chunks/config.js')))";
+  const root = benchRoot({ "steps/speckit/feature.yaml": "steps:\n" + step(`run\n    command: node -e \"${script}\"\n`) });
+
+  const run = replay(root);
+
+  expect(run.stderr).toBe("");
+  expect(run.status).toBe(0);
+  const [printed] = ownSteps(results(root).workflows.speckit.feature);
+  expect(printed.context).toBe(Buffer.byteLength("/bench/node_modules/vite/dist/node/chunks/config.js\n"));
+});
+
 it("REPLAY-015 commits the start state on main as one fixture start commit with the same hash on every run and machine", () => {
   // Later steps write the log and the committed files to files outside the workspace, so the
   // test can read them.

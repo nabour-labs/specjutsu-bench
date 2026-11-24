@@ -4,7 +4,7 @@ The first CI run of `npm run replay -- --check` on Linux drifted: `speckit/featu
 
 ## What Changes
 
-- Before a `run` step's output is counted, the bench checkout's absolute path, and any `../`-relative path from the workspace into it, is replaced with `/bench`.
+- Before a `run` step's output is counted, the bench checkout's absolute path, and the relative path from the workspace to it, is replaced with `/bench`.
 - The committed results are regenerated with the new normalisation.
 
 ## Capabilities
