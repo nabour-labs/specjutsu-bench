@@ -134,3 +134,37 @@ it("STEP-010 refuses a source citing speckit@1.4.2 when speckit is pinned to 1.4
   );
   expect(run.status).toBe(1);
 });
+
+const speckitPins = JSON.stringify({
+  openspec: "1.2.0",
+  superpowers: "0123456789abcdef0123456789abcdef01234567",
+  speckit: "1.4.3",
+});
+
+it("STEP-011 refuses a source citing a file missing from the pinned Spec Kit checkout", () => {
+  const root = benchRoot({
+    "pins.json": speckitPins,
+    "steps/speckit/feature.yaml": scriptCitingInStep2("speckit@1.4.3:templates/gone.md"),
+    ".bench/tools/speckit@1.4.3/templates/spec-template.md": "spec\n",
+  });
+
+  const run = replay(root);
+
+  expect(run.stderr).toContain("steps/speckit/feature.yaml step 2: source templates/gone.md not found in speckit@1.4.3");
+  expect(run.status).toBe(1);
+});
+
+it("STEP-012 refuses a source range L10-L90 in a file of 80 lines", () => {
+  const root = benchRoot({
+    "pins.json": speckitPins,
+    "steps/speckit/feature.yaml": scriptCitingInStep2("speckit@1.4.3:templates/spec-template.md#L10-L90"),
+    ".bench/tools/speckit@1.4.3/templates/spec-template.md": Array.from({ length: 80 }, (_, i) => `line ${i + 1}\n`).join(""),
+  });
+
+  const run = replay(root);
+
+  expect(run.stderr).toContain(
+    "steps/speckit/feature.yaml step 2: source templates/spec-template.md#L10-L90: the file has 80 lines",
+  );
+  expect(run.status).toBe(1);
+});
