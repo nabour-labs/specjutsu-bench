@@ -35,7 +35,7 @@ npm run replay
 - `npm run install-tools` puts every tool from `pins.json` into `.bench/tools/<tool>@<pin>/`. Each
   install is that tool's repository at tag `v<pin>`. specjutsu also gets its release binary in
   `bin/sj`, checked against the release's `SHA256SUMS`. An install that is already there is kept.
-- `npm run replay` checks the pins, the step scripts and the fixture, replays every script in a
+- `npm run replay` checks the pins, the step scripts and their citations, and the fixture, replays every script in a
   fresh workspace, and writes `results/results.json` and `results/results.md`. It exits 1 and
   writes nothing if any check fails.
 - `npm run replay -- --check` replays without writing and compares against the committed results.
@@ -50,7 +50,7 @@ npm run replay
 - **context bytes:** what the workflow put into the agent's context: every file loaded or read,
   and the output of every command run. Commands run with a fixed environment, and their output is
   counted after durations, clock times and the workspace path are replaced with fixed values, so
-  it doesn't depend on the machine's temp directory, git config or CI variables.
+  it doesn't depend on the machine's temp directory, git config, locale or CI variables.
 - **context tokens:** context bytes / 4, an estimate, as in `sj gain`.
 - **output bytes:** the files the agent writes. Every tool writes the same code and tests, and its
   own spec documents carrying the same requirements, so this column is roughly equal by design.
@@ -82,8 +82,11 @@ The headline compares context bytes only: `specjutsu saves N% vs speckit, M% vs 
 
 ## Challenging a step
 
-Every step has a `source`, `<tool>@<pin>:<path>` (often with `#L<a>-L<b>`) or a URL, naming the doc
-that prescribes it. Where a tool's docs leave a choice, the script takes the reading that costs that
+Every step has a `source`, `<tool>@<pin>:<path>` (optionally with `#L<a>` or `#L<a>-L<b>`) or an
+`https://` URL, naming the doc that prescribes it. Before replaying anything, the replay checks every
+`<tool>@<pin>:<path>` citation against the pinned install: the pin must match `pins.json`, the file
+must exist there, and a line range must lie within it. So a pin bump means re-checking and updating
+every citation for that tool. Where a tool's docs leave a choice, the script takes the reading that costs that
 tool the least and says so in the step's `note`. If a step misreads a tool's docs, open an issue
 or a pull request that changes the step and cites the doc. CI will show how the results move.
 
