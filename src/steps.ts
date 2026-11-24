@@ -61,9 +61,9 @@ const PINNED_SOURCE = /^([^@:\s]+)@([^:\s]+):([^#\s]+)(#L(\d+)(?:-L(\d+))?)?$/;
 
 /**
  * Returns one error line per step whose source is neither `<tool>@<pin>:<path>` nor an
- * `https://` URL, cites a tool at a version other than its pin, names a path that is not a file
- * in that tool's pinned install, or a line range past the file's end. Steps with no source are
- * left to `checkSources`.
+ * `https://` URL, cites a tool that is not pinned or not at its pin, names a path that is not a
+ * file in that tool's pinned install, or a line range that is not one or runs past the file's
+ * end. Steps with no source are left to `checkSources`.
  */
 export function checkCitations(root: string, pins: Pins, script: string, steps: Step[]): string[] {
   return steps.flatMap((step, i) => {
@@ -78,15 +78,18 @@ function citationError(root: string, pins: Pins, source: string): string | undef
   const match = PINNED_SOURCE.exec(source);
   if (!match) return `source "${source}" is not <tool>@<pin>:<path> or an https:// URL`;
   const [, tool, pin, path, range, from, to] = match;
-  if (!Object.hasOwn(pins, tool)) return `tool ${tool} is not pinned`;
+  if (!Object.hasOwn(pins, tool)) return `source cites ${tool}, which is not pinned`;
   if (pins[tool] !== pin) return `source cites ${tool}@${pin}, but ${tool} is pinned to ${pins[tool]}`;
   const install = `${tool}@${pin}`;
   const file = pinnedFile(root, install, path);
   if (typeof file !== "string") return `source ${file.error}`;
   if (!range) return undefined;
+  const first = Number(from);
+  const last = Number(to ?? from);
+  if (first < 1 || last < first) return `source ${path}${range}: not a valid line range`;
   const lines = readFileSync(file, "utf8").split("\n");
   const count = lines.at(-1) === "" ? lines.length - 1 : lines.length;
-  return Number(to ?? from) > count ? `source ${path}${range}: the file has ${count} lines` : undefined;
+  return last > count ? `source ${path}${range}: the file has ${count} lines` : undefined;
 }
 
 /** Returns one error line per load step whose file is not in `.bench/tools/<tool>@<pin>/`. */
