@@ -1,5 +1,5 @@
 import { spawnSync } from "node:child_process";
-import { mkdirSync, mkdtempSync, rmSync } from "node:fs";
+import { mkdirSync, mkdtempSync, realpathSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { allowlistedEnv, linkNodeModules } from "../fixture.ts";
@@ -28,13 +28,14 @@ export function runAll(root: string, tasks: string[]): Runs {
 
 /** One run of a workflow's prompt script for a task, in a fresh copy of `fixture/start/` removed afterwards. */
 export function runAgent(root: string, model: string, workflow: string, task: string): Run {
-  const area = mkdtempSync(join(tmpdir(), "agent-run-"));
+  // The run's temporary area holds its workspace and its Claude Code configuration.
+  const area = realpathSync(mkdtempSync(join(tmpdir(), "agent-run-")));
   try {
     const workspace = join(area, "workspace");
     mkdirSync(workspace);
     copyStart(root, workspace);
     linkNodeModules(root, workspace);
-    const env = allowlistedEnv();
+    const env = runEnv(join(area, "claude-config"));
     const calls: Call[] = [];
     // A prompt resumes the previous call's session unless a `session` entry came since.
     let resume: string | undefined;
@@ -56,6 +57,19 @@ export function runAgent(root: string, model: string, workflow: string, task: st
   } finally {
     rmSync(area, { recursive: true, force: true });
   }
+}
+
+/**
+ * The environment for a run's calls: the allowlisted variables (`PATH`, which finds `claude`,
+ * `HOME`, `TMPDIR`), `ANTHROPIC_API_KEY` when set, and `CLAUDE_CONFIG_DIR` as `configDir`, created
+ * empty, so the machine's Claude Code settings, memory and plugins never enter the run.
+ */
+function runEnv(configDir: string): NodeJS.ProcessEnv {
+  mkdirSync(configDir);
+  const env = allowlistedEnv();
+  if (process.env.ANTHROPIC_API_KEY !== undefined) env.ANTHROPIC_API_KEY = process.env.ANTHROPIC_API_KEY;
+  env.CLAUDE_CONFIG_DIR = configDir;
+  return env;
 }
 
 /** The last `session_id` a call's stream-json names, or undefined when none does. */
