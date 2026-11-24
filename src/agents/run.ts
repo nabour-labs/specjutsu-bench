@@ -5,12 +5,15 @@ import { join } from "node:path";
 import { allowlistedEnv, linkNodeModules } from "../fixture.ts";
 import { copyStart } from "../replay.ts";
 import { WORKFLOWS } from "../steps.ts";
-import { loadAgentConfig, loadPrompts } from "./scripts.ts";
+import { loadAgentConfig, loadPrompts, loadSetup } from "./scripts.ts";
 
 /** One `claude -p` call: its arguments, the session id its stream-json named, and the raw stream lines. */
 export type Call = { argv: string[]; sessionId?: string; lines: string[]; status: number | null };
 export type Run = { calls: Call[] };
 export type Runs = Record<string, Record<string, Run>>;
+
+/** Thrown when a setup command fails; the benchmark stops and writes no results. */
+export class SetupError extends Error {}
 
 /** The most a call may print, so its stream-json is read in full. */
 const CALL_MAX_BUFFER = 256 * 1024 * 1024;
@@ -36,6 +39,7 @@ export function runAgent(root: string, model: string, workflow: string, task: st
     copyStart(root, workspace);
     linkNodeModules(root, workspace);
     const env = runEnv(join(area, "claude-config"));
+    setUp(root, workflow, workspace, env);
     const calls: Call[] = [];
     // A prompt resumes the previous call's session unless a `session` entry came since.
     let resume: string | undefined;
@@ -57,6 +61,17 @@ export function runAgent(root: string, model: string, workflow: string, task: st
   } finally {
     rmSync(area, { recursive: true, force: true });
   }
+}
+
+/** Runs the workflow's setup commands in the workspace; their output isn't counted. */
+function setUp(root: string, workflow: string, workspace: string, env: NodeJS.ProcessEnv): void {
+  loadSetup(root, workflow).forEach((step, i) => {
+    const run = spawnSync(step.command ?? "", { cwd: workspace, shell: true, env, stdio: "ignore" });
+    if (run.status !== 0) {
+      const how = run.error ? `failed: ${run.error.message}` : `exited ${run.status ?? run.signal}`;
+      throw new SetupError(`${workflow} setup step ${i + 1}: ${how}`);
+    }
+  });
 }
 
 /**
