@@ -72,7 +72,11 @@ function setUp(root: string, workflow: string, workspace: string, env: NodeJS.Pr
   loadSetup(root, workflow).forEach((step, i) => {
     const run = spawnSync(step.command ?? "", { cwd: workspace, shell: true, env, stdio: "ignore" });
     if (run.status !== 0) {
-      const how = run.error ? `failed: ${run.error.message}` : `exited ${run.status ?? run.signal}`;
+      const how = run.error
+        ? `failed: ${run.error.message}`
+        : run.status === null
+          ? `killed by ${run.signal}`
+          : `exited ${run.status}`;
       throw new SetupError(`${workflow} setup step ${i + 1}: ${how}`);
     }
   });
