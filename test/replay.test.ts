@@ -3,7 +3,7 @@ import { chmodSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync 
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
-import { benchRoot, replay } from "./helpers.ts";
+import { benchRoot, replay, stepScript } from "./helpers.ts";
 
 const SUPERPOWERS = "0123456789abcdef0123456789abcdef01234567";
 
@@ -528,4 +528,18 @@ it("REPLAY-018 records context 2,000,000 for a run step that prints 2,000,000 by
   } finally {
     rmSync(root, { recursive: true, force: true });
   }
+});
+
+it("REPLAY-020 stops at a read of notes.md, which nothing created, and leaves results/ unchanged", () => {
+  const read = "  - kind: read\n    path: notes.md\n    source: https://example.com/docs#read\n";
+  const root = benchRoot({
+    "steps/speckit/feature.yaml": `${stepScript(2)}${read}`,
+    "results/results.json": "previous\n",
+  });
+
+  const run = replay(root);
+
+  expect(run.stderr).toContain("speckit/feature step 3: read failed: notes.md not found");
+  expect(run.status).toBe(1);
+  expect(readFileSync(join(root, "results", "results.json"), "utf8")).toBe("previous\n");
 });
