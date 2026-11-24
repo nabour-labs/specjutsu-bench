@@ -1,5 +1,6 @@
-import { existsSync } from "node:fs";
-import { join } from "node:path";
+import { existsSync, mkdtempSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { dirname, join } from "node:path";
 import { expect, it } from "vitest";
 import { agentRoot, agents, fakeCalls } from "./agent-helpers.ts";
 
@@ -76,4 +77,25 @@ it("AGENT-001 sends prompts in order, resuming the session unless a session entr
     [...base("prompt B"), "--resume", calls[0]?.sessionId],
     base("prompt C"),
   ]);
+});
+
+it("AGENT-002 gives each run a fresh, empty CLAUDE_CONFIG_DIR in its own temporary area", () => {
+  const machine = mkdtempSync(join(tmpdir(), "machine-claude-"));
+  writeFileSync(join(machine, "CLAUDE.md"), "machine instructions\n");
+  const root = agentRoot();
+
+  const run = agents(root, [], { CLAUDE_CONFIG_DIR: machine });
+
+  expect(run.status).toBe(0);
+  const calls = fakeCalls(root);
+  // One call per workflow per task, each in its own run.
+  expect(calls).toHaveLength(9);
+  for (const call of calls) {
+    expect(call.config?.path).not.toBe(machine);
+    expect(call.config?.entries).toEqual([]);
+    // The config dir sits beside the run's workspace, in the run's temporary area.
+    expect(dirname(call.config?.path ?? "")).toBe(dirname(call.cwd));
+    expect(existsSync(call.config?.path ?? "")).toBe(false);
+  }
+  expect(new Set(calls.map((call) => call.config?.path)).size).toBe(9);
 });
