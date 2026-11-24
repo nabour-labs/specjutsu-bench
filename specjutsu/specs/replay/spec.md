@@ -60,7 +60,9 @@ step's output is counted, the replay SHALL replace every duration (a number foll
 `s`, such as `698ms` or `6.92s`) with `0ms` and every clock time (`HH:MM:SS`) with `00:00:00`, so
 the count does not depend on how long the command took or when it ran. It SHALL also replace the
 workspace's absolute path with `/workspace`, so the count does not depend on the machine's temp
-directory. A `run` step SHALL run with no user or system git configuration (`GIT_CONFIG_GLOBAL`
+directory. It SHALL replace the bench checkout's absolute path, and the path from the workspace to
+it (`../../home/runner/work/x/x`, as a tool prints a file in the linked `node_modules`), with
+`/bench`, so the count does not depend on where the bench repository is checked out. A `run` step SHALL run with no user or system git configuration (`GIT_CONFIG_GLOBAL`
 pointing at an empty file and `GIT_CONFIG_NOSYSTEM=1`) and with `COLUMNS=80`, so a command's
 output does not depend on the machine's git settings or terminal width. A `run` step SHALL see only
 an allowlisted environment (`PATH`, `HOME`, `TMPDIR`, `LANG`, `LC_ALL` and the variables the replay
@@ -91,6 +93,10 @@ counted in full, whatever its size.
 #### Scenario: REPLAY-018 Large run output is counted in full
 - **WHEN** a `run` step's command prints 2,000,000 bytes
 - **THEN** the step records context 2,000,000
+
+#### Scenario: REPLAY-019 A run step's bench checkout path doesn't change its count
+- **WHEN** a `run` step's command prints the path from its workspace to the bench's `node_modules/vite/dist/node/chunks/config.js`, as Node's `path.relative` gives it
+- **THEN** the step records the bytes of `/bench/node_modules/vite/dist/node/chunks/config.js`
 
 ### Requirement: CI fails when results drift from the committed ones
 `npm run replay -- --check` SHALL run the replay without writing `results/`, compare its results
