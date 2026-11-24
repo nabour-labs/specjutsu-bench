@@ -8,7 +8,8 @@ model `agents/agents.json` pins (`{"model": "claude-sonnet-5-5"}`), a full model
 by editing that file. A prompt continues the current session (`--resume <session id>`)
 unless a `session` entry precedes it, which starts a new one. Claude Code SHALL run with its own
 empty configuration directory, so the machine's user settings, memory and plugins never enter the
-run.
+run. `ANTHROPIC_API_KEY` SHALL reach the `claude` calls and never the setup commands. Like the
+replay's, each workspace SHALL be a git repo with the start state committed on `main` before setup.
 
 #### Scenario: AGENT-001 Prompts run in order, and a session entry starts a new session
 - **WHEN** `agents/speckit/feature.yaml` holds prompt A, prompt B, a `session` entry and prompt C, and the fake `claude` answers each call with a new session id
@@ -21,6 +22,14 @@ run.
 #### Scenario: AGENT-003 A failing setup command stops the benchmark
 - **WHEN** the first command in `agents/speckit/setup.yaml` exits 1
 - **THEN** the runner prints `speckit setup step 1: exited 1`, exits 1 and writes no results
+
+#### Scenario: AGENT-014 Only claude sees the API key
+- **WHEN** the runner starts with `ANTHROPIC_API_KEY=sk-test` set, a setup command prints whether `ANTHROPIC_API_KEY` is set, and the fake `claude` records the value it sees
+- **THEN** the setup command sees it unset and every `claude` call sees `sk-test`
+
+#### Scenario: AGENT-015 The workspace is a git repo with the start state committed
+- **WHEN** the fake `claude` records `git log --format=%s main` in its working directory
+- **THEN** it records one commit, `fixture start`
 
 ### Requirement: Prompt and setup scripts cite their sources
 Every prompt and every setup command SHALL carry a `source`, checked before any run with the

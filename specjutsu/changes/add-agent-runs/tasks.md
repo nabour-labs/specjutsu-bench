@@ -9,6 +9,7 @@
 - [ ] 2.1 Prompts run in order with sessions, via a fake claude (AGENT-001)
 - [ ] 2.2 Isolated Claude Code configuration (AGENT-002)
 - [ ] 2.3 Setup commands, and a failing one stops the benchmark (AGENT-003)
+- [ ] 2.4 The API key reaches only claude, and the workspace is a git repo (AGENT-014, AGENT-015)
 
 ## 3. Usage and outcome
 
