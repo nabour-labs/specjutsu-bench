@@ -113,16 +113,8 @@ function replayScript(
     const env = workspaceEnv(xdgHome);
     const bin = sjBin(root, pins);
     if (bin) env.PATH = `${bin}${delimiter}${process.env.PATH ?? ""}`;
-    const start = join(root, "fixture", "start");
-    // Stale `sj gain` records in the start state are left out, and the workspace is a git repo
-    // because `sj` records gain only inside one.
-    // A `node_modules` installed in the start state is left out too: the bench's own is linked in
-    // after the commit.
-    const left = [join(start, ".specjutsu", "ledger"), join(start, "node_modules")];
-    cpSync(start, workspace, {
-      recursive: true,
-      filter: (src) => !left.some((path) => src === path || src.startsWith(`${path}${sep}`)),
-    });
+    copyStart(root, workspace);
+    // The workspace is a git repo because `sj` records gain only inside one.
     commitStart(workspace);
     // Run steps use the bench's installed packages, as the fixture check does.
     // git's `node_modules/` patterns match only directories, so the link is excluded by name.
@@ -154,6 +146,19 @@ function replayScript(
     rmSync(workspace, { recursive: true, force: true });
     rmSync(xdgHome, { recursive: true, force: true });
   }
+}
+
+/**
+ * Copies `fixture/start/` into `workspace`, leaving out stale `sj gain` records and any
+ * `node_modules` installed in the start state: the bench's own is linked in by the caller.
+ */
+export function copyStart(root: string, workspace: string): void {
+  const start = join(root, "fixture", "start");
+  const left = [join(start, ".specjutsu", "ledger"), join(start, "node_modules")];
+  cpSync(start, workspace, {
+    recursive: true,
+    filter: (src) => !left.some((path) => src === path || src.startsWith(`${path}${sep}`)),
+  });
 }
 
 /** The workspace's fixed author, committer and date, so the start commit's hash is the same everywhere. */
