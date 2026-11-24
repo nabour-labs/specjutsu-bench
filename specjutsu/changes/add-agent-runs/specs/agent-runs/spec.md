@@ -49,8 +49,9 @@ check exits 1, names the script and the entry, and writes no results.
 The runner SHALL read the usage of every assistant turn in the stream-json output of every call in
 a run. A run's input tokens are the sum of `input_tokens`, `cache_creation_input_tokens` and
 `cache_read_input_tokens`; its output tokens the sum of `output_tokens`; its cost the sum of
-each call's reported `total_cost_usd`. A call that exits non-zero or prints no result message marks
-the run failed with that reason, and the runner goes on to the next run.
+each call's reported `total_cost_usd`. A call that exits non-zero, prints no result message, or runs longer than the call timeout
+(`--timeout <seconds>`, default 1800) marks the run failed with that reason, and the runner goes
+on to the next run.
 
 #### Scenario: AGENT-006 Input tokens include cache writes and reads
 - **WHEN** a run's turns report `input_tokens` 1,000 and 400, `cache_creation_input_tokens` 200 and 0, `cache_read_input_tokens` 5,000 and 6,000, and `output_tokens` 300 and 100
@@ -59,6 +60,10 @@ the run failed with that reason, and the runner goes on to the next run.
 #### Scenario: AGENT-007 A call that fails marks the run failed and the benchmark goes on
 - **WHEN** the fake `claude` exits 1 on the second prompt of a run's first of three runs
 - **THEN** that run is recorded as failed with `prompt 2: claude exited 1`, and the other two runs still run
+
+#### Scenario: AGENT-016 A call that runs past the timeout fails the run
+- **WHEN** the runner runs with `--timeout 1` and the fake `claude` sleeps 5 seconds on the first prompt
+- **THEN** that run is recorded as failed with `prompt 1: claude timed out after 1s`
 
 ### Requirement: A run passes only if the task's golden tests pass
 After the last prompt, the runner SHALL copy every file under `fixture/golden/<task>/test/` into
