@@ -115,13 +115,28 @@ function loadError(root: string, pins: Pins, step: Step): string | undefined {
  */
 function pinnedFile(root: string, install: string, path: string): string | { error: string } {
   const dir = join(root, ".bench", "tools", install);
-  const rel = relative(dir, resolve(dir, path));
-  if (isAbsolute(path) || rel === "" || rel === ".." || rel.startsWith(`..${sep}`)) {
-    return { error: `${path} is outside ${install}` };
-  }
+  const rel = inside(dir, path);
+  if (rel === undefined) return { error: `${path} is outside ${install}` };
   const file = join(dir, rel);
   if (!statSync(file, { throwIfNoEntry: false })?.isFile()) return { error: `${path} not found in ${install}` };
   return file;
+}
+
+/** `path` relative to `dir`, or undefined when it is absolute, `dir` itself or leaves `dir`. */
+function inside(dir: string, path: string): string | undefined {
+  const rel = relative(dir, resolve(dir, path));
+  return isAbsolute(path) || rel === "" || rel === ".." || rel.startsWith(`..${sep}`) ? undefined : rel;
+}
+
+/** Stands in for a replay's workspace, which exists only while its script runs. */
+const WORKSPACE = resolve(sep, "workspace");
+
+/** Returns one error line per read or write step whose path leaves the workspace. */
+export function checkPaths(script: string, steps: Step[]): string[] {
+  return steps.flatMap((step, i) => {
+    if ((step.kind !== "read" && step.kind !== "write") || step.path === undefined) return [];
+    return inside(WORKSPACE, step.path) === undefined ? [`${script} step ${i + 1}: ${step.path} is outside the workspace`] : [];
+  });
 }
 
 /**
