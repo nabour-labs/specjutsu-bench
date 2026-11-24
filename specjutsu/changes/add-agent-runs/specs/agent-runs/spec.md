@@ -4,14 +4,15 @@
 For every workflow and task, the runner SHALL copy `fixture/start/` into a fresh workspace, run
 the workflow's `agents/<workflow>/setup.yaml` commands there, and then send each prompt in
 `agents/<workflow>/<task>.yaml` to `claude -p --output-format stream-json` in order, with the
-model the runner is pinned to. A prompt continues the current session (`--resume <session id>`)
+model `agents/agents.json` pins (`{"model": "claude-sonnet-5-5"}`), a full model ID changed only
+by editing that file. A prompt continues the current session (`--resume <session id>`)
 unless a `session` entry precedes it, which starts a new one. Claude Code SHALL run with its own
 empty configuration directory, so the machine's user settings, memory and plugins never enter the
-run. [NEEDS CLARIFICATION: which model is pinned, and is it a full model ID such as `claude-sonnet-5-5`?]
+run.
 
 #### Scenario: AGENT-001 Prompts run in order, and a session entry starts a new session
 - **WHEN** `agents/speckit/feature.yaml` holds prompt A, prompt B, a `session` entry and prompt C, and the fake `claude` answers each call with a new session id
-- **THEN** `claude` is called three times in order: A with no `--resume`, B with `--resume` and A's session id, and C with no `--resume`
+- **THEN** `claude` is called three times in order, each with `--model claude-sonnet-5-5`: A with no `--resume`, B with `--resume` and A's session id, and C with no `--resume`
 
 #### Scenario: AGENT-002 The machine's Claude Code configuration doesn't reach a run
 - **WHEN** the runner starts with `CLAUDE_CONFIG_DIR` pointing at a directory that holds a `CLAUDE.md`, and the fake `claude` prints the `CLAUDE_CONFIG_DIR` it sees
@@ -67,7 +68,9 @@ sum of its task medians. `results/agent/results.md` SHALL show a row per cell an
 workflow, and the headline `specjutsu saves N% vs speckit, M% vs openspec` on total input tokens,
 rounded down. A workflow with a cell that has no passing run gets no total, and the headline names
 that cell instead of a saving. `results/agent/results.json` SHALL hold every run's usage, outcome
-and reason, the model, and the pins. [NEEDS CLARIFICATION: are full transcripts committed beside the results, or only the per-run usage summaries?]
+and reason, the model, and the pins. Full transcripts SHALL NOT be committed: each call's stream-json
+is saved under `.bench/transcripts/<workflow>/<task>/run-<n>/prompt-<k>.jsonl`, outside `results/`,
+for CI to keep as an artifact.
 
 #### Scenario: AGENT-009 A cell shows the median and range of passing runs
 - **WHEN** a cell's three runs pass with input tokens 10,000, 12,000 and 30,000
@@ -84,3 +87,7 @@ and reason, the model, and the pins. [NEEDS CLARIFICATION: are full transcripts 
 #### Scenario: AGENT-012 A workflow with no passing run in a cell gets no total
 - **WHEN** every run of `speckit/feature` fails
 - **THEN** speckit's total is shown as `—`, and the headline reads `speckit/feature: no passing run` in place of the speckit saving
+
+#### Scenario: AGENT-013 Transcripts are kept outside results
+- **WHEN** the second run of `openspec/change` makes three calls
+- **THEN** their stream-json is saved as `.bench/transcripts/openspec/change/run-2/prompt-1.jsonl` to `prompt-3.jsonl`, and nothing under `results/` holds a transcript

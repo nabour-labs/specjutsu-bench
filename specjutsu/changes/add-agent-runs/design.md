@@ -26,6 +26,8 @@ Layer 1 (specs `replay`, `steps`) replays cited steps against pinned installs an
 - **An isolated Claude Code configuration.** `CLAUDE_CONFIG_DIR` points at a fresh directory per run, so the machine's `CLAUDE.md`, memory, settings and plugins never enter a run. Setup commands that install a plugin install it there.
 - **Golden tests as the acceptance check.** The agent writes its own tests, but a run passes only when `fixture/golden/<task>/test/` passes against its code. Rejected: the agent's own tests, which a weak run could write to pass.
 - **Median over passing runs, lower middle for even counts.** It keeps integers and doesn't let one runaway run move a cell. Failed runs are shown in the pass rate and recorded in results.json with their reason.
+- **`claude-sonnet-5-5`, pinned in `agents/agents.json`.** It's the model most people run Claude Code with, at a cost that keeps 27 runs per benchmark affordable. Rejected: Opus, several times the cost; Haiku, less representative and more failed runs.
+- **Transcripts stay out of the repo.** results.json holds each run's usage, outcome and reason; the stream-json goes to `.bench/transcripts/`, and the CI change uploads it as an artifact. Rejected: committing transcripts, many megabytes per benchmark, mostly the tools' own file contents.
 - **The runner is tested with a fake `claude`.** A small script on PATH prints canned stream-json and records its arguments and environment, so tests cover sessions, usage, failures and results without network or cost.
 
 ## Risks / Trade-offs

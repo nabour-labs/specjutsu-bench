@@ -12,7 +12,7 @@
 
 ## 3. Usage and outcome
 
-- [ ] 3.1 Usage summed from every turn (AGENT-006)
+- [ ] 3.1 Usage summed from every turn, transcripts kept in .bench (AGENT-006, AGENT-013)
 - [ ] 3.2 A failing call marks the run failed (AGENT-007)
 - [ ] 3.3 Golden acceptance tests (AGENT-008)
 
