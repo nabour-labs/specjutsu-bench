@@ -2,10 +2,10 @@
 
 ## 1. Sources
 
-- [ ] 1.1 Source form and pin check (STEP-009, STEP-010)
-- [ ] 1.2 Source file and line range check (STEP-011, STEP-012)
-- [ ] 1.4 Reject invalid ranges, unpinned tools and outside paths in sources (STEP-016..019)
-- [ ] 1.3 Recheck the existing source and load scenarios (STEP-001, STEP-002, STEP-005..007)
+- [x] 1.1 Source form and pin check (STEP-009, STEP-010)
+- [x] 1.2 Source file and line range check (STEP-011, STEP-012)
+- [x] 1.4 Reject invalid ranges, unpinned tools and outside paths in sources (STEP-016..019)
+- [x] 1.3 Recheck the existing source and load scenarios (STEP-001, STEP-002, STEP-005..007)
 
 ## 2. Paths
 
