@@ -168,3 +168,46 @@ it("STEP-012 refuses a source range L10-L90 in a file of 80 lines", () => {
   );
   expect(run.status).toBe(1);
 });
+
+/** A root pinning speckit 1.4.3, whose 80-line spec template step 2 of the speckit feature script cites as `source`. */
+function rootCitingSpecTemplate(source: string): string {
+  return benchRoot({
+    "pins.json": speckitPins,
+    "steps/speckit/feature.yaml": scriptCitingInStep2(source),
+    ".bench/tools/speckit@1.4.3/templates/spec-template.md": Array.from({ length: 80 }, (_, i) => `line ${i + 1}\n`).join(""),
+  });
+}
+
+it("STEP-016 refuses the source range L20-L10, which ends before it starts", () => {
+  const run = replay(rootCitingSpecTemplate("speckit@1.4.3:templates/spec-template.md#L20-L10"));
+
+  expect(run.stderr).toContain(
+    "steps/speckit/feature.yaml step 2: source templates/spec-template.md#L20-L10: not a valid line range",
+  );
+  expect(run.status).toBe(1);
+});
+
+it("STEP-017 refuses the source line L0, which does not exist", () => {
+  const run = replay(rootCitingSpecTemplate("speckit@1.4.3:templates/spec-template.md#L0"));
+
+  expect(run.stderr).toContain("steps/speckit/feature.yaml step 2: source templates/spec-template.md#L0: not a valid line range");
+  expect(run.status).toBe(1);
+});
+
+it("STEP-018 refuses a source citing kiro, which pins.json does not pin", () => {
+  const run = replay(rootCitingSpecTemplate("kiro@1.0.0:docs/spec.md"));
+
+  expect(run.stderr).toContain("steps/speckit/feature.yaml step 2: source cites kiro, which is not pinned");
+  expect(run.status).toBe(1);
+});
+
+it("STEP-019 refuses a source path outside the pinned Spec Kit install", () => {
+  const root = rootCitingSpecTemplate("speckit@1.4.3:../../pins.json");
+  // The path names a real file, so only leaving the install is wrong.
+  writeFileSync(join(root, ".bench", "pins.json"), "{}\n");
+
+  const run = replay(root);
+
+  expect(run.stderr).toContain("steps/speckit/feature.yaml step 2: source ../../pins.json is outside speckit@1.4.3");
+  expect(run.status).toBe(1);
+});
