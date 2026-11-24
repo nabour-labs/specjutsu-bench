@@ -12,7 +12,9 @@ Every tool is pinned to an exact version, and every step the benchmark replays c
 template it comes from, so anyone can rerun it and challenge a step.
 
 Status: layer 1 (the replay) runs in CI. Its current results are in
-[results/results.md](results/results.md).
+[results/results.md](results/results.md), and published with a per-step breakdown at
+<https://nabour-labs.github.io/specjutsu-bench/>. The page is `site/index.html`; the `pages`
+workflow deploys it with `results/results.json` whenever either changes on `main`.
 
 ## Layers
 
