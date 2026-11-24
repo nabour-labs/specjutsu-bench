@@ -1,7 +1,7 @@
 import { spawnSync } from "node:child_process";
 import { appendFileSync, cpSync, mkdirSync, mkdtempSync, realpathSync, rmSync, statSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { delimiter, dirname, join, sep } from "node:path";
+import { delimiter, dirname, join, relative, resolve, sep } from "node:path";
 import { allowlistedEnv, linkNodeModules, SUITE_TIMEOUT_MS } from "./fixture.ts";
 import type { Pins } from "./pins.ts";
 import { WORKFLOWS, loadSessionSteps, loadSteps, type Step } from "./steps.ts";
@@ -131,9 +131,7 @@ function replayScript(
       mkdirSync(info, { recursive: true });
       appendFileSync(join(info, "exclude"), "/node_modules\n");
     }
-    // A tool may print the workspace path as given or as its realpath, so both are replaced, the
-    // longer first (macOS tmpdir paths print as both `/var/...` and `/private/var/...`).
-    const paths = [...new Set([workspace, realpathSync(workspace)])].sort((a, b) => b.length - a.length);
+    const paths = replacedPaths(root, workspace);
     let ranSj = false;
     const results = steps.map((step, index) => {
       const at = `${workflow}/${task} step ${firstStep + index}`;
@@ -251,10 +249,33 @@ function loadBytes(root: string, pins: Pins, step: Step): number {
   return statSync(join(root, ".bench", "tools", `${step.tool}@${pins[step.tool!]}`, step.path!)).size;
 }
 
-/** Counts output with every duration as `0ms`, every clock time as `00:00:00` and each of `paths` as `/workspace`. */
-function normalizedBytes(output: Buffer, paths: string[]): number {
+/**
+ * The paths a run step's output may name that depend on the machine, each with its fixed value:
+ * the workspace as `/workspace`, and the bench checkout as `/bench`, both absolute and as the path
+ * from the workspace (a tool names a file in the linked `node_modules` that way). Each is taken as
+ * given and as its realpath (macOS tmpdir paths print as both `/var/...` and `/private/var/...`),
+ * and the longest is replaced first.
+ */
+function replacedPaths(root: string, workspace: string): [string, string][] {
+  const workspaces = [...new Set([workspace, realpathSync(workspace)])];
+  const benches = [...new Set([resolve(root), realpathSync(root)])];
+  const pairs = new Map<string, string>();
+  for (const bench of benches) pairs.set(bench, "/bench");
+  for (const from of workspaces) {
+    for (const bench of benches) {
+      const path = relative(from, bench);
+      // A path made only of `..` (a workspace inside the checkout) would match too much.
+      if (!/^(\.\.(\/|$))*$/.test(path)) pairs.set(path, "/bench");
+    }
+  }
+  for (const path of workspaces) pairs.set(path, "/workspace");
+  return [...pairs].sort(([a], [b]) => b.length - a.length);
+}
+
+/** Counts output with every duration as `0ms`, every clock time as `00:00:00` and each path in `paths` as its fixed value. */
+function normalizedBytes(output: Buffer, paths: [string, string][]): number {
   const text = paths
-    .reduce((out, path) => out.split(path).join("/workspace"), output.toString("utf8"))
+    .reduce((out, [path, fixed]) => out.split(path).join(fixed), output.toString("utf8"))
     .replace(/\b\d+(\.\d+)?(ms|s)\b/g, "0ms")
     .replace(/\b\d{2}:\d{2}:\d{2}\b/g, "00:00:00");
   return Buffer.byteLength(text);
@@ -267,7 +288,7 @@ function count(
   sessionStart: number,
   workspace: string,
   env: NodeJS.ProcessEnv,
-  paths: string[],
+  paths: [string, string][],
   step: Step,
   /** The step as messages name it: `<tool>/<task> step <n>`. */
   at: string,
