@@ -21,5 +21,5 @@
 
 ## 4. Final review fixes
 
-- [ ] 4.1 A read or write step without a path is refused (STEP-020)
-- [ ] 4.2 README: citation checks and the fixed locale (no-scenario: docs)
+- [x] 4.1 A read or write step without a path is refused (STEP-020)
+- [x] 4.2 README: citation checks and the fixed locale (no-scenario: docs)
