@@ -11,7 +11,9 @@ for every step, the bytes that step puts into the agent's context: the size of t
 `load` or `read` step, and the combined stdout and stderr bytes for a `run` step. A `write` step
 places a golden file from `fixture/golden/<task>/` into the workspace and SHALL be recorded as
 output bytes, not context bytes; a later step that reads that file counts it as context. Golden
-files carry the same content for every tool wherever the tools' formats allow.
+files carry the same content for every tool wherever the tools' formats allow. A `read` step whose
+file does not exist when the step runs SHALL stop the replay with
+`<tool>/<task> step <n>: read failed: <path> not found`, exit 1, and write no results.
 
 #### Scenario: REPLAY-001 Bytes per step
 - **WHEN** a script loads a 1,200-byte skill file, reads an 800-byte source file and runs a command that prints 3,000 bytes
@@ -28,6 +30,10 @@ files carry the same content for every tool wherever the tools' formats allow.
 #### Scenario: REPLAY-015 The start state is committed on main
 - **WHEN** a `run` step's command is `git log --format=%H%n%s main`
 - **THEN** it prints one commit with subject `fixture start`, and the hash is the same on every run and machine
+
+#### Scenario: REPLAY-020 A read of a missing file stops the replay
+- **WHEN** the third step of `steps/speckit/feature.yaml` reads `notes.md` and no earlier step or the start state created it
+- **THEN** the replay prints `speckit/feature step 3: read failed: notes.md not found`, exits 1 and leaves `results/` unchanged
 
 ### Requirement: Session-start files are counted at every session
 Files a tool loads at the start of every agent session (a bootstrap skill, an always-on rules file,
@@ -65,8 +71,8 @@ it (`../../home/runner/work/x/x`, as a tool prints a file in the linked `node_mo
 `/bench`, so the count does not depend on where the bench repository is checked out. A `run` step SHALL run with no user or system git configuration (`GIT_CONFIG_GLOBAL`
 pointing at an empty file and `GIT_CONFIG_NOSYSTEM=1`) and with `COLUMNS=80`, so a command's
 output does not depend on the machine's git settings or terminal width. A `run` step SHALL see only
-an allowlisted environment (`PATH`, `HOME`, `TMPDIR`, `LANG`, `LC_ALL` and the variables the replay
-sets, including `npm_config_update_notifier=false` so npm prints no update notice), so CI detection
+an allowlisted environment (`PATH`, `HOME`, `TMPDIR` and the variables the replay sets, including `npm_config_update_notifier=false` so npm prints no update notice, and `LANG` and
+`LC_ALL` set to `C.UTF-8` so no command prints translated messages), so CI detection
 such as `CI` or `GITHUB_ACTIONS` can't change what a command prints, and its output SHALL be
 counted in full, whatever its size.
 
@@ -97,6 +103,10 @@ counted in full, whatever its size.
 #### Scenario: REPLAY-019 A run step's bench checkout path doesn't change its count
 - **WHEN** a `run` step's command prints the path from its workspace to the bench's `node_modules/vite/dist/node/chunks/config.js`, as Node's `path.relative` gives it
 - **THEN** the step records the bytes of `/bench/node_modules/vite/dist/node/chunks/config.js`
+
+#### Scenario: REPLAY-021 The machine's locale doesn't change a run step's count
+- **WHEN** the replay runs with `LANG=de_DE.UTF-8` and `LC_ALL=de_DE.UTF-8` set and a `run` step prints `$LANG $LC_ALL`
+- **THEN** the step records the bytes of `C.UTF-8 C.UTF-8` and a newline
 
 ### Requirement: CI fails when results drift from the committed ones
 `npm run replay -- --check` SHALL run the replay without writing `results/`, compare its results
