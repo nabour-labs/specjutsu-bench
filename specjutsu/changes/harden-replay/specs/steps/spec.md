@@ -1,7 +1,7 @@
 ## ADDED Requirements
 
 ### Requirement: Read and write steps stay inside the workspace
-A `read` or `write` step SHALL name a `path`, and that path MUST stay inside the workspace. A
+A `read` or `write` step's `path` SHALL stay inside the workspace. A
 `write` step's golden file, `fixture/golden/<task>/<path>`, MUST exist as a file. The replay
 checks this before running anything; a failed check exits 1, names the script and step, and
 writes no results.
