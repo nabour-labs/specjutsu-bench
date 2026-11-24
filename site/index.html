@@ -1,0 +1,281 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>specjutsu-bench results</title>
+<meta name="description" content="Reproducible token benchmark: specjutsu vs Spec Kit + Superpowers vs OpenSpec + Superpowers.">
+<style>
+  :root {
+    color-scheme: light;
+    --page: #f9f9f7;
+    --surface: #fcfcfb;
+    --ink: #0b0b0b;
+    --ink-2: #52514e;
+    --muted: #898781;
+    --grid: #e1e0d9;
+    --axis: #c3c2b7;
+    --border: rgba(11, 11, 11, 0.10);
+    --good: #006300;
+    --s1: #2a78d6;
+    --s2: #eb6834;
+    --s3: #1baf7a;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      color-scheme: dark;
+      --page: #0d0d0d;
+      --surface: #1a1a19;
+      --ink: #f0efec;
+      --ink-2: #c3c2b7;
+      --grid: #2c2c2a;
+      --axis: #383835;
+      --border: rgba(255, 255, 255, 0.10);
+      --good: #0ca30c;
+      --s1: #3987e5;
+      --s2: #d95926;
+      --s3: #199e70;
+    }
+  }
+  :root[data-theme="dark"] {
+    color-scheme: dark;
+    --page: #0d0d0d;
+    --surface: #1a1a19;
+    --ink: #f0efec;
+    --ink-2: #c3c2b7;
+    --grid: #2c2c2a;
+    --axis: #383835;
+    --border: rgba(255, 255, 255, 0.10);
+    --good: #0ca30c;
+    --s1: #3987e5;
+    --s2: #d95926;
+    --s3: #199e70;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--page);
+    color: var(--ink);
+    font: 16px/1.5 system-ui, -apple-system, "Segoe UI", sans-serif;
+  }
+  main { max-width: 960px; margin: 0 auto; padding: 40px 16px 64px; }
+  h1 { font-size: 28px; line-height: 1.2; margin: 0 0 8px; }
+  h2 { font-size: 20px; margin: 48px 0 12px; }
+  p { margin: 0 0 12px; color: var(--ink-2); max-width: 68ch; }
+  a { color: var(--s1); }
+  code { font: 14px ui-monospace, SFMono-Regular, Menlo, monospace; }
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 20px;
+  }
+  .heroes { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 16px; margin-top: 24px; }
+  .hero .label { color: var(--ink-2); font-size: 14px; }
+  .hero .value { font-size: 44px; font-weight: 600; line-height: 1.1; font-variant-numeric: tabular-nums; }
+  .hero .sub { color: var(--muted); font-size: 14px; font-variant-numeric: tabular-nums; }
+  .legend { display: flex; flex-wrap: wrap; gap: 16px; margin: 0 0 12px; font-size: 14px; color: var(--ink-2); }
+  .legend span::before {
+    content: ""; display: inline-block; width: 10px; height: 10px; border-radius: 2px;
+    margin-right: 6px; background: var(--c); vertical-align: -1px;
+  }
+  .chart { position: relative; }
+  .chart svg { display: block; width: 100%; height: auto; overflow: visible; }
+  .chart text { font: 13px system-ui, -apple-system, "Segoe UI", sans-serif; fill: var(--ink-2); }
+  .chart .task { fill: var(--ink); font-weight: 600; }
+  .chart .tick { fill: var(--muted); font-size: 12px; }
+  .chart .bar { cursor: default; }
+  .chart .bar rect.hit { fill: transparent; }
+  .chart .bar:hover rect.mark, .chart .bar:focus rect.mark { opacity: 0.8; }
+  .tip {
+    position: absolute; pointer-events: none; display: none;
+    background: var(--surface); color: var(--ink); border: 1px solid var(--border);
+    border-radius: 8px; padding: 8px 10px; font-size: 13px; white-space: nowrap;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12); font-variant-numeric: tabular-nums;
+  }
+  .scroll { overflow-x: auto; }
+  table { border-collapse: collapse; width: 100%; font-size: 14px; font-variant-numeric: tabular-nums; }
+  th, td { padding: 8px 10px; border-bottom: 1px solid var(--grid); text-align: left; }
+  th { color: var(--ink-2); font-weight: 600; }
+  td.n, th.n { text-align: right; }
+  tr.total td { font-weight: 600; }
+  details { border-top: 1px solid var(--grid); }
+  details:first-of-type { border-top: 0; }
+  summary { cursor: pointer; padding: 10px 0; font-weight: 600; }
+  summary .meta { color: var(--muted); font-weight: 400; font-size: 14px; }
+  .steps td:nth-child(3) { word-break: break-all; }
+  .pins { display: flex; flex-wrap: wrap; gap: 8px; margin: 0; padding: 0; list-style: none; }
+  .pins li { border: 1px solid var(--border); border-radius: 999px; padding: 2px 10px; font-size: 14px; background: var(--surface); }
+  .error { color: var(--ink); }
+  footer { margin-top: 48px; color: var(--muted); font-size: 14px; }
+</style>
+</head>
+<body>
+<main>
+  <h1>specjutsu-bench</h1>
+  <p>A reproducible token benchmark for spec-driven development workflows. The same three tasks run on the
+    same small TypeScript app with each setup, and every byte the workflow puts into the agent's context is
+    counted. Every tool is pinned, and every step cites the doc that prescribes it.</p>
+  <ul class="pins" id="pins" aria-label="Pinned tool versions"></ul>
+
+  <div class="heroes" id="heroes"></div>
+
+  <h2>Context per task</h2>
+  <p>Context bytes the workflow loads, reads and runs, per task. Lower is better. Tokens are estimated as bytes / 4.</p>
+  <div class="card">
+    <div class="legend" id="legend"></div>
+    <div class="chart" id="chart"><div class="tip" id="tip" role="status"></div></div>
+  </div>
+
+  <h2>Table</h2>
+  <div class="card scroll"><table id="table"></table></div>
+
+  <h2>Steps</h2>
+  <p>Every replayed step, in order. Open a workflow to see what each step cost.</p>
+  <div class="card" id="steps"></div>
+
+  <h2>How to read this</h2>
+  <p><strong>Context bytes</strong> are every file loaded or read and the output of every command run.
+    <strong>Output bytes</strong> are the files the agent writes, roughly equal by design. Only specjutsu's CLI
+    runs; where a rival's docs prescribe its own CLI the step is left out, so the rivals' totals are lower bounds.
+    The method, the fixture and every step script are in the
+    <a href="https://github.com/nabour-labs/specjutsu-bench">repository</a>; if a step misreads a tool's docs,
+    open an issue or a pull request that cites the doc.</p>
+
+  <footer>Generated from <a href="results.json">results.json</a>, the results committed on <code>main</code> and checked by CI.</footer>
+</main>
+<script>
+(async () => {
+  const TOOLS = {
+    specjutsu: { name: "specjutsu", color: "var(--s1)" },
+    speckit: { name: "Spec Kit + Superpowers", color: "var(--s2)" },
+    openspec: { name: "OpenSpec + Superpowers", color: "var(--s3)" },
+  };
+  const TASKS = {
+    feature: "Feature: payment terms",
+    bugfix: "Bug fix: bulk-discount boundary",
+    change: "Change: free-shipping threshold",
+  };
+  const fmt = (n) => n.toLocaleString("en-US");
+  const tokens = (b) => Math.floor(b / 4);
+  const saving = (sj, other) => Math.floor(((other - sj) * 100) / other);
+  const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]);
+  const toolName = (t) => (TOOLS[t] ? TOOLS[t].name : t);
+  const toolColor = (t) => (TOOLS[t] ? TOOLS[t].color : "var(--muted)");
+
+  let results;
+  try {
+    const res = await fetch("results.json", { cache: "no-cache" });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    results = await res.json();
+  } catch (err) {
+    document.getElementById("heroes").innerHTML = `<p class="error">Could not load results.json (${esc(err.message)}).</p>`;
+    return;
+  }
+
+  const tools = Object.keys(results.workflows);
+  const tasks = [...new Set(tools.flatMap((t) => Object.keys(results.workflows[t])))];
+  const total = (t, field) => Object.values(results.workflows[t]).reduce((s, w) => s + w[field], 0);
+
+  // Pins
+  document.getElementById("pins").innerHTML = Object.entries(results.pins)
+    .map(([tool, pin]) => `<li>${esc(tool)} <code>${esc(pin)}</code></li>`).join("");
+
+  // Headline: specjutsu's saving against each rival, plus specjutsu's total.
+  const sj = total("specjutsu", "context");
+  const heroes = tools.filter((t) => t !== "specjutsu").map((t) => {
+    const other = total(t, "context");
+    return `<div class="card hero"><div class="label">specjutsu vs ${esc(toolName(t))}</div>
+      <div class="value">${saving(sj, other)}% less</div>
+      <div class="sub">${fmt(sj)} vs ${fmt(other)} context bytes</div></div>`;
+  });
+  heroes.unshift(`<div class="card hero"><div class="label">specjutsu, all three tasks</div>
+    <div class="value">~${fmt(tokens(sj))}</div><div class="sub">context tokens (${fmt(sj)} bytes)</div></div>`);
+  document.getElementById("heroes").innerHTML = heroes.join("");
+
+  // Legend
+  document.getElementById("legend").innerHTML = tools
+    .map((t) => `<span style="--c:${toolColor(t)}">${esc(toolName(t))}</span>`).join("");
+
+  // Grouped horizontal bar chart: one group per task, one bar per tool.
+  const W = 880, labelW = 0, barH = 18, gap = 2, groupGap = 28, headH = 22, axisH = 24, valueW = 70;
+  const groupH = headH + tools.length * (barH + gap);
+  const H = tasks.length * (groupH + groupGap) - groupGap + axisH;
+  const max = Math.max(...tools.flatMap((t) => tasks.map((k) => results.workflows[t][k]?.context ?? 0)));
+  const step = 10 ** Math.floor(Math.log10(max)) / 2;
+  const top = Math.ceil(max / step) * step;
+  const plotW = W - labelW - valueW;
+  const x = (v) => labelW + (v / top) * plotW;
+  let svg = `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Context bytes per task and tool; the table below has the same numbers">`;
+  const plotH = H - axisH;
+  for (let v = 0; v <= top; v += step) {
+    svg += `<line x1="${x(v)}" x2="${x(v)}" y1="0" y2="${plotH}" stroke="var(${v === 0 ? "--axis" : "--grid"})" stroke-width="1"/>`;
+    svg += `<text class="tick" x="${x(v)}" y="${H - 6}" text-anchor="middle">${v === 0 ? "0" : `${v / 1000}k`}</text>`;
+  }
+  tasks.forEach((k, gi) => {
+    const gy = gi * (groupH + groupGap);
+    svg += `<text class="task" x="${labelW}" y="${gy + 14}">${esc(TASKS[k] ?? k)}</text>`;
+    tools.forEach((t, i) => {
+      const w = results.workflows[t][k];
+      if (!w) return;
+      const y = gy + headH + i * (barH + gap);
+      const bw = Math.max(x(w.context) - x(0), 1);
+      const r = Math.min(4, bw / 2);
+      const x0 = x(0);
+      // Square at the baseline, 4px rounded at the data end.
+      const d = `M${x0},${y}H${x0 + bw - r}Q${x0 + bw},${y} ${x0 + bw},${y + r}V${y + barH - r}Q${x0 + bw},${y + barH} ${x0 + bw - r},${y + barH}H${x0}Z`;
+      svg += `<g class="bar" tabindex="0" data-tool="${esc(t)}" data-task="${esc(k)}">
+        <rect class="hit" x="${x0}" y="${y - gap / 2}" width="${plotW + valueW}" height="${barH + gap}"/>
+        <path class="mark" d="${d}" fill="${toolColor(t)}"/>
+        <text x="${x0 + bw + 6}" y="${y + barH - 5}">${fmt(w.context)}</text></g>`;
+    });
+  });
+  svg += "</svg>";
+  const chart = document.getElementById("chart");
+  const tip = document.getElementById("tip");
+  chart.insertAdjacentHTML("afterbegin", svg);
+  const show = (g, cx, cy) => {
+    const t = g.dataset.tool, k = g.dataset.task, w = results.workflows[t][k];
+    tip.innerHTML = `<strong>${esc(toolName(t))}</strong> · ${esc(k)}<br>${fmt(w.context)} context bytes (~${fmt(tokens(w.context))} tokens)<br>${fmt(w.output)} output bytes · ${w.steps.length} steps`;
+    tip.style.display = "block";
+    const box = chart.getBoundingClientRect();
+    const left = Math.min(cx - box.left + 12, box.width - tip.offsetWidth);
+    tip.style.left = `${Math.max(0, left)}px`;
+    tip.style.top = `${cy - box.top + 12}px`;
+  };
+  chart.querySelectorAll(".bar").forEach((g) => {
+    g.addEventListener("mousemove", (e) => show(g, e.clientX, e.clientY));
+    g.addEventListener("mouseleave", () => (tip.style.display = "none"));
+    g.addEventListener("focus", () => { const b = g.getBoundingClientRect(); show(g, b.left + b.width / 3, b.top); });
+    g.addEventListener("blur", () => (tip.style.display = "none"));
+  });
+
+  // Table, mirroring results.md.
+  let rows = `<thead><tr><th>tool</th><th>task</th><th class="n">context bytes</th><th class="n">context tokens</th><th class="n">output bytes</th></tr></thead><tbody>`;
+  for (const t of tools) {
+    for (const k of tasks) {
+      const w = results.workflows[t][k];
+      if (w) rows += `<tr><td>${esc(toolName(t))}</td><td>${esc(k)}</td><td class="n">${fmt(w.context)}</td><td class="n">${fmt(tokens(w.context))}</td><td class="n">${fmt(w.output)}</td></tr>`;
+    }
+    const c = total(t, "context");
+    rows += `<tr class="total"><td>${esc(toolName(t))}</td><td>total</td><td class="n">${fmt(c)}</td><td class="n">${fmt(tokens(c))}</td><td class="n">${fmt(total(t, "output"))}</td></tr>`;
+  }
+  document.getElementById("table").innerHTML = `${rows}</tbody>`;
+
+  // Per-step breakdown.
+  let steps = "";
+  for (const t of tools) {
+    for (const k of tasks) {
+      const w = results.workflows[t][k];
+      if (!w) continue;
+      const body = w.steps.map((s, i) => `<tr><td class="n">${i + w.firstStep}</td><td>${esc(s.kind)}</td>
+        <td><code>${esc(s.path ?? s.command ?? "")}</code></td><td class="n">${fmt(s.context)}</td><td class="n">${fmt(s.output)}</td></tr>`).join("");
+      steps += `<details><summary>${esc(toolName(t))} · ${esc(k)} <span class="meta">${w.steps.length} steps, ${fmt(w.context)} context bytes</span></summary>
+        <div class="scroll"><table class="steps"><thead><tr><th class="n">#</th><th>kind</th><th>file or command</th><th class="n">context</th><th class="n">output</th></tr></thead><tbody>${body}</tbody></table></div></details>`;
+    }
+  }
+  document.getElementById("steps").innerHTML = steps;
+})();
+</script>
+</body>
+</html>
