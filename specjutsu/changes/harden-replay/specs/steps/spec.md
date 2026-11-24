@@ -25,7 +25,9 @@ Each step in a step script SHALL carry a `source` naming the tool doc, template 
 comes from, as `<tool>@<pin>:<path>` (optionally ending `#L<a>` or `#L<a>-L<b>`) or an `https://` URL.
 Before running anything the replay MUST check every step. A `<tool>@<pin>:<path>` source MUST
 name a pinned tool at the version `pins.json` gives it, and a path that stays inside that tool's
-pinned install and is a file there; a line range MUST lie within that file's lines. For a `load` step it MUST also check that the step names a `tool` and a
+pinned install and is a file there; a line range MUST start at line 1 or later, MUST NOT end before it starts, and MUST lie
+within that file's lines. A source naming a tool that isn't pinned, or a path outside the tool's
+install, is refused with a message starting `source`. For a `load` step it MUST also check that the step names a `tool` and a
 `path`, that the tool is pinned, that the path stays inside that tool's pinned install
 (`.bench/tools/<tool>@<pin>/`), and that the loaded file exists there as a file. A failed check exits 1, names the script and step, and writes no
 results.
@@ -66,3 +68,18 @@ results.
 - **WHEN** a step's source is `speckit@1.4.3:templates/spec-template.md#L10-L90` and that file has 80 lines
 - **THEN** the replay prints the script, the step number and `source templates/spec-template.md#L10-L90: the file has 80 lines`, and exits 1
 
+#### Scenario: STEP-016 A reversed source line range is refused
+- **WHEN** a step's source is `speckit@1.4.3:templates/spec-template.md#L20-L10`
+- **THEN** the replay prints the script, the step number and `source templates/spec-template.md#L20-L10: not a valid line range`, and exits 1
+
+#### Scenario: STEP-017 A source line range starting at line 0 is refused
+- **WHEN** a step's source is `speckit@1.4.3:templates/spec-template.md#L0`
+- **THEN** the replay prints the script, the step number and `source templates/spec-template.md#L0: not a valid line range`, and exits 1
+
+#### Scenario: STEP-018 A source citing an unpinned tool is refused
+- **WHEN** a step's source is `kiro@1.0.0:docs/spec.md` and `pins.json` has no `kiro` entry
+- **THEN** the replay prints the script, the step number and `source cites kiro, which is not pinned`, and exits 1
+
+#### Scenario: STEP-019 A source path outside the pinned install is refused
+- **WHEN** a step's source is `speckit@1.4.3:../../pins.json`
+- **THEN** the replay prints the script, the step number and `source ../../pins.json is outside speckit@1.4.3`, and exits 1
