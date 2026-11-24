@@ -1,7 +1,7 @@
 import { existsSync } from "node:fs";
 import { join } from "node:path";
 import { expect, it } from "vitest";
-import { agentRoot, agents } from "./agent-helpers.ts";
+import { agentRoot, agents, fakeCalls } from "./agent-helpers.ts";
 
 it("AGENT-004 refuses a prompt citing speckit@1.4.2 when speckit is pinned to 1.4.3", () => {
   const root = agentRoot({
@@ -37,4 +37,43 @@ it("AGENT-005 refuses a missing prompt script", () => {
   expect(run.stderr).toContain("missing agents/openspec/bugfix.yaml");
   expect(run.status).toBe(1);
   expect(existsSync(join(root, "results", "agent"))).toBe(false);
+});
+
+it("AGENT-001 sends prompts in order, resuming the session unless a session entry comes first", () => {
+  const root = agentRoot({
+    "agents/speckit/feature.yaml": [
+      "prompts:",
+      '  - prompt: "prompt A"',
+      "    source: https://example.com/docs#a",
+      '  - prompt: "prompt B"',
+      "    source: https://example.com/docs#b",
+      "  - session: true",
+      "    source: https://example.com/docs#new-session",
+      '  - prompt: "prompt C"',
+      "    source: https://example.com/docs#c",
+      "",
+    ].join("\n"),
+  });
+
+  const run = agents(root);
+
+  expect(run.stderr).toBe("");
+  expect(run.status).toBe(0);
+  const calls = fakeCalls(root).filter((call) => ["prompt A", "prompt B", "prompt C"].includes(call.argv[1]));
+  const base = (prompt: string) => [
+    "-p",
+    prompt,
+    "--output-format",
+    "stream-json",
+    "--verbose",
+    "--model",
+    "claude-sonnet-5-5",
+    "--permission-mode",
+    "bypassPermissions",
+  ];
+  expect(calls.map((call) => call.argv)).toEqual([
+    base("prompt A"),
+    [...base("prompt B"), "--resume", calls[0]?.sessionId],
+    base("prompt C"),
+  ]);
 });
