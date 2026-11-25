@@ -329,3 +329,23 @@ it("AGENT-012 gives speckit no total when every speckit/feature run fails, and t
   // Every other cell's runs report 100 input tokens, so specjutsu and openspec tie.
   expect(markdown).toContain("specjutsu saves speckit/feature: no passing run, 0% vs openspec\n");
 });
+
+it("AGENT-017 counts the lines of one message as one turn", () => {
+  const root = agentRoot({ "agents/speckit/feature.yaml": promptsYaml(["one call"]) });
+  const line = (id: string, input: number, output: number) => ({
+    id,
+    input_tokens: input,
+    cache_creation_input_tokens: 0,
+    cache_read_input_tokens: 0,
+    output_tokens: output,
+  });
+  fakeBehaviour(root, {
+    "one call": [{ turns: [line("msg-a", 1000, 50), line("msg-a", 1000, 50), line("msg-a", 1000, 50), line("msg-b", 2000, 80)] }],
+  });
+
+  const run = agents(root, ["--runs", "1"]);
+
+  expect(run.status).toBe(0);
+  const [recorded] = agentResults(root).workflows.speckit.feature.runs;
+  expect([recorded.inputTokens, recorded.outputTokens, recorded.turns]).toEqual([3000, 130, 2]);
+});

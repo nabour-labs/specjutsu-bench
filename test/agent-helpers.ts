@@ -56,16 +56,24 @@ if (behaviour.copy) cpSync(behaviour.copy.from, join(process.cwd(), behaviour.co
 const turns = behaviour.turns ?? [{ input_tokens: 100, cache_creation_input_tokens: 0, cache_read_input_tokens: 0, output_tokens: 10 }];
 // The result message's usage is the call's total, as Claude Code reports it.
 const total = {};
-for (const turn of turns) for (const [key, value] of Object.entries(turn)) total[key] = (total[key] ?? 0) + value;
+for (const { id, ...usage } of turns) for (const [key, value] of Object.entries(usage)) total[key] = (total[key] ?? 0) + value;
 const lines = [{ type: "system", subtype: "init", session_id: sessionId }];
-for (const usage of turns) lines.push({ type: "assistant", session_id: sessionId, message: { role: "assistant", content: [{ type: "text", text: "ok" }], usage } });
+// Each turn is its own message unless the behaviour gives turns the same id.
+turns.forEach(({ id, ...usage }, i) => {
+  const message = { id: id ?? "msg-" + n + "-" + (i + 1), role: "assistant", content: [{ type: "text", text: "ok" }], usage };
+  lines.push({ type: "assistant", session_id: sessionId, message });
+});
 if (!behaviour.noResult) lines.push({ type: "result", subtype: "success", is_error: false, session_id: sessionId, total_cost_usd: behaviour.cost ?? 0.01, usage: total });
 for (const line of lines) console.log(JSON.stringify(line));
 process.exitCode = behaviour.exit ?? 0;
 `;
 
-/** Usage as one assistant turn of Claude Code's stream-json reports it. */
+/**
+ * Usage as one assistant line of Claude Code's stream-json reports it, and the line's `message.id`
+ * (by default a new one per line, so each line is its own turn).
+ */
 export type TurnUsage = {
+  id?: string;
   input_tokens: number;
   cache_creation_input_tokens: number;
   cache_read_input_tokens: number;
