@@ -1,7 +1,7 @@
 import { spawnSync } from "node:child_process";
 import { accessSync, constants, cpSync, existsSync, mkdirSync, mkdtempSync, realpathSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { delimiter, join } from "node:path";
+import { delimiter, join, sep } from "node:path";
 import { allowlistedEnv, loadTestCommand, SUITE_TIMEOUT_MS } from "../fixture.ts";
 import { commitStart, copyStart, excludeNodeModules } from "../replay.ts";
 import { WORKFLOWS } from "../steps.ts";
@@ -122,10 +122,14 @@ export function runAgent(root: string, model: string, workflow: string, task: st
 function copyNodeModules(root: string, workspace: string): void {
   const modules = join(root, "node_modules");
   if (!existsSync(modules)) return;
-  cpSync(realpathSync(modules), join(workspace, "node_modules"), {
+  const source = realpathSync(modules);
+  // Vite's caches aren't packages: the run's own tests rebuild what they need.
+  const caches = [join(source, ".vite"), join(source, ".vite-temp")];
+  cpSync(source, join(workspace, "node_modules"), {
     recursive: true,
     verbatimSymlinks: true,
     mode: constants.COPYFILE_FICLONE,
+    filter: (src) => !caches.some((cache) => src === cache || src.startsWith(`${cache}${sep}`)),
   });
   excludeNodeModules(workspace);
 }
