@@ -1,8 +1,11 @@
 /** What a run, or one call of it, used: input tokens (uncached, cache writes and reads), output tokens, turns and cost. */
 export type Usage = { inputTokens: number; outputTokens: number; turns: number; costUsd: number };
 
-/** One `claude -p` call's stream-json: its usage summed over every assistant turn, and the last session id it names. */
-export type CallStream = { usage: Usage; sessionId?: string };
+/**
+ * One `claude -p` call's stream-json: its usage summed over every assistant turn, the last session
+ * id it names, and whether it printed a result message.
+ */
+export type CallStream = { usage: Usage; sessionId?: string; result: boolean };
 
 type TurnUsage = {
   input_tokens?: number;
@@ -36,6 +39,7 @@ export function addUsage(a: Usage, b: Usage): Usage {
 export function parseCall(lines: string[]): CallStream {
   let usage = NO_USAGE;
   let sessionId: string | undefined;
+  let result = false;
   for (const line of lines) {
     let message: StreamMessage;
     try {
@@ -49,9 +53,10 @@ export function parseCall(lines: string[]): CallStream {
       const input = (turn.input_tokens ?? 0) + (turn.cache_creation_input_tokens ?? 0) + (turn.cache_read_input_tokens ?? 0);
       usage = addUsage(usage, { inputTokens: input, outputTokens: turn.output_tokens ?? 0, turns: 1, costUsd: 0 });
     }
+    if (message.type === "result") result = true;
     if (message.type === "result" && typeof message.total_cost_usd === "number") {
       usage = addUsage(usage, { ...NO_USAGE, costUsd: message.total_cost_usd });
     }
   }
-  return { usage, sessionId };
+  return { usage, sessionId, result };
 }

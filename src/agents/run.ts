@@ -8,8 +8,13 @@ import { WORKFLOWS } from "../steps.ts";
 import { loadAgentConfig, loadPrompts, loadSetup } from "./scripts.ts";
 import { addUsage, NO_USAGE, parseCall, type Usage } from "./usage.ts";
 
-/** One run of one workflow and task: its usage summed over every call. */
-export type Run = Usage;
+/**
+ * One run of one workflow and task: whether it passed, why not when it failed, and its usage
+ * summed over every call it made.
+ */
+export type Run = { outcome: "passed" | "failed"; reason?: string } & Usage;
+/** How many runs each workflow and task gets, and the seconds a call may take before the run fails. */
+export type RunOptions = { runs: number; timeout: number };
 /** Every run, by workflow and task, in the order they ran. */
 export type Runs = Record<string, Record<string, Run[]>>;
 
@@ -22,8 +27,8 @@ const CALL_MAX_BUFFER = 256 * 1024 * 1024;
 /** Where a run's call transcripts go: outside `results/`, for CI to keep as an artifact. */
 export const TRANSCRIPTS = ".bench/transcripts";
 
-/** Runs every workflow's prompt script for every task, `count` times each; earlier transcripts are cleared first. */
-export function runAll(root: string, tasks: string[], count: number): Runs {
+/** Runs every workflow's prompt script for every task, `options.runs` times each; earlier transcripts are cleared first. */
+export function runAll(root: string, tasks: string[], options: RunOptions): Runs {
   const { model } = loadAgentConfig(root);
   rmSync(join(root, TRANSCRIPTS), { recursive: true, force: true });
   const runs: Runs = {};
@@ -31,7 +36,9 @@ export function runAll(root: string, tasks: string[], count: number): Runs {
     runs[workflow] = {};
     for (const task of tasks) {
       runs[workflow][task] = [];
-      for (let n = 1; n <= count; n++) runs[workflow][task].push(runAgent(root, model, workflow, task, n));
+      for (let n = 1; n <= options.runs; n++) {
+        runs[workflow][task].push(runAgent(root, model, workflow, task, n, options.timeout));
+      }
     }
   }
   return runs;
@@ -41,8 +48,10 @@ export function runAll(root: string, tasks: string[], count: number): Runs {
  * The `n`-th run of a workflow's prompt script for a task, in a fresh copy of `fixture/start/`
  * removed afterwards. Each call's stream-json is saved as
  * `.bench/transcripts/<workflow>/<task>/run-<n>/prompt-<k>.jsonl`, `k` counting prompts from 1.
+ * A call that exits non-zero, prints no result message or runs past `timeout` seconds fails the
+ * run, and the run makes no more calls.
  */
-export function runAgent(root: string, model: string, workflow: string, task: string, n: number): Run {
+export function runAgent(root: string, model: string, workflow: string, task: string, n: number, timeout: number): Run {
   // The run's temporary area holds its workspace and its Claude Code configuration.
   const area = realpathSync(mkdtempSync(join(tmpdir(), "agent-run-")));
   try {
@@ -71,14 +80,29 @@ export function runAgent(root: string, model: string, workflow: string, task: st
       const argv = ["-p", entry.prompt ?? "", "--output-format", "stream-json", "--verbose", "--model", model];
       argv.push("--permission-mode", "bypassPermissions");
       if (resume) argv.push("--resume", resume);
-      const call = spawnSync("claude", argv, { cwd: workspace, env, encoding: "utf8", maxBuffer: CALL_MAX_BUFFER });
+      const call = spawnSync("claude", argv, {
+        cwd: workspace,
+        env,
+        encoding: "utf8",
+        maxBuffer: CALL_MAX_BUFFER,
+        timeout: timeout * 1000,
+      });
       const stdout = call.stdout ?? "";
       writeFileSync(join(transcripts, `prompt-${k}.jsonl`), stdout);
       const stream = parseCall(stdout.split("\n").filter((line) => line.trim() !== ""));
       usage = addUsage(usage, stream.usage);
       resume = stream.sessionId;
+      const failure =
+        (call.error as NodeJS.ErrnoException | undefined)?.code === "ETIMEDOUT"
+          ? `claude timed out after ${timeout}s`
+          : call.status !== 0
+            ? `claude exited ${call.status}`
+            : !stream.result
+              ? "no result message"
+              : undefined;
+      if (failure) return { outcome: "failed", reason: `prompt ${k}: ${failure}`, ...usage };
     }
-    return usage;
+    return { outcome: "passed", ...usage };
   } finally {
     rmSync(area, { recursive: true, force: true });
   }

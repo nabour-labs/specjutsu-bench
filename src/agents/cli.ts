@@ -7,7 +7,9 @@ import { loadTasks } from "../steps.ts";
 import { runAll, SetupError } from "./run.ts";
 import { checkAgentScripts, loadAgentConfig } from "./scripts.ts";
 
-const { values } = parseArgs({ options: { runs: { type: "string", default: "3" } } });
+const { values } = parseArgs({
+  options: { runs: { type: "string", default: "3" }, timeout: { type: "string", default: "1800" } },
+});
 const root = process.cwd();
 const tasks = loadTasks(root);
 const pins = loadPins(root);
@@ -17,7 +19,7 @@ if (errors.length > 0) {
   process.exitCode = 1;
 } else {
   try {
-    const runs = runAll(root, tasks, Number(values.runs));
+    const runs = runAll(root, tasks, { runs: Number(values.runs), timeout: Number(values.timeout) });
     const workflows = Object.fromEntries(
       Object.entries(runs).map(([workflow, cells]) => [
         workflow,
