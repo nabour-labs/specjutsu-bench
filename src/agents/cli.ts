@@ -6,7 +6,7 @@ import { StartCommitError } from "../replay.ts";
 import { loadTasks } from "../steps.ts";
 import { agentResults, resultsMarkdown } from "./results.ts";
 import { checkRunnable, runAll, SetupError } from "./run.ts";
-import { fingerprint, saveRun, savedRuns } from "./saved.ts";
+import { fingerprints, saveRun, savedRun, savedRuns } from "./saved.ts";
 import { checkAgentScripts, loadAgentConfig } from "./scripts.ts";
 
 const { values } = parseArgs({
@@ -36,12 +36,19 @@ if (errors.length > 0 || runCount === undefined || timeout === undefined) {
   const { model } = loadAgentConfig(root);
   const dir = join(root, "results", "agent");
   // What results/agent held before the first run, put back if the pass stops on an error.
-  const earlier = existsSync(dir) ? readdirSync(dir).map((name) => [name, readFileSync(join(dir, name))] as const) : undefined;
+  const earlier = existsSync(dir)
+    ? readdirSync(dir, { withFileTypes: true })
+        .filter((entry) => entry.isFile())
+        .map((entry) => [entry.name, readFileSync(join(dir, entry.name))] as const)
+    : undefined;
+  // Each cell's inputs, hashed once: a run saved with its cell's fingerprint is not run again.
+  const prints = fingerprints(root, model, tasks);
   try {
-    runAll(root, tasks, { runs: runCount, timeout }, (workflow, task, n, run) => {
-      saveRun(root, workflow, task, n, run, fingerprint(root, model, workflow, task));
+    const saved = (workflow: string, task: string, n: number) => savedRun(root, workflow, task, n, prints[workflow][task]) !== undefined;
+    runAll(root, tasks, { runs: runCount, timeout }, saved, (workflow, task, n, run) => {
+      saveRun(root, workflow, task, n, run, prints[workflow][task]);
       // The results are rewritten from the saved runs after every run, so a stopped pass loses none.
-      const results = agentResults(model, pins, savedRuns(root, model, tasks, runCount));
+      const results = agentResults(model, pins, savedRuns(root, prints, runCount));
       mkdirSync(dir, { recursive: true });
       writeFileSync(join(dir, "results.json"), `${JSON.stringify(results, null, 2)}\n`);
       writeFileSync(join(dir, "results.md"), resultsMarkdown(results));

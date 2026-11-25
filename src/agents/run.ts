@@ -28,19 +28,22 @@ const CALL_MAX_BUFFER = 256 * 1024 * 1024;
 export const TRANSCRIPTS = ".bench/transcripts";
 
 /**
- * Runs every workflow's prompt script for every task, `options.runs` times each, and hands each
- * run to `finished` as soon as it is done.
+ * Runs every workflow's prompt script for every task, `options.runs` times each, skipping the runs
+ * `saved` says are already saved, and hands each run to `finished` as soon as it is done.
  */
 export function runAll(
   root: string,
   tasks: string[],
   options: RunOptions,
+  saved: (workflow: string, task: string, n: number) => boolean,
   finished: (workflow: string, task: string, n: number, run: Run) => void,
 ): void {
   const { model } = loadAgentConfig(root);
   for (const workflow of WORKFLOWS) {
     for (const task of tasks) {
-      for (let n = 1; n <= options.runs; n++) finished(workflow, task, n, runAgent(root, model, workflow, task, n, options.timeout));
+      for (let n = 1; n <= options.runs; n++) {
+        if (!saved(workflow, task, n)) finished(workflow, task, n, runAgent(root, model, workflow, task, n, options.timeout));
+      }
     }
   }
 }

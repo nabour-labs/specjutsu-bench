@@ -55,19 +55,34 @@ export function saveRun(root: string, workflow: string, task: string, n: number,
   renameSync(`${path}.tmp`, path);
 }
 
-/** Runs 1 to `runs` of every workflow and task that are saved with the current fingerprint, in order. */
-export function savedRuns(root: string, model: string, tasks: string[], runs: number): Runs {
+/** Every workflow and task's fingerprint, by workflow and task. */
+export type Fingerprints = Record<string, Record<string, string>>;
+
+/** The current fingerprint of every workflow and task. */
+export function fingerprints(root: string, model: string, tasks: string[]): Fingerprints {
+  return Object.fromEntries(
+    WORKFLOWS.map((workflow) => [workflow, Object.fromEntries(tasks.map((task) => [task, fingerprint(root, model, workflow, task)]))]),
+  );
+}
+
+/** The `n`-th run of `workflow` on `task` when it is saved with fingerprint `print`, else undefined. */
+export function savedRun(root: string, workflow: string, task: string, n: number, print: string): Run | undefined {
+  const path = savedPath(root, workflow, task, n);
+  if (!existsSync(path)) return undefined;
+  const saved = JSON.parse(readFileSync(path, "utf8")) as SavedRun;
+  return saved.fingerprint === print ? saved.run : undefined;
+}
+
+/** Runs 1 to `runs` of every workflow and task that are saved with its fingerprint in `prints`, in order. */
+export function savedRuns(root: string, prints: Fingerprints, runs: number): Runs {
   const all: Runs = {};
-  for (const workflow of WORKFLOWS) {
+  for (const [workflow, tasks] of Object.entries(prints)) {
     all[workflow] = {};
-    for (const task of tasks) {
-      const current = fingerprint(root, model, workflow, task);
+    for (const [task, print] of Object.entries(tasks)) {
       all[workflow][task] = [];
       for (let n = 1; n <= runs; n++) {
-        const path = savedPath(root, workflow, task, n);
-        if (!existsSync(path)) continue;
-        const saved = JSON.parse(readFileSync(path, "utf8")) as SavedRun;
-        if (saved.fingerprint === current) all[workflow][task].push(saved.run);
+        const run = savedRun(root, workflow, task, n, print);
+        if (run !== undefined) all[workflow][task].push(run);
       }
     }
   }
