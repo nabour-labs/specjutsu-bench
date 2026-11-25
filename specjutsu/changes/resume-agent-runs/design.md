@@ -26,11 +26,15 @@ clears every transcript before the first run.
   run is atomic enough (write to a temp name, rename) and needs no lock. Rejected: appending to
   `results/agent/results.json` and reading it back, which mixes a committed report with working
   state and loses the fingerprint.
-- **A fingerprint decides reuse.** sha256 over the model, `pins.json`, the workflow's
-  `setup.yaml`, the task's prompt script, every file under `fixture/start/` and the task's golden
-  tests (paths and bytes, sorted). A changed input means the saved run no longer measures the
-  current benchmark, so it runs again. Rejected: reusing anything saved and relying on `--fresh`,
-  which makes it easy to publish numbers from an old prompt.
+- **A fingerprint decides reuse.** sha256 over the model, `pins.json`, `fixture/tasks.json` (it
+  holds the acceptance test command), the workflow's `setup.yaml`, the task's prompt script, the
+  files under `fixture/start/` that a workspace gets (the same `node_modules` and
+  `.specjutsu/ledger` exclusions as `copyStart`, from one shared list) and the task's golden tests
+  (paths and bytes, sorted). A changed input means the saved run no longer measures the current
+  benchmark, so it runs again. A timed-out run also records the `--timeout` it ran out of and is
+  reused only under the same one. Rejected: reusing anything saved and relying on `--fresh`,
+  which makes it easy to publish numbers from an old prompt. AGENT-041 pins inputs that were
+  already hashed, so its red was recorded by dropping `setup.yaml` from the hash and restoring it.
 - **The default start skips saved runs.** The same command that was interrupted continues it.
   `--fresh` is the explicit way to take new samples. Rejected: always rerunning unless a
   `--resume` flag is given, which repeats the costly mistake by default.
