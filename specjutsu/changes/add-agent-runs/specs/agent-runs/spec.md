@@ -47,7 +47,8 @@ check exits 1, names the script and the entry, and writes no results.
 
 ### Requirement: A run's usage is summed from every turn
 The runner SHALL read the usage of every assistant turn in the stream-json output of every call in
-a run. A run's input tokens are the sum of `input_tokens`, `cache_creation_input_tokens` and
+a run. Claude Code prints one assistant line per content block, each repeating its message's usage,
+so lines that share a `message.id` SHALL count as one turn. A run's input tokens are the sum of `input_tokens`, `cache_creation_input_tokens` and
 `cache_read_input_tokens`; its output tokens the sum of `output_tokens`; its cost the sum of
 each call's reported `total_cost_usd`. A call that exits non-zero, prints no result message, or runs longer than the call timeout
 (`--timeout <seconds>`, default 1800) marks the run failed with that reason, and the runner goes
@@ -56,6 +57,10 @@ on to the next run.
 #### Scenario: AGENT-006 Input tokens include cache writes and reads
 - **WHEN** a run's turns report `input_tokens` 1,000 and 400, `cache_creation_input_tokens` 200 and 0, `cache_read_input_tokens` 5,000 and 6,000, and `output_tokens` 300 and 100
 - **THEN** the run records input tokens 12,600 and output tokens 400
+
+#### Scenario: AGENT-017 Lines of one message count once
+- **WHEN** a call prints three assistant lines with the same `message.id`, each with `input_tokens` 1,000 and `output_tokens` 50, and one more line with another id and `input_tokens` 2,000 and `output_tokens` 80
+- **THEN** the run records input tokens 3,000, output tokens 130 and 2 turns
 
 #### Scenario: AGENT-007 A call that fails marks the run failed and the benchmark goes on
 - **WHEN** the fake `claude` exits 1 on the second prompt of a run's first of three runs

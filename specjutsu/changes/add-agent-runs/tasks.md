@@ -14,6 +14,7 @@
 ## 3. Usage and outcome
 
 - [ ] 3.1 Usage summed from every turn, transcripts kept in .bench (AGENT-006, AGENT-013)
+- [ ] 3.4 Lines of one message count once (AGENT-017)
 - [ ] 3.2 A failing or hung call marks the run failed (AGENT-007, AGENT-016)
 - [ ] 3.3 Golden acceptance tests (AGENT-008)
 
