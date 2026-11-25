@@ -38,7 +38,17 @@ function count(n: number): string {
   return String(n).replace(/\B(?=(\d{3})+(?!\d))/g, ",");
 }
 
-/** One row per workflow per task: pass rate, and the median and range of passing runs' input tokens. */
+/** specjutsu's saving against `other` as a whole percent of total input tokens, rounded down, as layer 1's. */
+function saving(specjutsu: number, other: number): number {
+  return Math.floor(((other - specjutsu) * 100) / other);
+}
+
+/**
+ * One row per workflow per task: pass rate, and the median and range of passing runs' input
+ * tokens; a total per workflow, the sum of its task medians, or `—` when a cell has no passing run;
+ * and specjutsu's saving against each other workflow, or `<workflow>/<task>: no passing run` for
+ * the first cell that leaves either side without a total.
+ */
 export function resultsMarkdown(results: AgentResults): string {
   const lines = [
     "# Agent results",
@@ -48,12 +58,28 @@ export function resultsMarkdown(results: AgentResults): string {
     "| workflow | task | pass rate | median input tokens | range |",
     "| --- | --- | ---: | ---: | ---: |",
   ];
+  // Each workflow's total input tokens, or the first of its cells with no passing run.
+  const totals: Record<string, number | string> = {};
   for (const [workflow, tasks] of Object.entries(results.workflows)) {
+    let total: number | string = 0;
     for (const [task, { runs }] of Object.entries(tasks)) {
       const { passed, median, min, max } = cell(runs);
       const range = median === undefined ? "—" : `${count(min ?? 0)}–${count(max ?? 0)}`;
       lines.push(`| ${workflow} | ${task} | ${passed}/${runs.length} | ${median === undefined ? "—" : count(median)} | ${range} |`);
+      if (typeof total === "number") total = median === undefined ? `${workflow}/${task}: no passing run` : total + median;
     }
+    lines.push(`| ${workflow} | total | | ${typeof total === "number" ? count(total) : "—"} | |`);
+    totals[workflow] = total;
   }
+  const specjutsu = totals.specjutsu;
+  const savings = Object.keys(totals)
+    .filter((workflow) => workflow !== "specjutsu")
+    .map((workflow) => {
+      const other = totals[workflow];
+      if (typeof other === "string") return other;
+      if (typeof specjutsu === "string") return specjutsu;
+      return `${saving(specjutsu, other)}% vs ${workflow}`;
+    });
+  lines.push("", `specjutsu saves ${savings.join(", ")}`);
   return `${lines.join("\n")}\n`;
 }
