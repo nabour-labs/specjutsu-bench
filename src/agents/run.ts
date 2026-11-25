@@ -62,7 +62,7 @@ export function runAgent(root: string, model: string, workflow: string, task: st
     copyStart(root, workspace);
     commitStart(workspace);
     linkExcludedNodeModules(root, workspace);
-    const env = runEnv(join(area, "claude-config"));
+    const env = runEnv(join(area, "claude-config"), join(area, "home"));
     setUp(root, workflow, workspace, env);
     // Only `claude` needs the API key; setup commands run third-party installers.
     if (process.env.ANTHROPIC_API_KEY !== undefined) env.ANTHROPIC_API_KEY = process.env.ANTHROPIC_API_KEY;
@@ -171,12 +171,17 @@ function setUp(root: string, workflow: string, workspace: string, env: NodeJS.Pr
 
 /**
  * The environment for a run's setup commands and calls: the allowlisted variables (`PATH`, which
- * finds `claude`, `HOME`, `TMPDIR`) and `CLAUDE_CONFIG_DIR` as `configDir`, created empty, so the
- * machine's Claude Code settings, memory and plugins never enter the run.
+ * finds `claude`, and `TMPDIR`), `CLAUDE_CONFIG_DIR` as `configDir`, created empty, so the
+ * machine's Claude Code settings, memory and plugins never enter the run, and `HOME` as `home`,
+ * created empty, with `$HOME/.local/bin` first on `PATH`: installers write there instead of the
+ * machine's home, and `claude` finds what they installed.
  */
-function runEnv(configDir: string): NodeJS.ProcessEnv {
+function runEnv(configDir: string, home: string): NodeJS.ProcessEnv {
   mkdirSync(configDir);
+  mkdirSync(home);
   const env = allowlistedEnv();
   env.CLAUDE_CONFIG_DIR = configDir;
+  env.HOME = home;
+  env.PATH = [join(home, ".local", "bin"), env.PATH].filter((dir) => dir !== undefined).join(delimiter);
   return env;
 }
