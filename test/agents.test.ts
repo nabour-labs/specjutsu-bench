@@ -292,3 +292,40 @@ it("AGENT-010 leaves a failed run out of the cell's median", () => {
   expect(run.status).toBe(0);
   expect(agentMarkdown(root)).toContain("| speckit | feature | 2/3 | 11,000 | 11,000–14,000 |");
 });
+
+it("AGENT-011 compares total input tokens: specjutsu saves 60% vs speckit, 50% vs openspec", () => {
+  // Each workflow sends one prompt per task, in the order feature, bugfix, change.
+  const medians: Record<string, number[]> = {
+    specjutsu: [10000, 10000, 20000],
+    speckit: [30000, 30000, 40000],
+    openspec: [20000, 20000, 40000],
+  };
+  const files: Record<string, string> = {};
+  for (const workflow of Object.keys(medians)) {
+    for (const task of ["feature", "bugfix", "change"]) files[`agents/${workflow}/${task}.yaml`] = promptsYaml([`${workflow} task`]);
+  }
+  const root = agentRoot(files);
+  fakeBehaviour(root, Object.fromEntries(Object.entries(medians).map(([workflow, tokens]) => [`${workflow} task`, tokens.map(inputTurn)])));
+
+  const run = agents(root, ["--runs", "1"]);
+
+  expect(run.status).toBe(0);
+  const markdown = agentMarkdown(root);
+  expect(markdown).toContain("| specjutsu | total | | 40,000 | |");
+  expect(markdown).toContain("| speckit | total | | 100,000 | |");
+  expect(markdown).toContain("| openspec | total | | 80,000 | |");
+  expect(markdown).toContain("specjutsu saves 60% vs speckit, 50% vs openspec\n");
+});
+
+it("AGENT-012 gives speckit no total when every speckit/feature run fails, and the headline names that cell", () => {
+  const root = agentRoot({ "agents/speckit/feature.yaml": promptsYaml(["speckit feature"]) });
+  fakeBehaviour(root, { "speckit feature": [{ exit: 1 }, { exit: 1 }] });
+
+  const run = agents(root, ["--runs", "2"]);
+
+  expect(run.status).toBe(0);
+  const markdown = agentMarkdown(root);
+  expect(markdown).toContain("| speckit | total | | — | |");
+  // Every other cell's runs report 100 input tokens, so specjutsu and openspec tie.
+  expect(markdown).toContain("specjutsu saves speckit/feature: no passing run, 0% vs openspec\n");
+});
