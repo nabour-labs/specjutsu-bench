@@ -45,6 +45,9 @@ clears every transcript before the first run.
 - [A setup step fails partway through a pass] -> As AGENT-003 already requires, the runner exits 1
   and leaves `results/agent/` as it was before the start. The runs saved before the failure stay in
   `.bench/runs/`, so the next start skips them and its report includes them.
+- [`--fresh` and then a setup failure] -> `--fresh` discards before the first run, so a pass that
+  fails in setup has already dropped those workflows' saved runs while `results/agent/` is put
+  back as it was. That is what `--fresh` asks for; the next start rewrites the report.
 - [An input outside the fingerprint changes, such as the installed `claude` version or the machine's
   `PATH`] -> Those were never pinned; `--fresh` takes new samples. The README says so.
 - [The report is committed while some cells are `not run`] -> The headline names the missing cell
