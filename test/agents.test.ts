@@ -527,3 +527,21 @@ it("AGENT-028 stops when ANTHROPIC_API_KEY is not set", async () => {
   expect(fakeCalls(root)).toEqual([]);
   expectEarlierResults(root);
 });
+
+it("AGENT-029 records a message's largest usage on any of its lines", async () => {
+  const root = agentRoot({ "agents/speckit/feature.yaml": promptsYaml(["one message"]) });
+  const line = (output: number) => ({
+    id: "m1",
+    input_tokens: 1000,
+    cache_creation_input_tokens: 0,
+    cache_read_input_tokens: 0,
+    output_tokens: output,
+  });
+  fakeBehaviour(root, { "one message": [{ turns: [line(10), line(50)] }] });
+
+  const run = await agents(root, ["--runs", "1"]);
+
+  expect(run.status).toBe(0);
+  const [recorded] = agentResults(root).workflows.speckit.feature.runs;
+  expect([recorded.inputTokens, recorded.outputTokens, recorded.turns]).toEqual([1000, 50, 1]);
+});
