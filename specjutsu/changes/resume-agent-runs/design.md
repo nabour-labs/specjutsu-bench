@@ -42,8 +42,9 @@ clears every transcript before the first run.
 
 ## Risks / Trade-offs
 
-- [A setup step fails partway through a pass] -> The runs saved before it are kept and in the
-  report; the runner still exits 1.
+- [A setup step fails partway through a pass] -> As AGENT-003 already requires, the runner exits 1
+  and leaves `results/agent/` as it was before the start. The runs saved before the failure stay in
+  `.bench/runs/`, so the next start skips them and its report includes them.
 - [An input outside the fingerprint changes, such as the installed `claude` version or the machine's
   `PATH`] -> Those were never pinned; `--fresh` takes new samples. The README says so.
 - [The report is committed while some cells are `not run`] -> The headline names the missing cell
