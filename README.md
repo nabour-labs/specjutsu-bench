@@ -100,6 +100,12 @@ Caveats:
 - The runs use the model pinned in `agents/agents.json` (`claude-sonnet-5-5`).
 - Unlike the replay, installer overhead (markers, hook text, generated commands) is counted.
 - The results are not deterministic, so they aren't checked on pull requests.
+- Subagents' turns are counted only if Claude Code prints them in its stream-json. The first real
+  run must confirm that it does.
+- Each run gets its own copy of the bench's `node_modules` and commits as `bench <bench@localhost>`,
+  the same for every workflow.
+- Runs see the machine's `PATH`, so tools installed there are visible to the agent. Claude Code
+  settings managed by the system (not by your user) aren't isolated either.
 
 ## What is replayed
 
