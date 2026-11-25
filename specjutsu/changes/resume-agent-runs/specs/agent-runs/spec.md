@@ -3,8 +3,11 @@
 ### Requirement: Finished runs are saved and reused
 As soon as a run finishes, the runner SHALL save its outcome, reason and usage as
 `.bench/runs/<workflow>/<task>/run-<n>.json`, with a fingerprint of its inputs: the model, the
-pins, the workflow's setup script, the task's prompt script, `fixture/start/` and the task's golden
-tests. It SHALL then rewrite `results/agent/results.json` and `results/agent/results.md` from
+pins, `fixture/tasks.json` (which holds the acceptance test command), the workflow's setup script, the
+task's prompt script, `fixture/start/` as a run's workspace gets it (without its `node_modules` and
+`.specjutsu/ledger`) and the task's golden tests. A run that timed out is reused only by a start
+with the same `--timeout`. A cell with fewer saved runs than `--runs` but at least one SHALL show
+how many are missing, and its workflow gets no total. It SHALL then rewrite `results/agent/results.json` and `results/agent/results.md` from
 runs 1 to `--runs` of every workflow and task that are saved with the current fingerprint, and rewrite them once more when the start ends, even
 if every run was already saved. A run that failed
 because a `claude` call exited non-zero, was killed by a signal, or printed no result message SHALL NOT be saved, so the next
@@ -52,6 +55,26 @@ show `not run` in `results/agent/results.md`, and the headline names it as
 #### Scenario: AGENT-038 A run whose call errored is done again on the next start
 - **WHEN** a start with `--runs 1` finishes with the fake `claude` exiting 1 on the first prompt of `openspec/bugfix` and timing out on the first prompt of `openspec/change`, and the runner is started again with `--runs 1 --timeout 1` and a `claude` that succeeds
 - **THEN** the second start calls `claude` only for `openspec/bugfix`, and `openspec/change` keeps its saved `prompt 1: claude timed out after 1s`
+
+#### Scenario: AGENT-039 A changed acceptance test command does every run again
+- **WHEN** a start with `--runs 1` finishes, the `test` command in `fixture/tasks.json` is changed to another command that also passes, and the runner is started again with `--runs 1`
+- **THEN** the second start calls `claude` for every cell
+
+#### Scenario: AGENT-040 What a workspace doesn't get leaves the fingerprint alone
+- **WHEN** `fixture/start/node_modules/x.js` and `fixture/start/.specjutsu/ledger/runs.jsonl` are written between two starts with `--runs 1`
+- **THEN** the second start makes no `claude` call
+
+#### Scenario: AGENT-041 Every other input changes the fingerprint
+- **WHEN** the fingerprint of `speckit/feature` is taken, and then again after each one change: the model, a pin, `agents/speckit/setup.yaml`, a file in `fixture/start/`, a file in `fixture/golden/feature/test/`
+- **THEN** each of the five fingerprints differs from the first
+
+#### Scenario: AGENT-042 A timed-out run is done again under another timeout
+- **WHEN** a start with `--runs 1 --timeout 1` saves `openspec/change` as `prompt 1: claude timed out after 1s`, and the runner is started again with `--runs 1 --timeout 2`
+- **THEN** the second start calls `claude` only for `openspec/change`
+
+#### Scenario: AGENT-043 A cell missing some runs shows it and gives no total
+- **WHEN** after a start with `--runs 2`, run 2 of `speckit/bugfix` errored and was not saved while every other run passed
+- **THEN** `results/agent/results.md` shows `speckit/bugfix` as `1/1 (1 not run)`, speckit's total as `—`, and the headline reads `speckit/bugfix: 1 not run` in place of the speckit saving
 
 ## MODIFIED Requirements
 
