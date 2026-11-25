@@ -47,7 +47,8 @@ function saving(specjutsu: number, other: number): number {
  * One row per workflow per task: pass rate, and the median and range of passing runs' input
  * tokens; a total per workflow, the sum of its task medians, or `—` when a cell has no passing run;
  * and specjutsu's saving against each other workflow, or `<workflow>/<task>: no passing run` for
- * the first cell that leaves either side without a total.
+ * the first cell that leaves that workflow without a total. Without specjutsu's own total, the
+ * headline is just its first such cell.
  */
 export function resultsMarkdown(results: AgentResults): string {
   const lines = [
@@ -72,14 +73,17 @@ export function resultsMarkdown(results: AgentResults): string {
     totals[workflow] = total;
   }
   const specjutsu = totals.specjutsu;
-  const savings = Object.keys(totals)
-    .filter((workflow) => workflow !== "specjutsu")
-    .map((workflow) => {
-      const other = totals[workflow];
-      if (typeof other === "string") return other;
-      if (typeof specjutsu === "string") return specjutsu;
-      return `${saving(specjutsu, other)}% vs ${workflow}`;
-    });
-  lines.push("", `specjutsu saves ${savings.join(", ")}`);
+  if (typeof specjutsu === "string") {
+    // Without specjutsu's total there is no saving to show against any workflow.
+    lines.push("", specjutsu);
+  } else {
+    const savings = Object.keys(totals)
+      .filter((workflow) => workflow !== "specjutsu")
+      .map((workflow) => {
+        const other = totals[workflow];
+        return typeof other === "string" ? other : `${saving(specjutsu, other)}% vs ${workflow}`;
+      });
+    lines.push("", `specjutsu saves ${savings.join(", ")}`);
+  }
   return `${lines.join("\n")}\n`;
 }
