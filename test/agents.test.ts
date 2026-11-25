@@ -702,3 +702,15 @@ it("AGENT-036 a cell with no saved run shows as not run", async () => {
   }
   expect(markdown).toContain("specjutsu saves speckit/feature: not run, openspec/feature: not run\n");
 });
+
+it("AGENT-035 --fresh does a workflow's saved runs again", async () => {
+  const root = agentRoot(cellPrompts());
+  expect((await agents(root, ["--runs", "1"])).status).toBe(0);
+  const first = fakeCalls(root).length;
+
+  const run = await agents(root, ["--runs", "1", "--workflow", "speckit", "--fresh"]);
+
+  expect(run.status).toBe(0);
+  const second = fakeCalls(root).slice(first);
+  expect(second.map((call) => call.argv[1]).sort()).toEqual(TASKS.map((task) => `speckit ${task}`).sort());
+});
