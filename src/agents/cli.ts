@@ -4,6 +4,7 @@ import { parseArgs } from "node:util";
 import { loadPins } from "../pins.ts";
 import { StartCommitError } from "../replay.ts";
 import { loadTasks } from "../steps.ts";
+import { agentResults, resultsMarkdown } from "./results.ts";
 import { runAll, SetupError } from "./run.ts";
 import { checkAgentScripts, loadAgentConfig } from "./scripts.ts";
 
@@ -20,16 +21,12 @@ if (errors.length > 0) {
 } else {
   try {
     const runs = runAll(root, tasks, { runs: Number(values.runs), timeout: Number(values.timeout) });
-    const workflows = Object.fromEntries(
-      Object.entries(runs).map(([workflow, cells]) => [
-        workflow,
-        Object.fromEntries(Object.entries(cells).map(([task, cellRuns]) => [task, { runs: cellRuns }])),
-      ]),
-    );
+    // Results are written only once every run is done.
+    const results = agentResults(loadAgentConfig(root).model, pins, runs);
     const dir = join(root, "results", "agent");
     mkdirSync(dir, { recursive: true });
-    const results = { model: loadAgentConfig(root).model, pins, workflows };
     writeFileSync(join(dir, "results.json"), `${JSON.stringify(results, null, 2)}\n`);
+    writeFileSync(join(dir, "results.md"), resultsMarkdown(results));
   } catch (error) {
     if (!(error instanceof SetupError || error instanceof StartCommitError)) throw error;
     console.error(error.message);
