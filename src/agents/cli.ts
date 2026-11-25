@@ -39,16 +39,22 @@ if (errors.length > 0 || runCount === undefined || timeout === undefined) {
   const earlier = existsSync(dir) ? readdirSync(dir).map((name) => [name, readFileSync(join(dir, name))] as const) : undefined;
   // Each cell's inputs, hashed once: a run saved with its cell's fingerprint is not run again.
   const prints = fingerprints(root, model, tasks);
+  // The results are rewritten from the saved runs, so they never show a run 1 to --runs doesn't cover.
+  const writeResults = () => {
+    const results = agentResults(model, pins, savedRuns(root, prints, runCount));
+    mkdirSync(dir, { recursive: true });
+    writeFileSync(join(dir, "results.json"), `${JSON.stringify(results, null, 2)}\n`);
+    writeFileSync(join(dir, "results.md"), resultsMarkdown(results));
+  };
   try {
     const saved = (workflow: string, task: string, n: number) => savedRun(root, workflow, task, n, prints[workflow][task]) !== undefined;
     runAll(root, tasks, { runs: runCount, timeout }, saved, (workflow, task, n, run) => {
       saveRun(root, workflow, task, n, run, prints[workflow][task]);
-      // The results are rewritten from the saved runs after every run, so a stopped pass loses none.
-      const results = agentResults(model, pins, savedRuns(root, prints, runCount));
-      mkdirSync(dir, { recursive: true });
-      writeFileSync(join(dir, "results.json"), `${JSON.stringify(results, null, 2)}\n`);
-      writeFileSync(join(dir, "results.md"), resultsMarkdown(results));
+      // Rewritten after every run, so a stopped pass loses none.
+      writeResults();
     });
+    // And once more at the end, so a start with every run already saved still reports runs 1 to --runs.
+    writeResults();
   } catch (error) {
     if (!(error instanceof SetupError || error instanceof StartCommitError)) throw error;
     console.error(error.message);
