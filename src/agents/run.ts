@@ -1,16 +1,17 @@
 import { spawnSync } from "node:child_process";
-import { mkdirSync, mkdtempSync, realpathSync, rmSync } from "node:fs";
+import { mkdirSync, mkdtempSync, realpathSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { allowlistedEnv } from "../fixture.ts";
 import { commitStart, copyStart, linkExcludedNodeModules } from "../replay.ts";
 import { WORKFLOWS } from "../steps.ts";
 import { loadAgentConfig, loadPrompts, loadSetup } from "./scripts.ts";
+import { addUsage, NO_USAGE, parseCall, type Usage } from "./usage.ts";
 
-/** One `claude -p` call: its arguments, the session id its stream-json named, and the raw stream lines. */
-export type Call = { argv: string[]; sessionId?: string; lines: string[]; status: number | null };
-export type Run = { calls: Call[] };
-export type Runs = Record<string, Record<string, Run>>;
+/** One run of one workflow and task: its usage summed over every call. */
+export type Run = Usage;
+/** Every run, by workflow and task, in the order they ran. */
+export type Runs = Record<string, Record<string, Run[]>>;
 
 /** Thrown when a setup command fails; the benchmark stops and writes no results. */
 export class SetupError extends Error {}
@@ -18,19 +19,30 @@ export class SetupError extends Error {}
 /** The most a call may print, so its stream-json is read in full. */
 const CALL_MAX_BUFFER = 256 * 1024 * 1024;
 
-/** Runs every workflow's prompt script for every task, once each. */
-export function runAll(root: string, tasks: string[]): Runs {
+/** Where a run's call transcripts go: outside `results/`, for CI to keep as an artifact. */
+export const TRANSCRIPTS = ".bench/transcripts";
+
+/** Runs every workflow's prompt script for every task, `count` times each; earlier transcripts are cleared first. */
+export function runAll(root: string, tasks: string[], count: number): Runs {
   const { model } = loadAgentConfig(root);
+  rmSync(join(root, TRANSCRIPTS), { recursive: true, force: true });
   const runs: Runs = {};
   for (const workflow of WORKFLOWS) {
     runs[workflow] = {};
-    for (const task of tasks) runs[workflow][task] = runAgent(root, model, workflow, task);
+    for (const task of tasks) {
+      runs[workflow][task] = [];
+      for (let n = 1; n <= count; n++) runs[workflow][task].push(runAgent(root, model, workflow, task, n));
+    }
   }
   return runs;
 }
 
-/** One run of a workflow's prompt script for a task, in a fresh copy of `fixture/start/` removed afterwards. */
-export function runAgent(root: string, model: string, workflow: string, task: string): Run {
+/**
+ * The `n`-th run of a workflow's prompt script for a task, in a fresh copy of `fixture/start/`
+ * removed afterwards. Each call's stream-json is saved as
+ * `.bench/transcripts/<workflow>/<task>/run-<n>/prompt-<k>.jsonl`, `k` counting prompts from 1.
+ */
+export function runAgent(root: string, model: string, workflow: string, task: string, n: number): Run {
   // The run's temporary area holds its workspace and its Claude Code configuration.
   const area = realpathSync(mkdtempSync(join(tmpdir(), "agent-run-")));
   try {
@@ -44,7 +56,10 @@ export function runAgent(root: string, model: string, workflow: string, task: st
     setUp(root, workflow, workspace, env);
     // Only `claude` needs the API key; setup commands run third-party installers.
     if (process.env.ANTHROPIC_API_KEY !== undefined) env.ANTHROPIC_API_KEY = process.env.ANTHROPIC_API_KEY;
-    const calls: Call[] = [];
+    const transcripts = join(root, TRANSCRIPTS, workflow, task, `run-${n}`);
+    mkdirSync(transcripts, { recursive: true });
+    let usage = NO_USAGE;
+    let k = 0;
     // A prompt resumes the previous call's session unless a `session` entry came since.
     let resume: string | undefined;
     for (const entry of loadPrompts(root, workflow, task)) {
@@ -52,16 +67,18 @@ export function runAgent(root: string, model: string, workflow: string, task: st
         resume = undefined;
         continue;
       }
+      k++;
       const argv = ["-p", entry.prompt ?? "", "--output-format", "stream-json", "--verbose", "--model", model];
       argv.push("--permission-mode", "bypassPermissions");
       if (resume) argv.push("--resume", resume);
       const call = spawnSync("claude", argv, { cwd: workspace, env, encoding: "utf8", maxBuffer: CALL_MAX_BUFFER });
-      const lines = (call.stdout ?? "").split("\n").filter((line) => line.trim() !== "");
-      const sessionId = lastSessionId(lines);
-      calls.push({ argv, sessionId, lines, status: call.status });
-      resume = sessionId;
+      const stdout = call.stdout ?? "";
+      writeFileSync(join(transcripts, `prompt-${k}.jsonl`), stdout);
+      const stream = parseCall(stdout.split("\n").filter((line) => line.trim() !== ""));
+      usage = addUsage(usage, stream.usage);
+      resume = stream.sessionId;
     }
-    return { calls };
+    return usage;
   } finally {
     rmSync(area, { recursive: true, force: true });
   }
@@ -92,18 +109,4 @@ function runEnv(configDir: string): NodeJS.ProcessEnv {
   const env = allowlistedEnv();
   env.CLAUDE_CONFIG_DIR = configDir;
   return env;
-}
-
-/** The last `session_id` a call's stream-json names, or undefined when none does. */
-function lastSessionId(lines: string[]): string | undefined {
-  let id: string | undefined;
-  for (const line of lines) {
-    try {
-      const message = JSON.parse(line) as { session_id?: unknown };
-      if (typeof message.session_id === "string") id = message.session_id;
-    } catch {
-      // A line that isn't JSON names no session.
-    }
-  }
-  return id;
 }
