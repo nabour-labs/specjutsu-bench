@@ -3,7 +3,7 @@ import { accessSync, constants, cpSync, existsSync, mkdirSync, mkdtempSync, real
 import { tmpdir } from "node:os";
 import { delimiter, join } from "node:path";
 import { allowlistedEnv, loadTestCommand, SUITE_TIMEOUT_MS } from "../fixture.ts";
-import { commitStart, copyStart, linkExcludedNodeModules } from "../replay.ts";
+import { commitStart, copyStart, excludeNodeModules } from "../replay.ts";
 import { WORKFLOWS } from "../steps.ts";
 import { loadAgentConfig, loadPrompts, loadSetup } from "./scripts.ts";
 import { addUsage, NO_USAGE, parseCall, type Usage } from "./usage.ts";
@@ -61,7 +61,7 @@ export function runAgent(root: string, model: string, workflow: string, task: st
     // The workspace is a git repo with the start state committed, as a user's checkout would be.
     copyStart(root, workspace);
     commitStart(workspace);
-    linkExcludedNodeModules(root, workspace);
+    copyNodeModules(root, workspace);
     const env = runEnv(join(area, "claude-config"), join(area, "home"));
     setUp(root, workflow, workspace, env);
     // Only `claude` needs the API key; setup commands run third-party installers.
@@ -112,6 +112,22 @@ export function runAgent(root: string, model: string, workflow: string, task: st
   } finally {
     rmSync(area, { recursive: true, force: true });
   }
+}
+
+/**
+ * Copies the bench's `node_modules` into a committed workspace, excluded from git, so what a run
+ * changes there stays in that run. Links inside it are kept as they are (`.bin`'s are relative),
+ * and files are cloned where the file system can.
+ */
+function copyNodeModules(root: string, workspace: string): void {
+  const modules = join(root, "node_modules");
+  if (!existsSync(modules)) return;
+  cpSync(realpathSync(modules), join(workspace, "node_modules"), {
+    recursive: true,
+    verbatimSymlinks: true,
+    mode: constants.COPYFILE_FICLONE,
+  });
+  excludeNodeModules(workspace);
 }
 
 /** A task's golden tests, which decide whether a run passed. */

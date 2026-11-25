@@ -145,7 +145,7 @@ function replayScript(
 
 /**
  * Copies `fixture/start/` into `workspace`, leaving out stale `sj gain` records and any
- * `node_modules` installed in the start state: the bench's own is linked in by the caller.
+ * `node_modules` installed in the start state: the caller links or copies in the bench's own.
  */
 export function copyStart(root: string, workspace: string): void {
   const start = join(root, "fixture", "start");
@@ -161,7 +161,11 @@ export function copyStart(root: string, workspace: string): void {
  * git's `node_modules/` patterns match only directories, so the link is excluded by name.
  */
 export function linkExcludedNodeModules(root: string, workspace: string): void {
-  if (!linkNodeModules(root, workspace)) return;
+  if (linkNodeModules(root, workspace)) excludeNodeModules(workspace);
+}
+
+/** Excludes the workspace's `node_modules`, a link or a directory, from git by name. */
+export function excludeNodeModules(workspace: string): void {
   const info = join(workspace, ".git", "info");
   mkdirSync(info, { recursive: true });
   appendFileSync(join(info, "exclude"), "/node_modules\n");
