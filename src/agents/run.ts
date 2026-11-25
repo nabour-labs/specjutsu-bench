@@ -46,7 +46,7 @@ export function runAll(root: string, tasks: string[], options: RunOptions): Runs
 
 /**
  * The `n`-th run of a workflow's prompt script for a task, in a fresh copy of `fixture/start/`
- * removed afterwards. Each call's stream-json is saved as
+ * removed afterwards. Each call's stream-json, with the API key redacted, is saved as
  * `.bench/transcripts/<workflow>/<task>/run-<n>/prompt-<k>.jsonl`, `k` counting prompts from 1.
  * A call that exits non-zero, prints no result message or runs past `timeout` seconds fails the
  * run, and the run makes no more calls. After the last prompt, the task's golden tests decide
@@ -91,7 +91,7 @@ export function runAgent(root: string, model: string, workflow: string, task: st
         killSignal: "SIGKILL",
       });
       const stdout = call.stdout ?? "";
-      writeFileSync(join(transcripts, `prompt-${k}.jsonl`), stdout);
+      writeFileSync(join(transcripts, `prompt-${k}.jsonl`), redactKey(stdout));
       const stream = parseCall(stdout.split("\n").filter((line) => line.trim() !== ""));
       usage = addUsage(usage, stream.usage);
       resume = stream.sessionId;
@@ -130,6 +130,12 @@ function copyNodeModules(root: string, workspace: string): void {
   excludeNodeModules(workspace);
 }
 
+/** `text` with the API key's value, when there is one, replaced by `[redacted]`, so no saved transcript holds it. */
+function redactKey(text: string): string {
+  const key = process.env.ANTHROPIC_API_KEY;
+  return key ? text.split(key).join("[redacted]") : text;
+}
+
 /** A task's golden tests, which decide whether a run passed. */
 function goldenTests(task: string): string {
   return `fixture/golden/${task}/test`;
@@ -148,9 +154,13 @@ function onPath(name: string): boolean {
   });
 }
 
-/** What every run needs before the first one starts, one line per problem: `claude` on PATH, and each task's golden tests. */
+/**
+ * What every run needs before the first one starts, one line per problem: an API key, `claude`
+ * on PATH, and each task's golden tests.
+ */
 export function checkRunnable(root: string, tasks: string[]): string[] {
-  const errors = onPath("claude") ? [] : ["claude not found on PATH"];
+  const errors = process.env.ANTHROPIC_API_KEY ? [] : ["ANTHROPIC_API_KEY is not set"];
+  if (!onPath("claude")) errors.push("claude not found on PATH");
   for (const task of tasks) {
     if (!existsSync(join(root, goldenTests(task)))) errors.push(`${goldenTests(task)}: missing`);
   }
