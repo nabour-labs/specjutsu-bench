@@ -1,9 +1,10 @@
-import { existsSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { delimiter, dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { expect, it, vi } from "vitest";
 import { agentRoot, agents, fakeBehaviour, fakeCalls, promptsYaml, realFixture } from "./agent-helpers.ts";
+import { fingerprint } from "../src/agents/saved.ts";
 import { WORKFLOWS } from "../src/steps.ts";
 import { TASKS } from "./helpers.ts";
 
@@ -713,4 +714,61 @@ it("AGENT-035 --fresh does a workflow's saved runs again", async () => {
   expect(run.status).toBe(0);
   const second = fakeCalls(root).slice(first);
   expect(second.map((call) => call.argv[1]).sort()).toEqual(TASKS.map((task) => `speckit ${task}`).sort());
+});
+
+it("AGENT-039 a changed acceptance test command does every run again", async () => {
+  const root = agentRoot(cellPrompts());
+  expect((await agents(root, ["--runs", "1"])).status).toBe(0);
+  const first = fakeCalls(root).length;
+  writeFileSync(join(root, "fixture", "tasks.json"), JSON.stringify({ tasks: TASKS, test: `node -e "process.exit(0)" && true` }));
+
+  const run = await agents(root, ["--runs", "1"]);
+
+  expect(run.status).toBe(0);
+  const second = fakeCalls(root).slice(first);
+  expect(second.map((call) => call.argv[1]).sort()).toEqual(WORKFLOWS.flatMap((workflow) => TASKS.map((task) => `${workflow} ${task}`)).sort());
+});
+
+it("AGENT-040 what a workspace doesn't get leaves the fingerprint alone", async () => {
+  const root = agentRoot(cellPrompts());
+  expect((await agents(root, ["--runs", "1"])).status).toBe(0);
+  const first = fakeCalls(root).length;
+  const start = join(root, "fixture", "start");
+  mkdirSync(join(start, "node_modules"), { recursive: true });
+  writeFileSync(join(start, "node_modules", "x.js"), "export {};\n");
+  mkdirSync(join(start, ".specjutsu", "ledger"), { recursive: true });
+  writeFileSync(join(start, ".specjutsu", "ledger", "runs.jsonl"), "{}\n");
+
+  const run = await agents(root, ["--runs", "1"]);
+
+  expect(run.status).toBe(0);
+  expect(fakeCalls(root).slice(first)).toEqual([]);
+});
+
+it("AGENT-041 every other input changes the fingerprint", () => {
+  const root = agentRoot();
+  const model = "claude-sonnet-5-5";
+  const print = () => fingerprint(root, model, "speckit", "feature");
+  const first = print();
+  /** The fingerprint with `path` holding `content`, then `path` put back. */
+  const withFile = (path: string, content: string) => {
+    const file = join(root, path);
+    const before = existsSync(file) ? readFileSync(file) : undefined;
+    writeFileSync(file, content);
+    const changed = print();
+    if (before === undefined) rmSync(file);
+    else writeFileSync(file, before);
+    return changed;
+  };
+
+  const prints = [
+    fingerprint(root, "claude-opus-5-5", "speckit", "feature"),
+    withFile("pins.json", JSON.stringify({ openspec: "1.2.1", superpowers: "0123456789abcdef0123456789abcdef01234567" })),
+    withFile("agents/speckit/setup.yaml", "steps:\n  - command: \"echo set up\"\n    source: https://example.com/docs#setup\n"),
+    withFile("fixture/start/file-1.md", "file 1, changed\n"),
+    withFile("fixture/golden/feature/test/README.md", "golden tests, changed\n"),
+  ];
+
+  expect(print()).toBe(first);
+  for (const changed of prints) expect(changed).not.toBe(first);
 });
