@@ -13,17 +13,17 @@
 
 ## 3. Usage and outcome
 
-- [ ] 3.1 Usage summed from every turn, transcripts kept in .bench (AGENT-006, AGENT-013)
-- [ ] 3.4 Lines of one message count once (AGENT-017)
-- [ ] 3.2 A failing or hung call marks the run failed (AGENT-007, AGENT-016)
-- [ ] 3.3 Golden acceptance tests (AGENT-008)
+- [x] 3.1 Usage summed from every turn, transcripts kept in .bench (AGENT-006, AGENT-013)
+- [x] 3.4 Lines of one message count once (AGENT-017)
+- [x] 3.2 A failing or hung call marks the run failed (AGENT-007, AGENT-016)
+- [x] 3.3 Golden acceptance tests (AGENT-008)
 
 ## 4. Results
 
-- [ ] 4.1 Cell median, range and pass rate (AGENT-009, AGENT-010)
-- [ ] 4.2 Totals and headline (AGENT-011, AGENT-012)
-- [ ] 4.3 Headline when specjutsu has no passing run in a cell (AGENT-018)
-- [ ] 4.4 Refuse bad options, a missing claude and missing golden tests (AGENT-019..022)
+- [x] 4.1 Cell median, range and pass rate (AGENT-009, AGENT-010)
+- [x] 4.2 Totals and headline (AGENT-011, AGENT-012)
+- [x] 4.3 Headline when specjutsu has no passing run in a cell (AGENT-018)
+- [x] 4.4 Refuse bad options, a missing claude and missing golden tests (AGENT-019..022)
 
 ## 5. Workflow scripts and docs
 
