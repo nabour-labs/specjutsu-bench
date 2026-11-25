@@ -1,0 +1,43 @@
+# Spec Kit 1.4.3 and Superpowers 7.0.2 into the run's workspace. Spec Kit: `specify init` with the
+# Claude integration, then the bundled bug extension the bugfix path uses. Superpowers: the Claude
+# Code plugin, installed at user scope, which is the run's CLAUDE_CONFIG_DIR.
+#
+# Setup is per workflow, not per task, so the bug extension is installed for the feature and change
+# runs too; its skills are listed there as well (extension skills stay model-invocable,
+# docs/integrations/claude.md#L46-L47).
+steps:
+  - command: >-
+      uvx --from git+https://github.com/github/spec-kit.git@v1.4.3 specify init --here --force
+      --non-interactive --integration claude --integration-options="--no-model-invocation"
+    source: speckit@1.4.3:docs/installation.md#L121-L127
+    note: >-
+      The documented non-interactive init for an existing, non-empty project
+      (`--here --force --non-interactive --integration claude`), run with the one-time `uvx` form
+      pinned to the release tag (docs/install/one-time.md#L14-L16) rather than a persistent
+      `uv tool install`: Spec Kit's skills run the .specify/scripts that init writes, never the
+      `specify` CLI, so nothing needs to stay on PATH. Choice, fairness rule:
+      `--integration-options="--no-model-invocation"` (docs/integrations/claude.md#L30-L42) keeps
+      the core skills' descriptions out of Claude's context, the cheaper documented option; the
+      prompts invoke every core skill by name, which that option still allows. Default script
+      variant (sh) and default events.
+  - command: uvx --from git+https://github.com/github/spec-kit.git@v1.4.3 specify extension add bug
+    source: speckit@1.4.3:docs/guides/bugfix.md#L16-L21
+    note: >-
+      The bug-fixing quickstart's setup: "In a terminal at the initialized project root, install
+      the extension". Layer 1 counts it as done at install time (steps/speckit/bugfix.yaml).
+  - command: claude plugin marketplace add https://github.com/obra/superpowers.git#v7.0.2
+    source: superpowers@7.0.2:README.md#L68-L76
+    note: >-
+      The README registers a marketplace with `/plugin marketplace add`, then installs from it.
+      Choice: both README marketplaces (claude-plugins-official, obra/superpowers-marketplace)
+      serve whatever version they list now, so to pin 7.0.2 the repository itself is added as the
+      marketplace at tag v7.0.2: its own .claude-plugin/marketplace.json (name `superpowers-dev`)
+      lists the plugin at version 7.0.2 with source `./`. `claude plugin marketplace add` is the
+      non-interactive CLI form of the slash command, and `#<ref>` pins a git marketplace
+      (https://code.claude.com/docs/en/plugin-marketplaces).
+  - command: claude plugin install superpowers@superpowers-dev
+    source: superpowers@7.0.2:README.md#L78-L82
+    note: >-
+      `/plugin install superpowers@<marketplace>`, in its non-interactive CLI form, from the
+      marketplace added above (named in .claude-plugin/marketplace.json, line 2). The default user
+      scope installs it into CLAUDE_CONFIG_DIR, the run's own empty configuration.

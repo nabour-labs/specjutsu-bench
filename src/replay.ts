@@ -113,24 +113,11 @@ function replayScript(
     const env = workspaceEnv(xdgHome);
     const bin = sjBin(root, pins);
     if (bin) env.PATH = `${bin}${delimiter}${process.env.PATH ?? ""}`;
-    const start = join(root, "fixture", "start");
-    // Stale `sj gain` records in the start state are left out, and the workspace is a git repo
-    // because `sj` records gain only inside one.
-    // A `node_modules` installed in the start state is left out too: the bench's own is linked in
-    // after the commit.
-    const left = [join(start, ".specjutsu", "ledger"), join(start, "node_modules")];
-    cpSync(start, workspace, {
-      recursive: true,
-      filter: (src) => !left.some((path) => src === path || src.startsWith(`${path}${sep}`)),
-    });
+    copyStart(root, workspace);
+    // The workspace is a git repo because `sj` records gain only inside one.
     commitStart(workspace);
     // Run steps use the bench's installed packages, as the fixture check does.
-    // git's `node_modules/` patterns match only directories, so the link is excluded by name.
-    if (linkNodeModules(root, workspace)) {
-      const info = join(workspace, ".git", "info");
-      mkdirSync(info, { recursive: true });
-      appendFileSync(join(info, "exclude"), "/node_modules\n");
-    }
+    linkExcludedNodeModules(root, workspace);
     const paths = replacedPaths(root, workspace);
     let ranSj = false;
     const results = steps.map((step, index) => {
@@ -156,12 +143,45 @@ function replayScript(
   }
 }
 
-/** The workspace's fixed author, committer and date, so the start commit's hash is the same everywhere. */
-const START_COMMIT = {
+/**
+ * Copies `fixture/start/` into `workspace`, leaving out stale `sj gain` records and any
+ * `node_modules` installed in the start state: the caller links or copies in the bench's own.
+ */
+export function copyStart(root: string, workspace: string): void {
+  const start = join(root, "fixture", "start");
+  const left = [join(start, ".specjutsu", "ledger"), join(start, "node_modules")];
+  cpSync(start, workspace, {
+    recursive: true,
+    filter: (src) => !left.some((path) => src === path || src.startsWith(`${path}${sep}`)),
+  });
+}
+
+/**
+ * Links the bench's `node_modules` into a committed workspace and excludes the link from git:
+ * git's `node_modules/` patterns match only directories, so the link is excluded by name.
+ */
+export function linkExcludedNodeModules(root: string, workspace: string): void {
+  if (linkNodeModules(root, workspace)) excludeNodeModules(workspace);
+}
+
+/** Excludes the workspace's `node_modules`, a link or a directory, from git by name. */
+export function excludeNodeModules(workspace: string): void {
+  const info = join(workspace, ".git", "info");
+  mkdirSync(info, { recursive: true });
+  appendFileSync(join(info, "exclude"), "/node_modules\n");
+}
+
+/** The bench's git author and committer, `bench <bench@localhost>`. */
+export const BENCH_GIT_IDENTITY = {
   GIT_AUTHOR_NAME: "bench",
   GIT_AUTHOR_EMAIL: "bench@localhost",
   GIT_COMMITTER_NAME: "bench",
   GIT_COMMITTER_EMAIL: "bench@localhost",
+};
+
+/** The workspace's fixed author, committer and date, so the start commit's hash is the same everywhere. */
+const START_COMMIT = {
+  ...BENCH_GIT_IDENTITY,
   GIT_AUTHOR_DATE: "2026-01-01T00:00:00Z",
   GIT_COMMITTER_DATE: "2026-01-01T00:00:00Z",
 };
@@ -207,7 +227,7 @@ function workspaceEnv(xdgHome: string): NodeJS.ProcessEnv {
  * - `HOME` and `XDG_CONFIG_HOME` are an empty dir, so no `~/.gitconfig` or `~/.config/git/*`;
  * - init uses no template.
  */
-function commitStart(workspace: string): void {
+export function commitStart(workspace: string): void {
   const home = mkdtempSync(join(tmpdir(), "replay-git-home-"));
   try {
     const env: NodeJS.ProcessEnv = Object.fromEntries(

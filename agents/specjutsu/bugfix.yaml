@@ -1,0 +1,17 @@
+# bugfix, as in steps/specjutsu/bugfix.yaml: sj-debug (which goes on to sj-verify), then
+# sj-finish, in one session. Layer 1 has no session step here (sj-debug starts no subagent), so
+# there is no `session` entry; the first prompt starts the session.
+prompts:
+  - prompt: "/sj-debug Fix the bulk discount, which skips line items of exactly 10 units although the rule is 10 units or more."
+    source: specjutsu@0.5.1:crates/sj-adapters/assets/skills/sj-debug/SKILL.md#L1-L4
+    note: >-
+      A bug report, sj-debug's trigger (its description). The skill is invoked by name, as Claude
+      Code runs a project skill typed as /<name> (https://code.claude.com/docs/en/skills);
+      specjutsu's docs name the skills but give no prompt wording. sj-verify follows in the same
+      call: its description covers "about to say work is done, fixed".
+  - prompt: /sj-finish archive the change
+    source: specjutsu@0.5.1:crates/sj-adapters/assets/skills/sj-finish/SKILL.md#L1-L4
+    note: >-
+      Landing the fix. "archive the change" is one of the triggers in the skill's description,
+      and is what layer 1 runs: verify, archive and validate (#L20-L40). The workspace has no
+      remote, so the PR steps (#L42-L50) are left out, as layer 1 leaves them out.

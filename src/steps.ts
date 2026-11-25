@@ -73,7 +73,11 @@ export function checkCitations(root: string, pins: Pins, script: string, steps: 
   });
 }
 
-function citationError(root: string, pins: Pins, source: string): string | undefined {
+/**
+ * Why `source` is not a valid citation (see `checkCitations`), or undefined when it is; the error
+ * starts after the `<script> step <n>: ` prefix.
+ */
+export function citationError(root: string, pins: Pins, source: string): string | undefined {
   if (source.startsWith("https://")) return undefined;
   const match = PINNED_SOURCE.exec(source);
   if (!match) return `source "${source}" is not <tool>@<pin>:<path> or an https:// URL`;

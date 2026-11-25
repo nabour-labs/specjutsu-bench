@@ -1,0 +1,41 @@
+# Tasks
+
+## 1. Scripts
+
+- [x] 1.1 Prompt and setup script checks (AGENT-004, AGENT-005)
+
+## 2. Running
+
+- [x] 2.1 Prompts run in order with sessions, via a fake claude (AGENT-001)
+- [x] 2.2 Isolated Claude Code configuration (AGENT-002)
+- [x] 2.3 Setup commands, and a failing one stops the benchmark (AGENT-003)
+- [x] 2.4 The API key reaches only claude, and the workspace is a git repo (AGENT-014, AGENT-015)
+- [x] 2.5 Each run has its own home, with its .local/bin on PATH (AGENT-023)
+
+## 3. Usage and outcome
+
+- [x] 3.1 Usage summed from every turn, transcripts kept in .bench (AGENT-006, AGENT-013)
+- [x] 3.4 Lines of one message count once (AGENT-017)
+- [x] 3.5 A subagent's turns count (AGENT-024)
+- [x] 3.2 A failing or hung call marks the run failed (AGENT-007, AGENT-016)
+- [x] 3.3 Golden acceptance tests (AGENT-008)
+
+## 4. Results
+
+- [x] 4.1 Cell median, range and pass rate (AGENT-009, AGENT-010)
+- [x] 4.2 Totals and headline (AGENT-011, AGENT-012)
+- [x] 4.3 Headline when specjutsu has no passing run in a cell (AGENT-018)
+- [x] 4.4 Refuse bad options, a missing claude and missing golden tests (AGENT-019..022)
+
+## 5. Workflow scripts and docs
+
+- [x] 5.1 Setup and prompt scripts for every workflow and task, with citations (no-scenario: config)
+- [x] 5.2 README section on layer 2 (no-scenario: docs)
+
+## 6. Final review fixes
+
+- [x] 6.1 Each run gets its own node_modules (AGENT-025)
+- [x] 6.2 A fixed git identity for the agent (AGENT-026)
+- [x] 6.3 API key: required, redacted in transcripts, kept out of test runs (AGENT-027, AGENT-028)
+- [x] 6.4 A message's usage is its largest on any line (AGENT-029)
+- [x] 6.5 README caveats: subagent turns unconfirmed, machine PATH visible (no-scenario: docs)
