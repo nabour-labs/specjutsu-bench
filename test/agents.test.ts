@@ -9,6 +9,16 @@ function agentResults(root: string) {
   return JSON.parse(readFileSync(join(root, "results", "agent", "results.json"), "utf8"));
 }
 
+/** The agent results table the runner wrote in `root`. */
+function agentMarkdown(root: string): string {
+  return readFileSync(join(root, "results", "agent", "results.md"), "utf8");
+}
+
+/** A turn with `input` uncached input tokens and nothing else. */
+function inputTurn(input: number) {
+  return { turns: [{ input_tokens: input, cache_creation_input_tokens: 0, cache_read_input_tokens: 0, output_tokens: 0 }] };
+}
+
 /** Every file under `dir`, recursively, as absolute paths. */
 function filesUnder(dir: string): string[] {
   return readdirSync(dir, { recursive: true, withFileTypes: true })
@@ -245,7 +255,10 @@ it("AGENT-008 fails a bugfix run that leaves src/invoice.ts unchanged, as the go
   const root = agentRoot({ ...realFixture("bugfix"), "agents/speckit/bugfix.yaml": promptsYaml(["fix the discount"]) });
   // The first run changes nothing; the second writes the golden fix, so the same check passes it.
   fakeBehaviour(root, {
-    "fix the discount": [{}, { copy: { from: join(root, "fixture", "golden", "bugfix", "src"), to: "src" } }],
+    "fix the discount": [
+      inputTurn(50000),
+      { ...inputTurn(20000), copy: { from: join(root, "fixture", "golden", "bugfix", "src"), to: "src" } },
+    ],
   });
 
   const run = agents(root, ["--runs", "2"]);
@@ -256,4 +269,26 @@ it("AGENT-008 fails a bugfix run that leaves src/invoice.ts unchanged, as the go
     ["failed", "acceptance tests failed"],
     ["passed", undefined],
   ]);
+  // The failed run's 50,000 tokens are in neither the median nor the range.
+  expect(agentMarkdown(root)).toContain("| speckit | bugfix | 1/2 | 20,000 | 20,000–20,000 |");
+});
+
+it("AGENT-009 shows a cell's pass rate, median and range over three passing runs", () => {
+  const root = agentRoot({ "agents/speckit/feature.yaml": promptsYaml(["feature cell"]) });
+  fakeBehaviour(root, { "feature cell": [inputTurn(30000), inputTurn(10000), inputTurn(12000)] });
+
+  const run = agents(root, ["--runs", "3"]);
+
+  expect(run.status).toBe(0);
+  expect(agentMarkdown(root)).toContain("| speckit | feature | 3/3 | 12,000 | 10,000–30,000 |");
+});
+
+it("AGENT-010 leaves a failed run out of the cell's median", () => {
+  const root = agentRoot({ "agents/speckit/feature.yaml": promptsYaml(["feature cell"]) });
+  fakeBehaviour(root, { "feature cell": [{ ...inputTurn(9000), exit: 1 }, inputTurn(14000), inputTurn(11000)] });
+
+  const run = agents(root, ["--runs", "3"]);
+
+  expect(run.status).toBe(0);
+  expect(agentMarkdown(root)).toContain("| speckit | feature | 2/3 | 11,000 | 11,000–14,000 |");
 });
