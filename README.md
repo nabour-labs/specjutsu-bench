@@ -60,8 +60,25 @@ npm run agents
   `agents/<workflow>/setup.yaml` commands run first, then each prompt in
   `agents/<workflow>/<task>.yaml` goes to `claude -p`. Last, the task's golden tests are copied in,
   and the run passes only if the suite passes.
-- It writes `results/agent/results.json` and `results/agent/results.md` once every run is done.
-  Each call's transcript goes to `.bench/transcripts/` and is not committed.
+- Each run is saved in `.bench/runs/<workflow>/<task>/run-<n>.json` as soon as it finishes, and
+  `results/agent/results.json` and `results/agent/results.md` are rewritten after every run, so
+  the report is current while a pass is still going. Each call's transcript goes to
+  `.bench/transcripts/` and is not committed.
+- If a pass is interrupted, run the same command again: it skips every run already saved and does
+  only what's left. A run cut off partway is done again from the start. A saved run is reused only
+  while its inputs are unchanged (the model, the pins, the workflow's setup and prompt scripts,
+  `fixture/start/` and the task's golden tests); change any of them and that run is done again.
+  The `claude` version and the machine's `PATH` aren't among them, so use `--fresh` after changing
+  those.
+- A run whose `claude` call exits non-zero, is killed or prints no result message isn't saved: the
+  runner prints `<workflow>/<task> run <n>: <reason> (not saved, will be retried)`, and the next
+  start does it again. So an API outage, a rate limit or running out of credit doesn't count
+  against a workflow. A run that fails its acceptance tests or times out is saved as failed.
+- `--workflow <name>` runs only that workflow (`specjutsu`, `speckit` or `openspec`); the other
+  workflows' saved runs stay in the report. `--fresh` discards the saved runs of the workflows
+  being run first, to take new samples.
+- A cell with no saved run shows as `not run`, and a workflow with one gets no total, so a partial
+  report never gives a headline number.
 
 **Warning:** it runs Claude Code with `--permission-mode bypassPermissions` and real installers.
 Run it only on a throwaway machine or a CI runner, never on a machine you care about. It also
