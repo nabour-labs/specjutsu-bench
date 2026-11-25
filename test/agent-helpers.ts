@@ -1,6 +1,7 @@
 import { spawnSync } from "node:child_process";
-import { chmodSync, existsSync, readFileSync, writeFileSync } from "node:fs";
-import { delimiter, join } from "node:path";
+import { chmodSync, existsSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
+import { delimiter, join, relative } from "node:path";
+import { fileURLToPath } from "node:url";
 import { WORKFLOWS } from "../src/steps.ts";
 import { benchRoot, TASKS } from "./helpers.ts";
 
@@ -28,11 +29,11 @@ export const SETUP_SCRIPT = `steps:\n  - command: "true"\n    source: https://ex
  *
  * What it does for a prompt is set per test in `behaviour.json` beside it (see `FakeBehaviour`):
  * the n-th call with a given prompt text follows the n-th behaviour listed for that text, and a
- * call without one answers with one turn of 100 input and 10 output tokens.
+ * call without one answers with one turn of 100 input and 10 output tokens and edits nothing.
  */
 const FAKE_CLAUDE = `#!/usr/bin/env node
 import { spawnSync } from "node:child_process";
-import { appendFileSync, existsSync, readdirSync, readFileSync } from "node:fs";
+import { appendFileSync, cpSync, existsSync, readdirSync, readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 const dir = dirname(fileURLToPath(import.meta.url));
@@ -51,6 +52,7 @@ const git = spawnSync("git", ["log", "--format=%s", "main"], { encoding: "utf8" 
 const gitLog = git.status === 0 ? git.stdout.split("\\n").filter(Boolean) : null;
 appendFileSync(log, JSON.stringify({ argv, cwd: process.cwd(), sessionId, config, apiKey, gitLog }) + "\\n");
 if (behaviour.sleep) Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, behaviour.sleep * 1000);
+if (behaviour.copy) cpSync(behaviour.copy.from, join(process.cwd(), behaviour.copy.to), { recursive: true });
 const turns = behaviour.turns ?? [{ input_tokens: 100, cache_creation_input_tokens: 0, cache_read_input_tokens: 0, output_tokens: 10 }];
 // The result message's usage is the call's total, as Claude Code reports it.
 const total = {};
@@ -75,7 +77,15 @@ export type TurnUsage = {
  * and the cost; the seconds it sleeps first, whether it leaves out the result message, and the
  * code it exits with after printing.
  */
-export type FakeBehaviour = { turns?: TurnUsage[]; cost?: number; sleep?: number; noResult?: boolean; exit?: number };
+export type FakeBehaviour = {
+  turns?: TurnUsage[];
+  cost?: number;
+  sleep?: number;
+  noResult?: boolean;
+  exit?: number;
+  /** A directory copied over `to`, relative to the call's working directory, as the agent's edits. */
+  copy?: { from: string; to: string };
+};
 
 /** Sets what the fake `claude` in `root` does for each prompt text: the n-th call with that text follows the n-th entry. */
 export function fakeBehaviour(root: string, byPrompt: Record<string, FakeBehaviour[]>): void {
@@ -96,6 +106,26 @@ export function fakeCalls(root: string): FakeCall[] {
   const log = join(root, "fake-claude", "calls.jsonl");
   if (!existsSync(log)) return [];
   return readFileSync(log, "utf8").split("\n").filter(Boolean).map((line) => JSON.parse(line) as FakeCall);
+}
+
+const pkg = fileURLToPath(new URL("..", import.meta.url));
+
+/**
+ * This package's real fixture for one task, as `agentRoot` files: `fixture/start/`, the task's
+ * golden end state and a `fixture/tasks.json` listing only that task, with the real test command.
+ */
+export function realFixture(task: string): Record<string, string> {
+  const files: Record<string, string> = {};
+  for (const dir of ["fixture/start", `fixture/golden/${task}`]) {
+    for (const entry of readdirSync(join(pkg, dir), { recursive: true, withFileTypes: true })) {
+      if (!entry.isFile()) continue;
+      const path = join(entry.parentPath, entry.name);
+      files[relative(pkg, path)] = readFileSync(path, "utf8");
+    }
+  }
+  const { test } = JSON.parse(readFileSync(join(pkg, "fixture", "tasks.json"), "utf8")) as { test: string };
+  files["fixture/tasks.json"] = JSON.stringify({ tasks: [task], test });
+  return files;
 }
 
 /**

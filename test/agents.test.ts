@@ -2,7 +2,7 @@ import { existsSync, mkdtempSync, readdirSync, readFileSync, writeFileSync } fro
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { expect, it } from "vitest";
-import { agentRoot, agents, fakeBehaviour, fakeCalls, promptsYaml } from "./agent-helpers.ts";
+import { agentRoot, agents, fakeBehaviour, fakeCalls, promptsYaml, realFixture } from "./agent-helpers.ts";
 
 /** The agent results the runner wrote in `root`. */
 function agentResults(root: string) {
@@ -239,4 +239,21 @@ it("AGENT-016 fails a run whose call sleeps past --timeout 1", () => {
   expect(run.status).toBe(0);
   const [recorded] = agentResults(root).workflows.openspec.bugfix.runs;
   expect([recorded.outcome, recorded.reason]).toEqual(["failed", "prompt 1: claude timed out after 1s"]);
+});
+
+it("AGENT-008 fails a bugfix run that leaves src/invoice.ts unchanged, as the golden bulk-discount test fails", () => {
+  const root = agentRoot({ ...realFixture("bugfix"), "agents/speckit/bugfix.yaml": promptsYaml(["fix the discount"]) });
+  // The first run changes nothing; the second writes the golden fix, so the same check passes it.
+  fakeBehaviour(root, {
+    "fix the discount": [{}, { copy: { from: join(root, "fixture", "golden", "bugfix", "src"), to: "src" } }],
+  });
+
+  const run = agents(root, ["--runs", "2"]);
+
+  expect(run.status).toBe(0);
+  const runs = agentResults(root).workflows.speckit.bugfix.runs;
+  expect(runs.map((r: { outcome: string; reason?: string }) => [r.outcome, r.reason])).toEqual([
+    ["failed", "acceptance tests failed"],
+    ["passed", undefined],
+  ]);
 });
