@@ -629,3 +629,20 @@ it("AGENT-037 a start with nothing left to run still rewrites the results", asyn
   const markdown = agentMarkdown(root);
   for (const workflow of WORKFLOWS) for (const task of TASKS) expect(markdown).toContain(`| ${workflow} | ${task} | 1/1 |`);
 });
+
+it("AGENT-038 a run whose call errored is done again on the next start", async () => {
+  const root = agentRoot(cellPrompts());
+  // Only the first call of each errs; later calls with the same prompt succeed.
+  fakeBehaviour(root, { "openspec bugfix": [{ exit: 1 }], "openspec change": [{ sleep: 5 }] });
+  expect((await agents(root, ["--runs", "1", "--timeout", "1"])).status).toBe(0);
+  const first = fakeCalls(root).length;
+
+  const run = await agents(root, ["--runs", "1", "--timeout", "1"]);
+
+  expect(run.status).toBe(0);
+  const second = fakeCalls(root).slice(first);
+  expect(second.map((call) => call.argv[1])).toEqual(["openspec bugfix"]);
+  expect(transcriptSessions(join(root, ".bench", "transcripts", "openspec", "bugfix", "run-1", "prompt-1.jsonl"))).toEqual([second[0]?.sessionId]);
+  const [change] = agentResults(root).workflows.openspec.change.runs;
+  expect([change.outcome, change.reason]).toEqual(["failed", "prompt 1: claude timed out after 1s"]);
+});
