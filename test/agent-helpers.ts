@@ -76,6 +76,7 @@ turns.forEach(({ id, parent, ...usage }, i) => {
 });
 if (!behaviour.noResult) lines.push({ type: "result", subtype: "success", is_error: false, session_id: sessionId, total_cost_usd: behaviour.cost ?? 0.01, usage: total });
 for (const line of lines) console.log(JSON.stringify(line));
+if (behaviour.print) console.log(behaviour.print);
 process.exitCode = behaviour.exit ?? 0;
 `;
 
@@ -112,6 +113,8 @@ export type FakeBehaviour = {
   look?: string;
   /** Whether the call runs `git commit --allow-empty -m work`; how it went is recorded as `commit`. */
   commit?: boolean;
+  /** A line the call prints after its stream-json. */
+  print?: string;
 };
 
 /** Sets what the fake `claude` in `root` does for each prompt text: the n-th call with that text follows the n-th entry. */
@@ -181,8 +184,13 @@ export function agentRoot(files: Record<string, string | null> = {}): string {
   return root;
 }
 
-/** Runs `npm run agents` in `root`, with its fake `claude` first on PATH and `env` added. */
+/**
+ * Runs `npm run agents` in `root`, with its fake `claude` first on PATH and `env` added. The
+ * shell's own `ANTHROPIC_API_KEY` never reaches a run: the key is `sk-test-fake` unless `env`
+ * sets one, and an `env` value of undefined unsets it.
+ */
 export function agents(root: string, args: string[] = [], env: NodeJS.ProcessEnv = {}): Promise<Finished> {
   const PATH = `${join(root, "fake-claude")}${delimiter}${process.env.PATH ?? ""}`;
-  return spawnAsync("npm", ["run", "--silent", "agents", "--", ...args], { cwd: root, env: { ...process.env, PATH, ...env } });
+  const all = { ...process.env, PATH, ANTHROPIC_API_KEY: "sk-test-fake", ...env };
+  return spawnAsync("npm", ["run", "--silent", "agents", "--", ...args], { cwd: root, env: all });
 }

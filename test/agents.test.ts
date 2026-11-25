@@ -142,7 +142,7 @@ it("AGENT-003 stops the benchmark when the first speckit setup command exits 1",
   expect(fakeCalls(root)).toHaveLength(3);
 });
 
-it("AGENT-014 passes ANTHROPIC_API_KEY to every claude call but not to setup commands", async () => {
+it("AGENT-014 setup commands never see the API key, and every claude call sees sk-test", async () => {
   const root = agentRoot();
   const saw = join(root, "setup-saw.txt");
   const setup = [
@@ -503,4 +503,27 @@ it("AGENT-026 the agent can commit, as bench <bench@localhost>", async () => {
   const calls = fakeCalls(root);
   expect(calls).toHaveLength(9);
   for (const call of calls) expect(call.commit).toEqual({ status: 0, author: "bench <bench@localhost>" });
+});
+
+it("AGENT-027 replaces the API key with [redacted] in a saved transcript", async () => {
+  const root = agentRoot({ "agents/speckit/feature.yaml": promptsYaml(["leak the key"]) });
+  fakeBehaviour(root, { "leak the key": [{ print: "the key is sk-test-123" }] });
+
+  const run = await agents(root, ["--runs", "1"], { ANTHROPIC_API_KEY: "sk-test-123" });
+
+  expect(run.status).toBe(0);
+  const transcript = readFileSync(join(root, ".bench", "transcripts", "speckit", "feature", "run-1", "prompt-1.jsonl"), "utf8");
+  expect(transcript).toContain("the key is [redacted]\n");
+  expect(transcript).not.toContain("sk-test-123");
+});
+
+it("AGENT-028 stops when ANTHROPIC_API_KEY is not set", async () => {
+  const root = rootWithEarlierResults();
+
+  const run = await agents(root, ["--runs", "1"], { ANTHROPIC_API_KEY: undefined });
+
+  expect(run.stderr).toContain("ANTHROPIC_API_KEY is not set");
+  expect(run.status).toBe(1);
+  expect(fakeCalls(root)).toEqual([]);
+  expectEarlierResults(root);
 });
