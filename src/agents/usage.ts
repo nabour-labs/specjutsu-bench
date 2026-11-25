@@ -18,7 +18,7 @@ type StreamMessage = {
   type?: string;
   session_id?: unknown;
   total_cost_usd?: unknown;
-  message?: { usage?: TurnUsage };
+  message?: { id?: unknown; usage?: TurnUsage };
 };
 
 export const NO_USAGE: Usage = { inputTokens: 0, outputTokens: 0, turns: 0, costUsd: 0 };
@@ -34,12 +34,15 @@ export function addUsage(a: Usage, b: Usage): Usage {
 
 /**
  * Reads a call's stream-json lines: every assistant message's `message.usage` is one turn, and the
- * `result` message's `total_cost_usd` is the call's cost. Lines that aren't JSON are skipped.
+ * `result` message's `total_cost_usd` is the call's cost. Claude Code prints a line per content
+ * block of a message, each with the message's usage, so lines sharing a `message.id` count once.
+ * Lines that aren't JSON are skipped.
  */
 export function parseCall(lines: string[]): CallStream {
   let usage = NO_USAGE;
   let sessionId: string | undefined;
   let result = false;
+  const seen = new Set<unknown>();
   for (const line of lines) {
     let message: StreamMessage;
     try {
@@ -49,7 +52,9 @@ export function parseCall(lines: string[]): CallStream {
     }
     if (typeof message.session_id === "string") sessionId = message.session_id;
     const turn = message.type === "assistant" ? message.message?.usage : undefined;
-    if (turn) {
+    const id = message.message?.id;
+    if (turn && !(id !== undefined && seen.has(id))) {
+      seen.add(id);
       const input = (turn.input_tokens ?? 0) + (turn.cache_creation_input_tokens ?? 0) + (turn.cache_read_input_tokens ?? 0);
       usage = addUsage(usage, { inputTokens: input, outputTokens: turn.output_tokens ?? 0, turns: 1, costUsd: 0 });
     }
