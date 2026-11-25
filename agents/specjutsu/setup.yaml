@@ -1,0 +1,30 @@
+# specjutsu 0.5.1 into the run's workspace, the way its README and setup skill say: install the
+# pinned `sj` release, write specjutsu.toml for the existing project with `sj adopt`, then install
+# the Claude Code adapter (CLAUDE.md block, the ten sj-* skills, two hooks). Everything the adapter
+# writes goes into the workspace; nothing goes into CLAUDE_CONFIG_DIR.
+#
+# The pinned checkout's binary (.bench/tools/specjutsu@0.5.1/bin/sj) is not used: setup commands
+# run in a throwaway workspace outside the repo, with only PATH, HOME, TMPDIR and CLAUDE_CONFIG_DIR
+# in their environment, so they can't reach it, and design.md rejects reusing .bench/tools.
+steps:
+  - command: curl -fsSL https://nabour-labs.github.io/specjutsu/install.sh | SJ_VERSION=0.5.1 sh
+    source: specjutsu@0.5.1:README.md#L99-L113
+    note: >-
+      The README's macOS and Linux installer, pinned with `SJ_VERSION=0.5.1` (line 113). It
+      installs `sj` into ~/.local/bin; the hooks call `sj` from PATH (README.md#L1026-L1027), so
+      ~/.local/bin must be on the runner's PATH for the claude calls. The package managers
+      (brew, cargo) are the README's alternatives and are not used.
+  - command: '"$HOME/.local/bin/sj" adopt'
+    source: specjutsu@0.5.1:skills/specjutsu/SKILL.md#L59-L65
+    note: >-
+      The fixture is existing code with tests, so the setup skill's `sj adopt` writes
+      specjutsu.toml and the spec folders. The `--dry-run` preview only shows the user what will be
+      written and is skipped. Called by its full path so setup doesn't depend on ~/.local/bin
+      being on PATH already.
+  - command: '"$HOME/.local/bin/sj" init --agents claude'
+    source: specjutsu@0.5.1:README.md#L1006-L1010
+    note: >-
+      The Claude Code adapter. The setup skill's own default is `--agents auto`
+      (skills/specjutsu/SKILL.md#L74-L82), which with no agent files in the fixture falls back to
+      an AGENTS.md block that Claude Code doesn't read; naming `claude` is the documented way to
+      pick it.

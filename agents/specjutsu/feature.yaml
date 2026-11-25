@@ -1,0 +1,29 @@
+# feature, as in steps/specjutsu/feature.yaml: sj-propose, then sj-apply (which goes on to
+# sj-verify), then sj-finish, all in the main session. Layer 1's sessions 2 to 4 are the
+# implementer, task reviewer and whole-change reviewer subagents that sj-apply starts itself
+# (SKILL.md#L29-L34, #L43-L46, #L101-L104); in a real run Claude Code starts them inside the
+# /sj-apply call, so they are not user sessions and get no `session` entry here. Every prompt
+# after the first resumes the main session, as layer 1 comes back to session 1.
+prompts:
+  - session: true
+    source: specjutsu@0.5.1:crates/sj-adapters/assets/claude/CLAUDE.block.md
+    note: Layer 1's session 1, the task's main session. The first prompt starts a new session anyway.
+  - prompt: "/sj-propose Add payment terms to invoices (due on receipt, net 15, net 30) and a dueDate function that works out when an invoice is due."
+    source: specjutsu@0.5.1:crates/sj-adapters/assets/skills/sj-propose/SKILL.md#L1-L4
+    note: >-
+      The task's direction is agreed, sj-propose's trigger (its description). The skill is invoked
+      by name, as Claude Code runs a project skill typed as /<name>
+      (https://code.claude.com/docs/en/skills); specjutsu's docs name the skills but give no
+      prompt wording. sj-explore is skipped, as in layer 1.
+  - prompt: /sj-apply
+    source: specjutsu@0.5.1:crates/sj-adapters/assets/skills/sj-apply/SKILL.md#L1-L4
+    note: >-
+      Implementing the change's tasks. sj-propose ends by showing the user the proposal and
+      scenarios (SKILL.md#L87-L89) and asks for no answer, so the shortest next prompt is the
+      skill name alone. sj-apply ends with "continue with `sj-verify`" (#L106) in the same call.
+  - prompt: /sj-finish archive the change
+    source: specjutsu@0.5.1:crates/sj-adapters/assets/skills/sj-finish/SKILL.md#L1-L4
+    note: >-
+      Landing the change. "archive the change" is one of the triggers in the skill's description,
+      and is what layer 1 runs: verify, archive and validate (#L20-L40). The workspace has no
+      remote, so the PR steps (#L42-L50) are left out, as layer 1 leaves them out.

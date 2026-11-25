@@ -1,0 +1,24 @@
+# bugfix, as in steps/speckit/bugfix.yaml: the bug-fixing quickstart's assess -> fix -> test,
+# /speckit-bug-assess, /speckit-bug-fix, /speckit-bug-test, in one chat. Layer 1 has no session
+# step (no doc says to start a fresh session), so there is no `session` entry. The bug extension
+# is installed by agents/speckit/setup.yaml.
+prompts:
+  - prompt: "/speckit-bug-assess \"Fix the bulk discount, which skips line items of exactly 10 units although the rule is 10 units or more.\" slug=bulk-discount-boundary"
+    source: speckit@1.4.3:docs/guides/bugfix.md#L31-L38
+    note: >-
+      The guide's form: the report in quotes and a slug. The slug is layer 1's
+      (bulk-discount-boundary). Choice: without one, assess asks the user for a slug in
+      interactive mode (extensions/bug/commands/speckit.bug.assess.md#L25-L29), which would cost
+      a question and an answer prompt, so the guide's `slug=` is kept.
+  - prompt: /speckit-bug-fix
+    source: speckit@1.4.3:docs/guides/bugfix.md#L45-L51
+    note: >-
+      The guide passes the same slug again; the command reuses the slug assess just reported in
+      the session without it (extensions/bug/commands/speckit.bug.fix.md#L23-L26), so the
+      shortest prompt is the command alone. "Review the diagnosis ... before asking for a fix"
+      (#L42-L43) is the user's own review; it gets no prompt.
+  - prompt: /speckit-bug-test
+    source: speckit@1.4.3:docs/guides/bugfix.md#L58-L62
+    note: >-
+      Without the slug, as for the fix: the same conversation-context resolution
+      (extensions/bug/commands/speckit.bug.test.md#L21-L26).

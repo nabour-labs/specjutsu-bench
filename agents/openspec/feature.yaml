@@ -1,0 +1,38 @@
+# feature, as in steps/openspec/feature.yaml: propose in session 1, then apply and archive (with the
+# sync) in a fresh session 2, from docs/existing-projects.md and docs-lab/start/quickstart.md.
+# Claude Code invokes the 2.1.1 skills as /openspec-<workflow>
+# (docs-lab/reference/supported-tools.md#L53); docs/existing-projects.md still shows the 1.x
+# /opsx:* names.
+prompts:
+  - session: true
+    source: openspec@2.1.1:docs-lab/start/quickstart.md
+    note: Layer 1's session 1, propose. The first prompt starts a new session anyway.
+  - prompt: "/openspec-propose Add payment terms to invoices (due on receipt, net 15, net 30) and a dueDate function that works out when an invoice is due."
+    source: openspec@2.1.1:README.md#L146
+    note: >-
+      "Already know what you want? Go straight to `/openspec-propose <what-you-want-to-build>`."
+      The optional /openspec-explore is skipped, as in layer 1. Propose stops at the plan and waits
+      for a new request (skills/openspec-propose/SKILL.md#L14); the user's review of the plan
+      (quickstart step 3) changes nothing and gets no prompt.
+  - session: true
+    source: openspec@2.1.1:docs-lab/start/quickstart.md
+    note: >-
+      Layer 1's session 2: "Start a fresh chat session, since implementation goes better on a
+      clean context window" (quickstart.md#L85).
+  - prompt: /openspec-apply-change
+    source: openspec@2.1.1:docs-lab/reference/supported-tools.md#L53
+    note: >-
+      Quickstart step 4 (#L83-L89) asks for apply by change name. Choice: the skill name alone is
+      the shortest prompt; with no name and nothing in the fresh session's context, apply
+      auto-selects the only active change (skills/openspec-apply-change/SKILL.md#L30-L36).
+  - prompt: /openspec-archive-change
+    source: openspec@2.1.1:docs/existing-projects.md#L18-L23
+    note: >-
+      In the apply session: the docs start a fresh session only for apply. The change is inferred
+      from the conversation (skills/openspec-archive-change/SKILL.md#L33-L37).
+  - prompt: Sync now
+    source: openspec@2.1.1:skills/openspec-archive-change/SKILL.md#L131-L139
+    note: >-
+      Archive asks before syncing the delta into the main specs and waits for the answer. Layer 1
+      takes the recommended "Sync now (recommended)"; the shortest answer the skill routes on is
+      "Sync now".

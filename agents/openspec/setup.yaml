@@ -1,0 +1,33 @@
+# OpenSpec 2.1.1 and Superpowers 7.0.2 into the run's workspace. OpenSpec: the README's installer,
+# pinned, then `openspec init` for Claude Code. Superpowers: the Claude Code plugin, installed at
+# user scope, which is the run's CLAUDE_CONFIG_DIR, exactly as in agents/speckit/setup.yaml.
+steps:
+  - command: curl -fsSL https://openspec.dev/cli/install.sh | OPENSPEC_VERSION=v2.1.1 sh
+    source: openspec@2.1.1:docs-lab/start/installation.md#L132-L141
+    note: >-
+      The README's macOS and Linux installer (README.md#L120-L124), pinned with
+      `OPENSPEC_VERSION` as the install options say. It installs `openspec` into ~/.local/bin;
+      OpenSpec's skills run the `openspec` CLI, so ~/.local/bin must be on the runner's PATH for
+      the claude calls. The npm and Homebrew installs are the README's alternatives and are not
+      used.
+  - command: '"$HOME/.local/bin/openspec" init --scope project --tools claude'
+    source: openspec@2.1.1:docs-lab/start/setup.md#L19-L21
+    note: >-
+      `--tools claude` skips the picker (docs-lab/reference/cli.md#L80). Choice: `--scope project`
+      writes the six default-profile skills into the workspace (.agents/skills/, linked from
+      .claude/skills/); the default global scope writes them into the machine's ~/.agents/skills/
+      and ~/.claude/skills/, outside the run's CLAUDE_CONFIG_DIR, which would leak between runs
+      and into the machine. The skills Claude Code loads are the same either way. Called by its
+      full path so setup doesn't depend on ~/.local/bin being on PATH already.
+  - command: claude plugin marketplace add https://github.com/obra/superpowers.git#v7.0.2
+    source: superpowers@7.0.2:README.md#L68-L76
+    note: >-
+      As in agents/speckit/setup.yaml: the repository's own marketplace (`superpowers-dev`) at
+      tag v7.0.2, so the installed plugin is 7.0.2; the README's marketplaces serve their latest.
+      `claude plugin marketplace add` is the non-interactive form of `/plugin marketplace add`
+      (https://code.claude.com/docs/en/plugin-marketplaces).
+  - command: claude plugin install superpowers@superpowers-dev
+    source: superpowers@7.0.2:README.md#L78-L82
+    note: >-
+      `/plugin install superpowers@<marketplace>` in its CLI form; the default user scope installs
+      it into CLAUDE_CONFIG_DIR.

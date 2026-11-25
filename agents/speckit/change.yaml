@@ -1,0 +1,31 @@
+# change, as in steps/speckit/change.yaml: "How to evolve specifications in an existing project",
+# /speckit-specify, /speckit-plan, /speckit-tasks, /speckit-analyze, then /speckit-implement and
+# /speckit-converge, in one chat. Layer 1 has no session step (no doc says to start a fresh
+# session), so there is no `session` entry. The guide uses the dotted notation (/speckit.specify);
+# Claude Code invokes the installed skills as /speckit-<command> (docs/integrations/claude.md#L22-L24,
+# docs/integrations/cli.md#L26-L27).
+prompts:
+  - prompt: "/speckit-specify Raise the free-shipping threshold from $50.00 to $100.00 of discounted subtotal."
+    source: speckit@1.4.3:docs/how-to/evolving-specs.md#L33-L34
+    note: >-
+      The guide's "Assess the Change" (#L11-L22) is review work with no command; it gets no
+      prompt of its own, the smaller reading, and the agent does it as part of specify. The
+      workspace has no earlier feature artifacts, so specify creates a new feature directory.
+  - prompt: /speckit-plan
+    source: speckit@1.4.3:docs/how-to/evolving-specs.md#L35
+    note: No arguments; the command's user input is optional (templates/commands/plan.md#L16-L22).
+  - prompt: /speckit-tasks
+    source: speckit@1.4.3:docs/how-to/evolving-specs.md#L36
+  - prompt: /speckit-analyze
+    source: speckit@1.4.3:docs/how-to/evolving-specs.md#L37-L38
+    note: >-
+      Analyze only reports (#L40-L42). Layer 1 finds nothing to reconcile, so no prompt follows
+      to fix its findings.
+  - prompt: /speckit-implement
+    source: speckit@1.4.3:docs/how-to/evolving-specs.md#L55
+  - prompt: /speckit-converge
+    source: speckit@1.4.3:docs/how-to/evolving-specs.md#L57-L58
+    note: >-
+      Step 2, "Review the resulting implementation and artifact diffs" (#L56), is the user's own
+      review and gets no prompt. Converge appends no tasks in layer 1, so the loop (#L59-L60)
+      ends here.
