@@ -548,3 +548,18 @@ it("AGENT-029 records a message's largest usage on any of its lines", async () =
   const [recorded] = agentResults(root).workflows.speckit.feature.runs;
   expect([recorded.inputTokens, recorded.outputTokens, recorded.turns]).toEqual([1000, 50, 1]);
 });
+
+it("AGENT-030 a finished run is in the results before the next run starts", async () => {
+  const root = agentRoot({ "agents/specjutsu/feature.yaml": promptsYaml(["specjutsu feature"]) });
+  // Run 2's first call records the results as they stand once run 1 has finished.
+  fakeBehaviour(root, { "specjutsu feature": [inputTurn(30000), { record: "results/agent/results.json" }] });
+
+  const run = await agents(root, ["--runs", "2"]);
+
+  expect(run.status).toBe(0);
+  const second = fakeCalls(root).filter((call) => call.argv[1] === "specjutsu feature")[1];
+  expect(second?.recorded).toEqual(expect.any(String));
+  const recorded = JSON.parse(second?.recorded ?? "null");
+  expect(recorded.workflows.specjutsu.feature.runs).toHaveLength(1);
+  expect(recorded.workflows.specjutsu.feature.runs[0]).toMatchObject({ outcome: "passed", inputTokens: 30000 });
+});
