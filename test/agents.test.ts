@@ -369,8 +369,12 @@ it("AGENT-017 counts the lines of one message as one turn", async () => {
 });
 
 it("AGENT-018 names specjutsu/feature once in the headline when every specjutsu/feature run fails", async () => {
-  const root = agentRoot({ "agents/specjutsu/feature.yaml": promptsYaml(["specjutsu feature"]) });
-  fakeBehaviour(root, { "specjutsu feature": [{ exit: 1 }] });
+  // The acceptance tests fail when the agent leaves a file named broken, as the specjutsu/feature run does.
+  const root = agentRoot({
+    "agents/specjutsu/feature.yaml": promptsYaml(["specjutsu feature"]),
+    "fixture/tasks.json": JSON.stringify({ tasks: TASKS, test: `node -e "process.exit(require('fs').existsSync('broken') ? 1 : 0)"` }),
+  });
+  fakeBehaviour(root, { "specjutsu feature": [{ write: "broken" }] });
 
   const run = await agents(root, ["--runs", "1"]);
 
