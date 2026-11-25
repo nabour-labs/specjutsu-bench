@@ -6,7 +6,9 @@ As soon as a run finishes, the runner SHALL save its outcome, reason and usage a
 pins, the workflow's setup script, the task's prompt script, `fixture/start/` and the task's golden
 tests. It SHALL then rewrite `results/agent/results.json` and `results/agent/results.md` from
 runs 1 to `--runs` of every workflow and task that are saved with the current fingerprint, and rewrite them once more when the start ends, even
-if every run was already saved. A start
+if every run was already saved. A run that failed
+because a `claude` call exited non-zero or printed no result message SHALL NOT be saved, so the next
+start does it again; a run that failed its acceptance tests or timed out is saved like a pass. A start
 SHALL skip a run that is already saved with the current fingerprint, and do again one whose
 fingerprint differs. `--workflow <name>` SHALL limit the runs to that workflow while the other
 workflows' saved runs still go into the results; a name that is not a workflow MUST be refused
@@ -46,3 +48,7 @@ show `not run` in `results/agent/results.md`, and the headline names it as
 #### Scenario: AGENT-037 A start with nothing left to run still rewrites the results
 - **WHEN** a start with `--runs 2` finishes, and the runner is started again with `--runs 1`
 - **THEN** the second start makes no `claude` call, and `results/agent/results.md` shows each cell's pass rate out of 1
+
+#### Scenario: AGENT-038 A run whose call errored is done again on the next start
+- **WHEN** a start with `--runs 1` finishes with the fake `claude` exiting 1 on the first prompt of `openspec/bugfix` and timing out on the first prompt of `openspec/change`, and the runner is started again with `--runs 1 --timeout 1` and a `claude` that succeeds
+- **THEN** the second start calls `claude` only for `openspec/bugfix`, and `openspec/change` keeps its saved `prompt 1: claude timed out after 1s`

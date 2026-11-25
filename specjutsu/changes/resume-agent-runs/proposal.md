@@ -13,6 +13,9 @@ runs per cell is around $45.
   from every saved run.
 - A start skips any run that is already saved with the same fingerprint, so starting again after
   an interruption runs only what's missing. A saved run whose inputs changed runs again.
+- A run that failed because a `claude` call errored (non-zero exit, no result message) isn't
+  saved, so an API outage, rate limit or exhausted credit is retried on the next start instead of
+  counting against the workflow. Acceptance failures and timeouts are saved.
 - `--workflow <name>` runs only that workflow; the other workflows' saved runs still go into the
   results. An unknown name is refused before any run.
 - `--fresh` discards the saved runs of the workflows being run, for new samples.
