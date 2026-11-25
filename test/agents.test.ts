@@ -455,3 +455,21 @@ it("AGENT-023 gives each run its own fresh home, with what setup installs in $HO
   }
   expect(new Set(calls.map((call) => call.home)).size).toBe(9);
 });
+
+it("AGENT-024 counts a subagent's turns like the agent's own", async () => {
+  const root = agentRoot({ "agents/speckit/feature.yaml": promptsYaml(["with a subagent"]) });
+  const line = (input: number, parent?: string) => ({
+    parent,
+    input_tokens: input,
+    cache_creation_input_tokens: 0,
+    cache_read_input_tokens: 0,
+    output_tokens: 0,
+  });
+  fakeBehaviour(root, { "with a subagent": [{ turns: [line(1000), line(4000, "toolu_task"), line(6000, "toolu_task")] }] });
+
+  const run = await agents(root, ["--runs", "1"]);
+
+  expect(run.status).toBe(0);
+  const [recorded] = agentResults(root).workflows.speckit.feature.runs;
+  expect([recorded.inputTokens, recorded.turns]).toEqual([11000, 3]);
+});
