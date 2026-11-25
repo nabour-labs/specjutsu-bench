@@ -420,3 +420,38 @@ it("AGENT-022 refuses a task without golden tests", async () => {
   expect(run.stderr).toContain("fixture/golden/change/test: missing");
   expect(run.status).toBe(1);
 });
+
+it("AGENT-023 gives each run its own fresh home, with what setup installs in $HOME/.local/bin on claude's PATH", async () => {
+  const root = agentRoot();
+  // The runner's own home is a throwaway, so a setup command that wrote there can't touch the real one.
+  const machineHome = mkdtempSync(join(tmpdir(), "machine-home-"));
+  const homeEntries = join(root, "home-entries.txt");
+  const setup = [
+    "steps:",
+    "  - command: |",
+    `      ls -A "$HOME" | wc -l | tr -d ' ' >> ${homeEntries}`,
+    '      mkdir -p "$HOME/.local/bin"',
+    `      printf '#!/bin/sh\\necho hello from home\\n' > "$HOME/.local/bin/hello"`,
+    '      chmod +x "$HOME/.local/bin/hello"',
+    "    source: https://example.com/docs#setup",
+    "",
+  ].join("\n");
+  for (const workflow of ["specjutsu", "speckit", "openspec"]) writeFileSync(join(root, "agents", workflow, "setup.yaml"), setup);
+
+  const run = await agents(root, ["--runs", "1"], { HOME: machineHome });
+
+  expect(run.status).toBe(0);
+  expect(existsSync(join(machineHome, ".local", "bin", "hello"))).toBe(false);
+  // Every home was empty when setup started.
+  expect(readFileSync(homeEntries, "utf8")).toBe("0\n".repeat(9));
+  const calls = fakeCalls(root);
+  expect(calls).toHaveLength(9);
+  for (const call of calls) {
+    expect(call.home).not.toBe(machineHome);
+    // The home sits beside the run's workspace, in the run's temporary area, removed afterwards.
+    expect(dirname(call.home ?? "")).toBe(dirname(call.cwd));
+    expect(existsSync(call.home ?? "")).toBe(false);
+    expect(call.helloOutput).toBe("hello from home\n");
+  }
+  expect(new Set(calls.map((call) => call.home)).size).toBe(9);
+});

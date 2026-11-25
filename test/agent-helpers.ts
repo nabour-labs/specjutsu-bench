@@ -24,7 +24,8 @@ export const SETUP_SCRIPT = `steps:\n  - command: "true"\n    source: https://ex
  * A fake `claude`: it appends one JSON line per call to `calls.jsonl` beside itself, holding its
  * argv, working directory, the session id it answers with (`session-<n>` for the n-th call) and
  * what it sees of `CLAUDE_CONFIG_DIR` and `ANTHROPIC_API_KEY`, and the subjects `git log main` prints
- * in its working directory (null when git fails); then it prints stream-json with that session id.
+ * in its working directory (null when git fails), its `HOME` and what a `hello` on PATH prints;
+ * then it prints stream-json with that session id.
  *
  * What it does for a prompt is set per test in `behaviour.json` beside it (see `FakeBehaviour`):
  * the n-th call with a given prompt text follows the n-th behaviour listed for that text, and a
@@ -47,9 +48,12 @@ const sessionId = "session-" + n;
 const configDir = process.env.CLAUDE_CONFIG_DIR;
 const config = configDir === undefined ? undefined : { path: configDir, entries: existsSync(configDir) ? readdirSync(configDir) : null };
 const apiKey = process.env.ANTHROPIC_API_KEY;
+const home = process.env.HOME;
+const hello = spawnSync("hello", [], { encoding: "utf8" });
+const helloOutput = hello.status === 0 ? hello.stdout : null;
 const git = spawnSync("git", ["log", "--format=%s", "main"], { encoding: "utf8" });
 const gitLog = git.status === 0 ? git.stdout.split("\\n").filter(Boolean) : null;
-appendFileSync(log, JSON.stringify({ argv, cwd: process.cwd(), sessionId, config, apiKey, gitLog }) + "\\n");
+appendFileSync(log, JSON.stringify({ argv, cwd: process.cwd(), sessionId, config, apiKey, gitLog, home, helloOutput }) + "\\n");
 if (behaviour.sleep) Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, behaviour.sleep * 1000);
 if (behaviour.copy) cpSync(behaviour.copy.from, join(process.cwd(), behaviour.copy.to), { recursive: true });
 const turns = behaviour.turns ?? [{ input_tokens: 100, cache_creation_input_tokens: 0, cache_read_input_tokens: 0, output_tokens: 10 }];
@@ -106,6 +110,9 @@ export type FakeCall = {
   config?: { path: string; entries: string[] | null };
   apiKey?: string;
   gitLog: string[] | null;
+  home?: string;
+  /** What a `hello` command on PATH printed, or null when there was none. */
+  helloOutput: string | null;
 };
 
 /** The calls the fake `claude` in `root` recorded, in order. */
