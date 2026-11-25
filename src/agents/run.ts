@@ -1,7 +1,7 @@
 import { spawnSync } from "node:child_process";
-import { cpSync, existsSync, mkdirSync, mkdtempSync, realpathSync, rmSync, writeFileSync } from "node:fs";
+import { accessSync, constants, cpSync, existsSync, mkdirSync, mkdtempSync, realpathSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { delimiter, join } from "node:path";
 import { allowlistedEnv, loadTestCommand, SUITE_TIMEOUT_MS } from "../fixture.ts";
 import { commitStart, copyStart, linkExcludedNodeModules } from "../replay.ts";
 import { WORKFLOWS } from "../steps.ts";
@@ -87,6 +87,8 @@ export function runAgent(root: string, model: string, workflow: string, task: st
         encoding: "utf8",
         maxBuffer: CALL_MAX_BUFFER,
         timeout: timeout * 1000,
+        // A killed claude's children may hold its stdout open; SIGKILL ends the call regardless.
+        killSignal: "SIGKILL",
       });
       const stdout = call.stdout ?? "";
       writeFileSync(join(transcripts, `prompt-${k}.jsonl`), stdout);
@@ -96,11 +98,13 @@ export function runAgent(root: string, model: string, workflow: string, task: st
       const failure =
         (call.error as NodeJS.ErrnoException | undefined)?.code === "ETIMEDOUT"
           ? `claude timed out after ${timeout}s`
-          : call.status !== 0
-            ? `claude exited ${call.status}`
-            : !stream.result
-              ? "no result message"
-              : undefined;
+          : call.status === null
+            ? `claude killed by ${call.signal}`
+            : call.status !== 0
+              ? `claude exited ${call.status}`
+              : !stream.result
+                ? "no result message"
+                : undefined;
       if (failure) return { outcome: "failed", reason: `prompt ${k}: ${failure}`, ...usage };
     }
     if (!acceptancePasses(root, task, workspace)) return { outcome: "failed", reason: "acceptance tests failed", ...usage };
@@ -110,6 +114,33 @@ export function runAgent(root: string, model: string, workflow: string, task: st
   }
 }
 
+/** A task's golden tests, which decide whether a run passed. */
+function goldenTests(task: string): string {
+  return `fixture/golden/${task}/test`;
+}
+
+/** True when `name` is an executable file in one of `PATH`'s directories. */
+function onPath(name: string): boolean {
+  return (process.env.PATH ?? "").split(delimiter).some((dir) => {
+    const path = join(dir, name);
+    try {
+      accessSync(path, constants.X_OK);
+      return statSync(path).isFile();
+    } catch {
+      return false;
+    }
+  });
+}
+
+/** What every run needs before the first one starts, one line per problem: `claude` on PATH, and each task's golden tests. */
+export function checkRunnable(root: string, tasks: string[]): string[] {
+  const errors = onPath("claude") ? [] : ["claude not found on PATH"];
+  for (const task of tasks) {
+    if (!existsSync(join(root, goldenTests(task)))) errors.push(`${goldenTests(task)}: missing`);
+  }
+  return errors;
+}
+
 /**
  * Copies every file under `fixture/golden/<task>/test/` into the workspace's `test/`, over the
  * agent's own copies, and runs the fixture's test command there; true when it exits 0.
@@ -117,8 +148,7 @@ export function runAgent(root: string, model: string, workflow: string, task: st
 function acceptancePasses(root: string, task: string, workspace: string): boolean {
   const command = loadTestCommand(root);
   if (command === undefined) return false;
-  const tests = join(root, "fixture", "golden", task, "test");
-  if (existsSync(tests)) cpSync(tests, join(workspace, "test"), { recursive: true, force: true });
+  cpSync(join(root, goldenTests(task)), join(workspace, "test"), { recursive: true, force: true });
   // Like the fixture check's suite runs: the allowlisted environment, without the API key.
   const suite = spawnSync(command, { cwd: workspace, shell: true, stdio: "ignore", timeout: SUITE_TIMEOUT_MS, env: allowlistedEnv() });
   return suite.status === 0;
