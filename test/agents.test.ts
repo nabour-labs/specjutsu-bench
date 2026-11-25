@@ -198,3 +198,45 @@ it("AGENT-013 keeps each call's stream-json under .bench/transcripts, not under 
   expect(results.length).toBeGreaterThan(0);
   for (const file of results) expect(readFileSync(file, "utf8")).not.toContain('"type":"assistant"');
 });
+
+it("AGENT-007 marks a run failed when claude exits 1 on its second prompt, and the other runs still run", () => {
+  const prompts = ["feature one", "feature two", "feature three"];
+  const root = agentRoot({ "agents/speckit/feature.yaml": promptsYaml(prompts) });
+  // Only the first run's second call exits 1.
+  fakeBehaviour(root, { "feature two": [{ exit: 1 }] });
+
+  const run = agents(root, ["--runs", "3"]);
+
+  expect(run.status).toBe(0);
+  const runs = agentResults(root).workflows.speckit.feature.runs;
+  expect(runs.map((r: { outcome: string; reason?: string }) => [r.outcome, r.reason])).toEqual([
+    ["failed", "prompt 2: claude exited 1"],
+    ["passed", undefined],
+    ["passed", undefined],
+  ]);
+  // The failed run sent no third prompt; the other two sent all three.
+  const sent = fakeCalls(root).map((call) => call.argv[1]);
+  expect(prompts.map((prompt) => sent.filter((p) => p === prompt).length)).toEqual([3, 3, 2]);
+});
+
+it("AGENT-007 marks a run failed when a call prints no result message", () => {
+  const root = agentRoot({ "agents/speckit/feature.yaml": promptsYaml(["feature one"]) });
+  fakeBehaviour(root, { "feature one": [{ noResult: true }] });
+
+  const run = agents(root, ["--runs", "1"]);
+
+  expect(run.status).toBe(0);
+  const [recorded] = agentResults(root).workflows.speckit.feature.runs;
+  expect([recorded.outcome, recorded.reason]).toEqual(["failed", "prompt 1: no result message"]);
+});
+
+it("AGENT-016 fails a run whose call sleeps past --timeout 1", () => {
+  const root = agentRoot({ "agents/openspec/bugfix.yaml": promptsYaml(["slow fix"]) });
+  fakeBehaviour(root, { "slow fix": [{ sleep: 5 }] });
+
+  const run = agents(root, ["--runs", "1", "--timeout", "1"]);
+
+  expect(run.status).toBe(0);
+  const [recorded] = agentResults(root).workflows.openspec.bugfix.runs;
+  expect([recorded.outcome, recorded.reason]).toEqual(["failed", "prompt 1: claude timed out after 1s"]);
+});
