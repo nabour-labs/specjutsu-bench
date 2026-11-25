@@ -37,3 +37,15 @@ Layer 1 (specs `replay`, `steps`) replays cited steps against pinned installs an
 - [A workflow's prompts are written by specjutsu's authors] → Every prompt cites its source and can be challenged like a step. The transcripts' usage is in results.json.
 - [Subagent turns may be missing from stream-json] → specjutsu's sj-apply runs its implementer and reviewers as subagents inside one call, so specjutsu is charged fairly only if their turns are counted. The parser counts `parent_tool_use_id` lines (AGENT-024); the first real run must confirm Claude Code prints them, by comparing the summed usage with the result's `total_cost_usd`, before any headline is published.
 - [Real installers fetch from the network] → Setup commands pin exact versions, like `pins.json`, and their sources are checked.
+
+## Deferred to add-agent-ci
+
+Found in the final review; they matter on the first real run, which that change makes:
+
+- A setup failure mid-benchmark discards earlier paid runs, and setup commands have no timeout. Run setup checks first, or write results as runs finish.
+- `claude`'s stderr and setup output are discarded; a failure shows only its exit code.
+- results.json doesn't record the Claude Code version or the run date; CI should pin the CLI version.
+- A timeout kills only `claude`, not its process group; a grandchild holding stdout open can turn a finished call into a timeout.
+- A `result` with `is_error: true` that exits 0 counts as success.
+- The specjutsu and OpenSpec installers fetch `install.sh` live; only the binary version is pinned.
+- Claude Code passes the API key to every tool the agent runs; check whether the pinned CLI can scrub it from subprocesses.

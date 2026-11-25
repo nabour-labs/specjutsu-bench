@@ -11,7 +11,10 @@ empty configuration directory, so the machine's user settings, memory and plugin
 run. Each run SHALL also get its own empty `HOME`, with `$HOME/.local/bin`
 first on `PATH` for setup commands and `claude` calls alike, so installers never write to the
 machine's home and the tools they install are found by the agent. `ANTHROPIC_API_KEY` SHALL
-reach the `claude` calls and never the setup commands. Like the
+reach the `claude` calls and never the setup commands, and the runner MUST refuse to start without
+it. Wherever the key's value appears in a saved transcript it SHALL be replaced with `[redacted]`.
+Each run SHALL get its own copy of the bench's `node_modules`, never a link to it, and a fixed git
+identity (`bench <bench@localhost>`) for any commit the agent makes. Like the
 replay's, each workspace SHALL be a git repo with the start state committed on `main` before setup.
 `--runs` and `--timeout` MUST be positive integers, and `claude` MUST be on PATH; otherwise the
 runner prints why, exits 1 before any run, and writes no results.
@@ -28,7 +31,7 @@ runner prints why, exits 1 before any run, and writes no results.
 - **WHEN** the first command in `agents/speckit/setup.yaml` exits 1
 - **THEN** the runner prints `speckit setup step 1: exited 1`, exits 1 and writes no results
 
-#### Scenario: AGENT-014 Only claude sees the API key
+#### Scenario: AGENT-014 Setup commands never see the API key
 - **WHEN** the runner starts with `ANTHROPIC_API_KEY=sk-test` set, a setup command prints whether `ANTHROPIC_API_KEY` is set, and the fake `claude` records the value it sees
 - **THEN** the setup command sees it unset and every `claude` call sees `sk-test`
 
@@ -39,6 +42,22 @@ runner prints why, exits 1 before any run, and writes no results.
 #### Scenario: AGENT-023 Each run has its own home, and what setup installs there is on PATH
 - **WHEN** a setup command writes an executable `$HOME/.local/bin/hello`, and the fake `claude` records `$HOME` and the output of `hello`
 - **THEN** every run's `HOME` is a different, fresh directory inside its temporary area, the machine's home holds no `.local/bin/hello`, and `claude` records `hello`'s output
+
+#### Scenario: AGENT-025 A run can't change the bench's packages
+- **WHEN** the fake `claude` writes `node_modules/.agent-was-here` in its workspace on the first run
+- **THEN** the bench's `node_modules` holds no `.agent-was-here`, and neither does the second run's workspace
+
+#### Scenario: AGENT-026 The agent can commit
+- **WHEN** the fake `claude` runs `git commit --allow-empty -m work` in its workspace
+- **THEN** the commit succeeds with author `bench <bench@localhost>`
+
+#### Scenario: AGENT-027 The API key never reaches a saved transcript
+- **WHEN** `ANTHROPIC_API_KEY=sk-test-123` is set and the fake `claude` prints a line containing `sk-test-123`
+- **THEN** the saved transcript holds `[redacted]` in its place and no `sk-test-123`
+
+#### Scenario: AGENT-028 A missing API key stops the benchmark
+- **WHEN** `ANTHROPIC_API_KEY` is not set
+- **THEN** the runner prints `ANTHROPIC_API_KEY is not set`, exits 1, makes no `claude` call and leaves `results/agent/` unchanged
 
 #### Scenario: AGENT-019 A run count that isn't a positive integer is refused
 - **WHEN** the runner is started with `--runs 0`
@@ -74,7 +93,8 @@ check exits 1, names the script and the entry, and writes no results.
 ### Requirement: A run's usage is summed from every turn
 The runner SHALL read the usage of every assistant turn in the stream-json output of every call in
 a run. Claude Code prints one assistant line per content block, each repeating its message's usage,
-so lines that share a `message.id` SHALL count as one turn. Turns of subagents the agent starts
+so lines that share a `message.id` SHALL count as one turn, with the largest value each usage field
+reaches on those lines. Turns of subagents the agent starts
 (lines with a `parent_tool_use_id`) SHALL count like any other turn. A run's input tokens are the sum of `input_tokens`, `cache_creation_input_tokens` and
 `cache_read_input_tokens`; its output tokens the sum of `output_tokens`; its cost the sum of
 each call's reported `total_cost_usd`. A call that exits non-zero, prints no result message, or runs longer than the call timeout
@@ -88,6 +108,10 @@ on to the next run.
 #### Scenario: AGENT-017 Lines of one message count once
 - **WHEN** a call prints three assistant lines with the same `message.id`, each with `input_tokens` 1,000 and `output_tokens` 50, and one more line with another id and `input_tokens` 2,000 and `output_tokens` 80
 - **THEN** the run records input tokens 3,000, output tokens 130 and 2 turns
+
+#### Scenario: AGENT-029 A message's usage is its largest on any of its lines
+- **WHEN** two lines of message `m1` report `input_tokens` 1,000 on both and `output_tokens` 10 and then 50
+- **THEN** the run records input tokens 1,000, output tokens 50 and 1 turn
 
 #### Scenario: AGENT-024 A subagent's turns count
 - **WHEN** a call prints one assistant line with `input_tokens` 1,000 and no `parent_tool_use_id`, and two subagent lines with `parent_tool_use_id` set and `input_tokens` 4,000 and 6,000

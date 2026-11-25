@@ -31,3 +31,11 @@
 
 - [x] 5.1 Setup and prompt scripts for every workflow and task, with citations (no-scenario: config)
 - [x] 5.2 README section on layer 2 (no-scenario: docs)
+
+## 6. Final review fixes
+
+- [ ] 6.1 Each run gets its own node_modules (AGENT-025)
+- [ ] 6.2 A fixed git identity for the agent (AGENT-026)
+- [ ] 6.3 API key: required, redacted in transcripts, kept out of test runs (AGENT-027, AGENT-028)
+- [ ] 6.4 A message's usage is its largest on any line (AGENT-029)
+- [ ] 6.5 README caveats: subagent turns unconfirmed, machine PATH visible (no-scenario: docs)
