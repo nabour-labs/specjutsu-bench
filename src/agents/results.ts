@@ -1,20 +1,23 @@
 import type { Pins } from "../pins.ts";
 import type { Run, Runs } from "./run.ts";
 
-/** What `results/agent/results.json` holds: the model, the pins, and every run by workflow and task. */
-export type AgentResults = { model: string; pins: Pins; workflows: Record<string, Record<string, { runs: Run[] }>> };
+/**
+ * What `results/agent/results.json` holds: the model, the pins, the runs each cell should have
+ * (`--runs`), and every saved run by workflow and task.
+ */
+export type AgentResults = { model: string; pins: Pins; runs: number; workflows: Record<string, Record<string, { runs: Run[] }>> };
 
 /** A cell's passing runs out of all its runs, and the median, minimum and maximum input tokens of the passing ones. */
 type Cell = { passed: number; runs: number; median?: number; min?: number; max?: number };
 
-export function agentResults(model: string, pins: Pins, runs: Runs): AgentResults {
+export function agentResults(model: string, pins: Pins, expected: number, runs: Runs): AgentResults {
   const workflows = Object.fromEntries(
     Object.entries(runs).map(([workflow, cells]) => [
       workflow,
       Object.fromEntries(Object.entries(cells).map(([task, cellRuns]) => [task, { runs: cellRuns }])),
     ]),
   );
-  return { model, pins, workflows };
+  return { model, pins, runs: expected, workflows };
 }
 
 /** A cell's pass rate and its input tokens over passing runs; the median of an even count is the lower middle value. */
@@ -44,12 +47,12 @@ function saving(specjutsu: number, other: number): number {
 }
 
 /**
- * One row per workflow per task: pass rate, and the median and range of passing runs' input
- * tokens, or `not run` for a cell with no run; a total per workflow, the sum of its task medians,
- * or `—` when a cell has no passing run or no run; and specjutsu's saving against each other
- * workflow, or `<workflow>/<task>: no passing run` (or `: not run`) for the first cell that leaves
- * that workflow without a total. Without specjutsu's own total, the
- * headline is just its first such cell.
+ * One row per workflow per task: pass rate, with `(<k> not run)` when `k` of its runs are missing,
+ * and the median and range of passing runs' input tokens, or `not run` for a cell with no run; a
+ * total per workflow, the sum of its task medians, or `—` when a cell has no passing run or is
+ * missing runs; and specjutsu's saving against each other workflow, or `<workflow>/<task>: no
+ * passing run` (or `: not run`, or `: <k> not run`) for the first cell that leaves that workflow
+ * without a total. Without specjutsu's own total, the headline is just its first such cell.
  */
 export function resultsMarkdown(results: AgentResults): string {
   const lines = [
@@ -60,7 +63,7 @@ export function resultsMarkdown(results: AgentResults): string {
     "| workflow | task | pass rate | median input tokens | range |",
     "| --- | --- | ---: | ---: | ---: |",
   ];
-  // Each workflow's total input tokens, or the first of its cells with no passing run.
+  // Each workflow's total input tokens, or the first of its cells with no passing run or missing runs.
   const totals: Record<string, number | string> = {};
   for (const [workflow, tasks] of Object.entries(results.workflows)) {
     let total: number | string = 0;
@@ -73,8 +76,18 @@ export function resultsMarkdown(results: AgentResults): string {
       }
       const { passed, median, min, max } = cell(runs);
       const range = median === undefined ? "—" : `${count(min ?? 0)}–${count(max ?? 0)}`;
-      lines.push(`| ${workflow} | ${task} | ${passed}/${runs.length} | ${median === undefined ? "—" : count(median)} | ${range} |`);
-      if (typeof total === "number") total = median === undefined ? `${workflow}/${task}: no passing run` : total + median;
+      // A cell missing runs has a pass rate over fewer runs than the others, so it gets no total.
+      const missing = results.runs - runs.length;
+      const rate = `${passed}/${runs.length}${missing > 0 ? ` (${missing} not run)` : ""}`;
+      lines.push(`| ${workflow} | ${task} | ${rate} | ${median === undefined ? "—" : count(median)} | ${range} |`);
+      if (typeof total === "number") {
+        total =
+          missing > 0
+            ? `${workflow}/${task}: ${missing} not run`
+            : median === undefined
+              ? `${workflow}/${task}: no passing run`
+              : total + median;
+      }
     }
     lines.push(`| ${workflow} | total | | ${typeof total === "number" ? count(total) : "—"} | |`);
     totals[workflow] = total;

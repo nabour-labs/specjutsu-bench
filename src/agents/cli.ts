@@ -51,7 +51,7 @@ if (errors.length > 0 || runCount === undefined || timeout === undefined) {
   const prints = fingerprints(root, model, tasks);
   // The results are rewritten from the saved runs, so they never show a run 1 to --runs doesn't cover.
   const writeResults = () => {
-    const results = agentResults(model, pins, savedRuns(root, prints, runCount, timeout));
+    const results = agentResults(model, pins, runCount, savedRuns(root, prints, runCount, timeout));
     mkdirSync(dir, { recursive: true });
     writeFileSync(join(dir, "results.json"), `${JSON.stringify(results, null, 2)}\n`);
     writeFileSync(join(dir, "results.md"), resultsMarkdown(results));
