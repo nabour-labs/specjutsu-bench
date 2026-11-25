@@ -616,3 +616,16 @@ it("AGENT-032 a run whose inputs changed runs again", async () => {
   expect(second.map((call) => call.argv[1])).toEqual(["speckit feature, changed"]);
   expect(transcriptSessions(join(root, ".bench", "transcripts", "speckit", "feature", "run-1", "prompt-1.jsonl"))).toEqual([second[0]?.sessionId]);
 });
+
+it("AGENT-037 a start with nothing left to run still rewrites the results", async () => {
+  const root = agentRoot(cellPrompts());
+  expect((await agents(root, ["--runs", "2"])).status).toBe(0);
+  const first = fakeCalls(root).length;
+
+  const run = await agents(root, ["--runs", "1"]);
+
+  expect(run.status).toBe(0);
+  expect(fakeCalls(root).slice(first)).toEqual([]);
+  const markdown = agentMarkdown(root);
+  for (const workflow of WORKFLOWS) for (const task of TASKS) expect(markdown).toContain(`| ${workflow} | ${task} | 1/1 |`);
+});
