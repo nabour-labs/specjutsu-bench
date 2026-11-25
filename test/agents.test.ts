@@ -2,8 +2,11 @@ import { existsSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSy
 import { tmpdir } from "node:os";
 import { delimiter, dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { expect, it } from "vitest";
+import { expect, it, vi } from "vitest";
 import { agentRoot, agents, fakeBehaviour, fakeCalls, promptsYaml, realFixture } from "./agent-helpers.ts";
+
+// A test here makes up to nine runs, each copying node_modules, so it gets longer than the replay's 30s.
+vi.setConfig({ testTimeout: 120_000 });
 
 /** The agent results the runner wrote in `root`. */
 function agentResults(root: string) {
