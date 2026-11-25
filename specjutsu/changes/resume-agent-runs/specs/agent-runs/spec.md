@@ -7,7 +7,7 @@ pins, the workflow's setup script, the task's prompt script, `fixture/start/` an
 tests. It SHALL then rewrite `results/agent/results.json` and `results/agent/results.md` from
 runs 1 to `--runs` of every workflow and task that are saved with the current fingerprint, and rewrite them once more when the start ends, even
 if every run was already saved. A run that failed
-because a `claude` call exited non-zero or printed no result message SHALL NOT be saved, so the next
+because a `claude` call exited non-zero, was killed by a signal, or printed no result message SHALL NOT be saved, so the next
 start does it again; a run that failed its acceptance tests or timed out is saved like a pass. A start
 SHALL skip a run that is already saved with the current fingerprint, and do again one whose
 fingerprint differs. `--workflow <name>` SHALL limit the runs to that workflow while the other
