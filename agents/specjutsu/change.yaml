@@ -3,11 +3,13 @@
 # implementer, task reviewer and whole-change reviewer subagents that sj-apply starts itself
 # (SKILL.md#L29-L34, #L43-L46, #L101-L104); in a real run Claude Code starts them inside the
 # /sj-apply call, so they are not user sessions and get no `session` entry here. Every prompt
-# after the first resumes the main session, as layer 1 comes back to session 1.
+# after the first resumes the main session, as layer 1 comes back to session 1; layer 1's
+# session 1 needs no entry, since the first prompt starts a new session.
+#
+# Assumption: this is fair only if those subagents' turns are counted. The runner counts the
+# stream-json lines that carry a `parent_tool_use_id` (scenario AGENT-024); the first real run
+# must confirm Claude Code prints the subagents' turns that way.
 prompts:
-  - session: true
-    source: specjutsu@0.5.1:crates/sj-adapters/assets/claude/CLAUDE.block.md
-    note: Layer 1's session 1, the task's main session. The first prompt starts a new session anyway.
   - prompt: "/sj-propose Raise the free-shipping threshold from $50.00 to $100.00 of discounted subtotal."
     source: specjutsu@0.5.1:crates/sj-adapters/assets/skills/sj-propose/SKILL.md#L1-L4
     note: >-

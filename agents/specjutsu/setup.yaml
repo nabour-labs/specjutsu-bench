@@ -11,7 +11,7 @@ steps:
     source: specjutsu@0.5.1:README.md#L99-L113
     note: >-
       The README's macOS and Linux installer, pinned with `SJ_VERSION=0.5.1` (line 113). It
-      installs `sj` into ~/.local/bin; the hooks call `sj` from PATH (README.md#L1026-L1027), so
+      installs `sj` into ~/.local/bin; the hooks call `sj` from PATH (README.md#L1027-L1028), so
       ~/.local/bin must be on the runner's PATH for the claude calls. The package managers
       (brew, cargo) are the README's alternatives and are not used.
   - command: '"$HOME/.local/bin/sj" adopt'

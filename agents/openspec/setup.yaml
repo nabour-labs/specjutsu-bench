@@ -11,14 +11,19 @@ steps:
       the claude calls. The npm and Homebrew installs are the README's alternatives and are not
       used.
   - command: '"$HOME/.local/bin/openspec" init --scope project --tools claude'
-    source: openspec@2.1.1:docs-lab/start/setup.md#L19-L21
+    source: openspec@2.1.1:docs-lab/start/setup.md#L21
     note: >-
-      `--tools claude` skips the picker (docs-lab/reference/cli.md#L80). Choice: `--scope project`
-      writes the six default-profile skills into the workspace (.agents/skills/, linked from
-      .claude/skills/); the default global scope writes them into the machine's ~/.agents/skills/
-      and ~/.claude/skills/, outside the run's CLAUDE_CONFIG_DIR, which would leak between runs
-      and into the machine. The skills Claude Code loads are the same either way. Called by its
-      full path so setup doesn't depend on ~/.local/bin being on PATH already.
+      The docs' own form for setup scripts: "If your script commits skills for teammates or CI,
+      use `openspec init --scope project --tools claude`". `--tools claude` skips the picker
+      (docs-lab/reference/cli.md#L80). Project scope writes the six core-profile skills into the
+      workspace (.agents/skills/, linked from .claude/skills/). The default global scope would
+      write them under $HOME (~/.agents/skills/, ~/.claude/skills/); with CLAUDE_CONFIG_DIR set,
+      Claude Code reads user skills from $CLAUDE_CONFIG_DIR/skills instead, so globally installed
+      skills would likely never load. No smaller profile is available headless: a custom profile
+      (say propose, apply and archive only), the analogue of Spec Kit's `--no-model-invocation`,
+      is chosen only through `openspec config profile`'s interactive picker, which exits 1
+      without a terminal; `core` is the only preset (docs-lab/reference/cli.md#L450-L466). Called
+      by its full path so setup doesn't depend on ~/.local/bin being on PATH already.
   - command: claude plugin marketplace add https://github.com/obra/superpowers.git#v7.0.2
     source: superpowers@7.0.2:README.md#L68-L76
     note: >-
