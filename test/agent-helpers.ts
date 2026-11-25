@@ -137,8 +137,8 @@ export function realFixture(task: string): Record<string, string> {
 
 /**
  * A throwaway benchmark root (see `benchRoot`) that also passes every agent check: the pinned
- * model, and a setup script and a prompt script per task for every workflow. `files` adds or
- * replaces files by relative path; a null value leaves that file out.
+ * model, a setup script and a prompt script per task for every workflow, and a golden `test/`
+ * dir per task. `files` adds or replaces files by relative path; a null value leaves that file out.
  */
 export function agentRoot(files: Record<string, string | null> = {}): string {
   const all: Record<string, string | null> = { "agents/agents.json": JSON.stringify({ model: "claude-sonnet-5-5" }) };
@@ -146,6 +146,8 @@ export function agentRoot(files: Record<string, string | null> = {}): string {
     all[`agents/${workflow}/setup.yaml`] = SETUP_SCRIPT;
     for (const task of TASKS) all[`agents/${workflow}/${task}.yaml`] = promptScript(1);
   }
+  // Every task needs golden tests; these copy in a note and leave the fixture's suite as it is.
+  for (const task of TASKS) all[`fixture/golden/${task}/test/README.md`] = "golden tests\n";
   all["fake-claude/claude"] = FAKE_CLAUDE;
   const root = benchRoot({ ...all, ...files });
   chmodSync(join(root, "fake-claude", "claude"), 0o755);

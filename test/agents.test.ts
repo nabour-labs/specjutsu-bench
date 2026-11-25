@@ -1,6 +1,6 @@
 import { existsSync, mkdtempSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { dirname, join } from "node:path";
+import { delimiter, dirname, join } from "node:path";
 import { expect, it } from "vitest";
 import { agentRoot, agents, fakeBehaviour, fakeCalls, promptsYaml, realFixture } from "./agent-helpers.ts";
 
@@ -360,4 +360,63 @@ it("AGENT-018 names specjutsu/feature once in the headline when every specjutsu/
   const lines = agentMarkdown(root).trimEnd().split("\n");
   expect(lines.at(-1)).toBe("specjutsu/feature: no passing run");
   expect(lines.filter((line) => line.includes("no passing run"))).toHaveLength(1);
+});
+
+/** A root whose `results/agent/results.json` holds earlier results, to check a refused start leaves them alone. */
+function rootWithEarlierResults(files: Record<string, string | null> = {}): string {
+  return agentRoot({ "results/agent/results.json": '{"earlier": true}\n', ...files });
+}
+
+function expectEarlierResults(root: string): void {
+  expect(readdirSync(join(root, "results", "agent"))).toEqual(["results.json"]);
+  expect(readFileSync(join(root, "results", "agent", "results.json"), "utf8")).toBe('{"earlier": true}\n');
+}
+
+it("AGENT-019 refuses --runs 0 before any claude call", async () => {
+  const root = rootWithEarlierResults();
+
+  const run = await agents(root, ["--runs", "0"]);
+
+  expect(run.stderr).toContain("--runs must be a positive integer");
+  expect(run.status).toBe(1);
+  expect(fakeCalls(root)).toEqual([]);
+  expectEarlierResults(root);
+});
+
+it("AGENT-020 refuses --timeout abc before any setup command", async () => {
+  const root = rootWithEarlierResults();
+  const marker = join(root, "setup-ran.txt");
+  for (const workflow of ["specjutsu", "speckit", "openspec"]) {
+    writeFileSync(join(root, "agents", workflow, "setup.yaml"), `steps:\n  - command: "touch ${marker}"\n    source: https://example.com/docs#setup\n`);
+  }
+
+  const run = await agents(root, ["--runs", "1", "--timeout", "abc"]);
+
+  expect(run.stderr).toContain("--timeout must be a positive integer");
+  expect(run.status).toBe(1);
+  expect(existsSync(marker)).toBe(false);
+  expectEarlierResults(root);
+});
+
+it("AGENT-021 stops when no claude is on PATH", async () => {
+  const root = rootWithEarlierResults();
+  // PATH holds node and npm, and the system tools, but no claude: neither the fake nor a real one.
+  const dirs = [dirname(process.execPath), "/usr/bin", "/bin"];
+  for (const dir of dirs) expect(existsSync(join(dir, "claude"))).toBe(false);
+
+  const run = await agents(root, ["--runs", "1"], { PATH: dirs.join(delimiter) });
+
+  expect(run.stderr).toContain("claude not found on PATH");
+  expect(run.status).toBe(1);
+  expect(fakeCalls(root)).toEqual([]);
+  expectEarlierResults(root);
+});
+
+it("AGENT-022 refuses a task without golden tests", async () => {
+  const root = agentRoot({ "fixture/golden/change/test/README.md": null });
+
+  const run = await agents(root, ["--runs", "1"]);
+
+  expect(run.stderr).toContain("fixture/golden/change/test: missing");
+  expect(run.status).toBe(1);
 });
