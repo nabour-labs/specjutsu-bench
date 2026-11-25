@@ -662,3 +662,43 @@ it("AGENT-038 a run whose call errored is done again on the next start", async (
   const [change] = agentResults(root).workflows.openspec.change.runs;
   expect([change.outcome, change.reason]).toEqual(["failed", "prompt 1: claude timed out after 1s"]);
 });
+
+it("AGENT-033 --workflow runs one workflow and keeps the others' runs", async () => {
+  const root = agentRoot(cellPrompts());
+  expect((await agents(root, ["--runs", "1"])).status).toBe(0);
+  const first = fakeCalls(root).length;
+  const before = agentResults(root).workflows;
+
+  const run = await agents(root, ["--runs", "1", "--workflow", "openspec", "--fresh"]);
+
+  expect(run.status).toBe(0);
+  const second = fakeCalls(root).slice(first);
+  expect(second.map((call) => call.argv[1]).sort()).toEqual(TASKS.map((task) => `openspec ${task}`).sort());
+  const after = agentResults(root).workflows;
+  expect(after.specjutsu).toEqual(before.specjutsu);
+  expect(after.speckit).toEqual(before.speckit);
+});
+
+it("AGENT-034 refuses an unknown workflow before any claude call", async () => {
+  const root = rootWithEarlierResults();
+
+  const run = await agents(root, ["--workflow", "spec-kit"]);
+
+  expect(run.stderr).toContain("--workflow must be one of specjutsu, speckit, openspec");
+  expect(run.status).toBe(1);
+  expect(fakeCalls(root)).toEqual([]);
+  expectEarlierResults(root);
+});
+
+it("AGENT-036 a cell with no saved run shows as not run", async () => {
+  const root = agentRoot(cellPrompts());
+
+  const run = await agents(root, ["--runs", "1", "--workflow", "specjutsu"]);
+
+  expect(run.status).toBe(0);
+  const markdown = agentMarkdown(root);
+  for (const workflow of ["speckit", "openspec"]) {
+    for (const task of TASKS) expect(markdown).toContain(`| ${workflow} | ${task} | not run | — | — |`);
+  }
+  expect(markdown).toContain("specjutsu saves speckit/feature: not run, openspec/feature: not run\n");
+});
