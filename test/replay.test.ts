@@ -24,7 +24,7 @@ function step(fields: string): string {
   return `  - kind: ${fields}    source: https://example.com/docs#step\n`;
 }
 
-it("REPLAY-001 records context bytes for load, read and run steps and the script total", () => {
+it("REPLAY-001 records context bytes for load, read and run steps and the script total", async () => {
   const script =
     "steps:\n" +
     step("load\n    tool: superpowers\n    path: skills/brainstorming/SKILL.md\n") +
@@ -36,7 +36,7 @@ it("REPLAY-001 records context bytes for load, read and run steps and the script
     "fixture/start/src/app.ts": "a".repeat(800),
   });
 
-  const run = replay(root);
+  const run = await replay(root);
 
   expect(run.stderr).toBe("");
   expect(run.status).toBe(0);
@@ -45,14 +45,14 @@ it("REPLAY-001 records context bytes for load, read and run steps and the script
   expect(feature.context).toBe(5000);
 });
 
-it("REPLAY-002 records a written golden file as output and a later read of it as context", () => {
+it("REPLAY-002 records a written golden file as output and a later read of it as context", async () => {
   const script = "steps:\n" + step("write\n    path: plan.md\n") + step("read\n    path: plan.md\n");
   const root = benchRoot({
     "steps/speckit/feature.yaml": script,
     "fixture/golden/feature/plan.md": "p".repeat(2000),
   });
 
-  const run = replay(root);
+  const run = await replay(root);
 
   expect(run.stderr).toBe("");
   expect(run.status).toBe(0);
@@ -61,7 +61,7 @@ it("REPLAY-002 records a written golden file as output and a later read of it as
   expect(read).toMatchObject({ kind: "read", context: 2000 });
 });
 
-it("REPLAY-003 counts a 4,000-byte bootstrap at each of 2 declared sessions as two steps, 8,000 bytes", () => {
+it("REPLAY-003 counts a 4,000-byte bootstrap at each of 2 declared sessions as two steps, 8,000 bytes", async () => {
   const bootstrap = "skills/using-superpowers/SKILL.md";
   const session = "steps:\n" + step(`load\n    tool: superpowers\n    path: ${bootstrap}\n`);
   const script = "steps:\n" + step("session\n") + step("read\n    path: file-1.md\n") + step("session\n");
@@ -71,7 +71,7 @@ it("REPLAY-003 counts a 4,000-byte bootstrap at each of 2 declared sessions as t
     [`.bench/tools/superpowers@${SUPERPOWERS}/${bootstrap}`]: "b".repeat(4000),
   });
 
-  const run = replay(root);
+  const run = await replay(root);
 
   expect(run.stderr).toBe("");
   expect(run.status).toBe(0);
@@ -86,7 +86,7 @@ it("REPLAY-003 counts a 4,000-byte bootstrap at each of 2 declared sessions as t
   expect(feature.context).toBe(8007);
 });
 
-it("REPLAY-011 records one 4,000-byte session step before the own steps of a script with no session step", () => {
+it("REPLAY-011 records one 4,000-byte session step before the own steps of a script with no session step", async () => {
   const bootstrap = "skills/using-superpowers/SKILL.md";
   const session = "steps:\n" + step(`load\n    tool: superpowers\n    path: ${bootstrap}\n`);
   const script = "steps:\n" + step("read\n    path: file-1.md\n") + step("read\n    path: file-2.md\n");
@@ -96,7 +96,7 @@ it("REPLAY-011 records one 4,000-byte session step before the own steps of a scr
     [`.bench/tools/superpowers@${SUPERPOWERS}/${bootstrap}`]: "b".repeat(4000),
   });
 
-  const run = replay(root);
+  const run = await replay(root);
 
   expect(run.stderr).toBe("");
   expect(run.status).toBe(0);
@@ -108,7 +108,7 @@ it("REPLAY-011 records one 4,000-byte session step before the own steps of a scr
   ]);
 });
 
-it("REPLAY-009 refuses a bugfix golden end state whose tests fail, replaying no script", () => {
+it("REPLAY-009 refuses a bugfix golden end state whose tests fail, replaying no script", async () => {
   // The fixture's suite fails when broken.txt is present; only the bugfix golden dir adds it.
   const root = benchRoot({
     "fixture/tasks.json": JSON.stringify({ tasks: ["feature", "bugfix", "change"], test: "node check.mjs" }),
@@ -117,7 +117,7 @@ it("REPLAY-009 refuses a bugfix golden end state whose tests fail, replaying no 
     "results/results.json": "previous\n",
   });
 
-  const run = replay(root);
+  const run = await replay(root);
 
   expect(run.stderr.trim()).toBe("fixture bugfix end state: tests fail");
   expect(run.status).toBe(1);
@@ -136,7 +136,7 @@ function sizedScripts(sizes: Record<string, Record<string, number>>): Record<str
   return files;
 }
 
-it("REPLAY-004 shows per-task rows, totals of 10,000, 40,000 and 25,000 and the saving in results.md", () => {
+it("REPLAY-004 shows per-task rows, totals of 10,000, 40,000 and 25,000 and the saving in results.md", async () => {
   const root = benchRoot(
     sizedScripts({
       specjutsu: { feature: 2000, bugfix: 3000, change: 5000 },
@@ -145,7 +145,7 @@ it("REPLAY-004 shows per-task rows, totals of 10,000, 40,000 and 25,000 and the 
     }),
   );
 
-  const run = replay(root);
+  const run = await replay(root);
 
   expect(run.stderr).toBe("");
   expect(run.status).toBe(0);
@@ -169,7 +169,7 @@ it("REPLAY-004 shows per-task rows, totals of 10,000, 40,000 and 25,000 and the 
   expect(lines).toContain("specjutsu saves 75% vs speckit, 60% vs openspec");
 });
 
-it("REPLAY-005 writes byte-identical results.json and results.md on two runs", () => {
+it("REPLAY-005 writes byte-identical results.json and results.md on two runs", async () => {
   const root = benchRoot({
     "steps/speckit/feature.yaml":
       "steps:\n" + step("write\n    path: plan.md\n") + step("read\n    path: plan.md\n") +
@@ -179,9 +179,9 @@ it("REPLAY-005 writes byte-identical results.json and results.md on two runs", (
   const files = ["results.json", "results.md"];
   const read = () => files.map((file) => readFileSync(join(root, "results", file)));
 
-  expect(replay(root).status).toBe(0);
+  expect((await replay(root)).status).toBe(0);
   const first = read();
-  expect(replay(root).status).toBe(0);
+  expect((await replay(root)).status).toBe(0);
   const second = read();
 
   for (const [i, file] of files.entries()) {
@@ -190,7 +190,7 @@ it("REPLAY-005 writes byte-identical results.json and results.md on two runs", (
   }
 });
 
-it("REPLAY-012 counts a run step's timings as 00:00:00 and 0ms, the same on both runs", () => {
+it("REPLAY-012 counts a run step's timings as 00:00:00 and 0ms, the same on both runs", async () => {
   // print.mjs prints the first run's timings, or the second run's when REPLAY_012_RUN is 2.
   const root = benchRoot({
     "steps/speckit/feature.yaml": "steps:\n" + step("run\n    command: node print.mjs\n"),
@@ -199,10 +199,10 @@ it("REPLAY-012 counts a run step's timings as 00:00:00 and 0ms, the same on both
       `console.log(second ? "Start at 09:15:40" : "Start at 14:02:11");\n` +
       `console.log(second ? "Duration 12.3s" : "Duration 6.92s");\n`,
   });
-  const runContext = (n: string) => {
+  const runContext = async (n: string) => {
     process.env.REPLAY_012_RUN = n;
     try {
-      const run = replay(root);
+      const run = await replay(root);
       expect(run.stderr).toBe("");
       expect(run.status).toBe(0);
     } finally {
@@ -211,15 +211,15 @@ it("REPLAY-012 counts a run step's timings as 00:00:00 and 0ms, the same on both
     return ownSteps(results(root).workflows.speckit.feature)[0].context;
   };
 
-  const first = runContext("1");
-  const second = runContext("2");
+  const first = await runContext("1");
+  const second = await runContext("2");
 
   const normalized = Buffer.byteLength("Start at 00:00:00\nDuration 0ms\n");
   expect(first).toBe(normalized);
   expect(second).toBe(normalized);
 });
 
-it("REPLAY-013 records the bytes npx --no-install vitest --version prints in the bench root", () => {
+it("REPLAY-013 records the bytes npx --no-install vitest --version prints in the bench root", async () => {
   // benchRoot links this package's node_modules into the root, as a real bench has its own.
   // An empty npm cache keeps npx from finding a cached vitest, of another version, outside the
   // bench; without the update notice, the command prints only the version line.
@@ -232,7 +232,7 @@ it("REPLAY-013 records the bytes npx --no-install vitest --version prints in the
   let inRoot, run;
   try {
     inRoot = spawnSync(command, { cwd: root, shell: true });
-    run = replay(root);
+    run = await replay(root);
   } finally {
     for (const [key, value] of Object.entries(saved)) {
       if (value === undefined) delete process.env[key];
@@ -249,7 +249,7 @@ it("REPLAY-013 records the bytes npx --no-install vitest --version prints in the
   expect(vitest.context).toBe(inRoot.stdout.length + inRoot.stderr.length);
 });
 
-it("REPLAY-010 prints the sj gain mismatch for next, replay 900 against sj gain 950, and exits 1", () => {
+it("REPLAY-010 prints the sj gain mismatch for next, replay 900 against sj gain 950, and exits 1", async () => {
   // A stand-in for the pinned sj: `sj next` prints 900 bytes, `sj gain --json` reports 950 for next.
   const pin = "0.5.0";
   const sj = join(".bench", "tools", `specjutsu@${pin}`, "bin", "sj");
@@ -268,7 +268,7 @@ it("REPLAY-010 prints the sj gain mismatch for next, replay 900 against sj gain 
   });
   chmodSync(join(root, sj), 0o755);
 
-  const run = replay(root);
+  const run = await replay(root);
 
   expect(run.stderr.trim()).toBe("sj gain mismatch for next: replay 900, sj gain 950");
   expect(run.status).toBe(1);
@@ -282,10 +282,10 @@ describe("sj gain cross-check", () => {
     "steps/specjutsu/feature.yaml": "steps:\n" + step("run\n    command: sj next\n"),
   };
 
-  it("refuses an sj step when the pinned sj is not installed, without using the sj on PATH", () => {
+  it("refuses an sj step when the pinned sj is not installed, without using the sj on PATH", async () => {
     const root = benchRoot(files);
 
-    const run = replay(root);
+    const run = await replay(root);
 
     expect(run.stderr.trim()).toBe(
       `steps/specjutsu/feature.yaml step 1: specjutsu@${pin} is not installed: .bench/tools/specjutsu@${pin}/bin/sj`,
@@ -293,7 +293,7 @@ describe("sj gain cross-check", () => {
     expect(run.status).toBe(1);
   });
 
-  it("reports a failed sj gain --json by script and its first stderr line, not as a mismatch", () => {
+  it("reports a failed sj gain --json by script and its first stderr line, not as a mismatch", async () => {
     const root = benchRoot({
       ...files,
       [sj]:
@@ -303,18 +303,18 @@ describe("sj gain cross-check", () => {
     });
     chmodSync(join(root, sj), 0o755);
 
-    const run = replay(root);
+    const run = await replay(root);
 
     expect(run.stderr.trim()).toBe("sj gain --json failed for specjutsu/feature: ledger locked");
     expect(run.status).toBe(1);
   });
 });
 
-it("REPLAY-014 counts the workspace path a run step prints as /workspace", () => {
+it("REPLAY-014 counts the workspace path a run step prints as /workspace", async () => {
   const command = `node -e "console.log(process.cwd() + '/test/terms.test.ts')"`;
   const root = benchRoot({ "steps/speckit/feature.yaml": "steps:\n" + step(`run\n    command: ${command}\n`) });
 
-  const run = replay(root);
+  const run = await replay(root);
 
   expect(run.stderr).toBe("");
   expect(run.status).toBe(0);
@@ -322,7 +322,7 @@ it("REPLAY-014 counts the workspace path a run step prints as /workspace", () =>
   expect(printed.context).toBe(Buffer.byteLength("/workspace/test/terms.test.ts\n"));
 });
 
-it("REPLAY-019 counts the path from the workspace into the bench checkout as /bench", () => {
+it("REPLAY-019 counts the path from the workspace into the bench checkout as /bench", async () => {
   // Vite names a file in the linked node_modules by its path relative to the workspace. The link
   // is read rather than resolved, since the test bench's own node_modules is itself a link.
   const script =
@@ -331,7 +331,7 @@ it("REPLAY-019 counts the path from the workspace into the bench checkout as /be
     "console.log(p.relative(process.cwd(), p.join(bench, 'node_modules/vite/dist/node/chunks/config.js')))";
   const root = benchRoot({ "steps/speckit/feature.yaml": "steps:\n" + step(`run\n    command: node -e \"${script}\"\n`) });
 
-  const run = replay(root);
+  const run = await replay(root);
 
   expect(run.stderr).toBe("");
   expect(run.status).toBe(0);
@@ -339,7 +339,7 @@ it("REPLAY-019 counts the path from the workspace into the bench checkout as /be
   expect(printed.context).toBe(Buffer.byteLength("/bench/node_modules/vite/dist/node/chunks/config.js\n"));
 });
 
-it("REPLAY-015 commits the start state on main as one fixture start commit with the same hash on every run and machine", () => {
+it("REPLAY-015 commits the start state on main as one fixture start commit with the same hash on every run and machine", async () => {
   // Later steps write the log and the committed files to files outside the workspace, so the
   // test can read them.
   const command = "git log --format=%H%n%s main";
@@ -380,13 +380,13 @@ it("REPLAY-015 commits the start state on main as one fixture start commit with 
     GIT_CONFIG_VALUE_0: "latin1",
     GIT_DIR: join(machine, "elsewhere.git"),
   };
-  const runOnce = () => {
+  const runOnce = async () => {
     rmSync(out, { recursive: true, force: true });
     mkdirSync(out);
     const saved = Object.fromEntries(Object.keys(hostile).map((key) => [key, process.env[key]]));
     Object.assign(process.env, hostile);
     try {
-      const run = replay(root);
+      const run = await replay(root);
       expect(run.stderr).toBe("");
       expect(run.status).toBe(0);
     } finally {
@@ -427,8 +427,8 @@ it("REPLAY-015 commits the start state on main as one fixture start commit with 
 
   const repo = mkdtempSync(join(tmpdir(), "replay-015-repo-"));
   try {
-    const first = runOnce();
-    const second = runOnce();
+    const first = await runOnce();
+    const second = await runOnce();
     const hash = expectedHash(repo);
 
     expect(hash).toMatch(/^[0-9a-f]{40}$/);
@@ -442,7 +442,7 @@ it("REPLAY-015 commits the start state on main as one fixture start commit with 
   }
 });
 
-it("REPLAY-016 records the same git diff context bytes with a global diff.noprefix config as with none", () => {
+it("REPLAY-016 records the same git diff context bytes with a global diff.noprefix config as with none", async () => {
   const root = benchRoot({
     "steps/speckit/feature.yaml":
       "steps:\n" +
@@ -451,11 +451,11 @@ it("REPLAY-016 records the same git diff context bytes with a global diff.nopref
   });
   const machine = mkdtempSync(join(tmpdir(), "replay-016-machine-"));
   writeFileSync(join(machine, "gitconfig"), `[diff]\n\tnoprefix = true\n[color]\n\tui = always\n`);
-  const diffContext = (globalConfig: string) => {
+  const diffContext = async (globalConfig: string) => {
     const saved = process.env.GIT_CONFIG_GLOBAL;
     process.env.GIT_CONFIG_GLOBAL = globalConfig;
     try {
-      const run = replay(root);
+      const run = await replay(root);
       expect(run.stderr).toBe("");
       expect(run.status).toBe(0);
     } finally {
@@ -466,8 +466,8 @@ it("REPLAY-016 records the same git diff context bytes with a global diff.nopref
   };
 
   try {
-    const hostile = diffContext(join(machine, "gitconfig"));
-    const none = diffContext("/dev/null");
+    const hostile = await diffContext(join(machine, "gitconfig"));
+    const none = await diffContext("/dev/null");
 
     expect(none).toBeGreaterThan(0);
     expect(hostile).toBe(none);
@@ -476,20 +476,20 @@ it("REPLAY-016 records the same git diff context bytes with a global diff.nopref
   }
 });
 
-it("REPLAY-017 records the same context bytes for a run step with GITHUB_ACTIONS=true and CI=true as with neither", () => {
+it("REPLAY-017 records the same context bytes for a run step with GITHUB_ACTIONS=true and CI=true as with neither", async () => {
   const root = benchRoot({
     "steps/speckit/feature.yaml":
       "steps:\n" +
       step(`run\n    command: node -e "process.stdout.write(['unset', 'GITHUB_ACTIONS is set'][+!!process.env.GITHUB_ACTIONS] + ['', ' notifier off'][+(process.env.npm_config_update_notifier === 'false')])"\n`),
   });
-  const runContext = (vars: { GITHUB_ACTIONS?: string; CI?: string }) => {
+  const runContext = async (vars: { GITHUB_ACTIONS?: string; CI?: string }) => {
     const saved = { GITHUB_ACTIONS: process.env.GITHUB_ACTIONS, CI: process.env.CI };
     try {
       for (const name of ["GITHUB_ACTIONS", "CI"] as const) {
         if (vars[name] === undefined) delete process.env[name];
         else process.env[name] = vars[name];
       }
-      const run = replay(root);
+      const run = await replay(root);
       expect(run.stderr).toBe("");
       expect(run.status).toBe(0);
     } finally {
@@ -502,8 +502,8 @@ it("REPLAY-017 records the same context bytes for a run step with GITHUB_ACTIONS
   };
 
   try {
-    const ci = runContext({ GITHUB_ACTIONS: "true", CI: "true" });
-    const none = runContext({});
+    const ci = await runContext({ GITHUB_ACTIONS: "true", CI: "true" });
+    const none = await runContext({});
 
     // "unset" and " notifier off": npm's update notice is turned off in the step.
     expect(none).toBe(18);
@@ -513,14 +513,14 @@ it("REPLAY-017 records the same context bytes for a run step with GITHUB_ACTIONS
   }
 });
 
-it("REPLAY-018 records context 2,000,000 for a run step that prints 2,000,000 bytes", () => {
+it("REPLAY-018 records context 2,000,000 for a run step that prints 2,000,000 bytes", async () => {
   const root = benchRoot({
     "steps/speckit/feature.yaml":
       "steps:\n" + step(`run\n    command: node -e "process.stdout.write('x'.repeat(2000000))"\n`),
   });
 
   try {
-    const run = replay(root);
+    const run = await replay(root);
 
     expect(run.stderr).toBe("");
     expect(run.status).toBe(0);
@@ -530,21 +530,21 @@ it("REPLAY-018 records context 2,000,000 for a run step that prints 2,000,000 by
   }
 });
 
-it("REPLAY-020 stops at a read of notes.md, which nothing created, and leaves results/ unchanged", () => {
+it("REPLAY-020 stops at a read of notes.md, which nothing created, and leaves results/ unchanged", async () => {
   const read = "  - kind: read\n    path: notes.md\n    source: https://example.com/docs#read\n";
   const root = benchRoot({
     "steps/speckit/feature.yaml": `${stepScript(2)}${read}`,
     "results/results.json": "previous\n",
   });
 
-  const run = replay(root);
+  const run = await replay(root);
 
   expect(run.stderr).toContain("speckit/feature step 3: read failed: notes.md not found");
   expect(run.status).toBe(1);
   expect(readFileSync(join(root, "results", "results.json"), "utf8")).toBe("previous\n");
 });
 
-it("REPLAY-021 records the bytes of C.UTF-8 C.UTF-8 and a newline for a run step printing $LANG $LC_ALL with a de_DE.UTF-8 locale set", () => {
+it("REPLAY-021 records the bytes of C.UTF-8 C.UTF-8 and a newline for a run step printing $LANG $LC_ALL with a de_DE.UTF-8 locale set", async () => {
   const root = benchRoot({
     "steps/speckit/feature.yaml": "steps:\n" + step(`run\n    command: echo "$LANG $LC_ALL"\n`),
   });
@@ -553,7 +553,7 @@ it("REPLAY-021 records the bytes of C.UTF-8 C.UTF-8 and a newline for a run step
   try {
     process.env.LANG = "de_DE.UTF-8";
     process.env.LC_ALL = "de_DE.UTF-8";
-    const run = replay(root);
+    const run = await replay(root);
 
     expect(run.stderr).toBe("");
     expect(run.status).toBe(0);

@@ -14,21 +14,21 @@ function resultsFiles(root: string): Record<string, string> {
 }
 
 /** Commits results from a first run and returns a snapshot of them. */
-function commitResults(root: string): Record<string, string> {
-  const run = replay(root);
+async function commitResults(root: string): Promise<Record<string, string>> {
+  const run = await replay(root);
   expect(run.stderr).toBe("");
   expect(run.status).toBe(0);
   return resultsFiles(root);
 }
 
-it("REPLAY-006 fails the check naming speckit/feature step 6: context 3000 → 3100", () => {
+it("REPLAY-006 fails the check naming speckit/feature step 6: context 3000 → 3100", async () => {
   // The script declares no session; the replay's implicit session step must not shift its numbering.
   const script = "steps:\n" + step("read\n    path: file-1.md\n").repeat(5) + step("read\n    path: big.md\n");
   const root = benchRoot({ "steps/speckit/feature.yaml": script, "fixture/start/big.md": "x".repeat(3000) });
-  const committed = commitResults(root);
+  const committed = await commitResults(root);
   writeFileSync(join(root, "fixture", "start", "big.md"), "x".repeat(3100));
 
-  const run = replayCheck(root);
+  const run = await replayCheck(root);
 
   expect(run.stderr).toBe("");
   expect(run.stdout.trim()).toBe("speckit/feature step 6: context 3000 → 3100");
@@ -36,7 +36,7 @@ it("REPLAY-006 fails the check naming speckit/feature step 6: context 3000 → 3
   expect(resultsFiles(root)).toEqual(committed);
 });
 
-it("REPLAY-007 names the speckit pin move 0.0.79 → 0.0.80 before any byte difference", () => {
+it("REPLAY-007 names the speckit pin move 0.0.79 → 0.0.80 before any byte difference", async () => {
   const pins = (speckit: string) =>
     JSON.stringify({ openspec: "1.2.0", speckit, superpowers: "0123456789abcdef0123456789abcdef01234567" });
   const script = "steps:\n" + step("session\n") + step("load\n    tool: speckit\n    path: templates/spec.md\n");
@@ -46,10 +46,10 @@ it("REPLAY-007 names the speckit pin move 0.0.79 → 0.0.80 before any byte diff
     ".bench/tools/speckit@0.0.79/templates/spec.md": "s".repeat(1000),
     ".bench/tools/speckit@0.0.80/templates/spec.md": "s".repeat(1200),
   });
-  const committed = commitResults(root);
+  const committed = await commitResults(root);
   writeFileSync(join(root, "pins.json"), pins("0.0.80"));
 
-  const run = replayCheck(root);
+  const run = await replayCheck(root);
 
   expect(run.stderr).toBe("");
   expect(run.stdout.trim().split("\n")).toEqual([
@@ -60,11 +60,11 @@ it("REPLAY-007 names the speckit pin move 0.0.79 → 0.0.80 before any byte diff
   expect(resultsFiles(root)).toEqual(committed);
 });
 
-it("REPLAY-008 passes the check with results match when the committed results match a fresh run", () => {
+it("REPLAY-008 passes the check with results match when the committed results match a fresh run", async () => {
   const root = benchRoot();
-  const committed = commitResults(root);
+  const committed = await commitResults(root);
 
-  const run = replayCheck(root);
+  const run = await replayCheck(root);
 
   expect(run.stderr).toBe("");
   expect(run.stdout.trim()).toBe("results match");
@@ -75,12 +75,12 @@ it("REPLAY-008 passes the check with results match when the committed results ma
 describe("--check beyond the scenarios", () => {
   const tasksJson = (tasks: string[]) => JSON.stringify({ tasks, test: `node -e "process.exit(0)"` });
 
-  it("names a script the committed results have and a fresh run does not", () => {
+  it("names a script the committed results have and a fresh run does not", async () => {
     const root = benchRoot();
-    const committed = commitResults(root);
+    const committed = await commitResults(root);
     writeFileSync(join(root, "fixture", "tasks.json"), tasksJson(["feature", "bugfix"]));
 
-    const run = replayCheck(root);
+    const run = await replayCheck(root);
 
     expect(run.stderr).toBe("");
     expect(run.stdout.trim()).toBe("specjutsu/change: missing");
@@ -88,16 +88,16 @@ describe("--check beyond the scenarios", () => {
     expect(resultsFiles(root)).toEqual(committed);
   });
 
-  it("names a script a fresh run has and the committed results do not", () => {
+  it("names a script a fresh run has and the committed results do not", async () => {
     const root = benchRoot({
       "steps/specjutsu/extra.yaml": stepScript(3),
       "steps/speckit/extra.yaml": stepScript(3),
       "steps/openspec/extra.yaml": stepScript(3),
     });
-    const committed = commitResults(root);
+    const committed = await commitResults(root);
     writeFileSync(join(root, "fixture", "tasks.json"), tasksJson([...TASKS, "extra"]));
 
-    const run = replayCheck(root);
+    const run = await replayCheck(root);
 
     expect(run.stderr).toBe("");
     expect(run.stdout.trim()).toBe("specjutsu/extra: added");
@@ -105,10 +105,10 @@ describe("--check beyond the scenarios", () => {
     expect(resultsFiles(root)).toEqual(committed);
   });
 
-  it("reports missing committed results and writes none", () => {
+  it("reports missing committed results and writes none", async () => {
     const root = benchRoot();
 
-    const run = replayCheck(root);
+    const run = await replayCheck(root);
 
     expect(run.stderr.trim()).toBe("results/results.json: missing");
     expect(run.stdout).toBe("");
@@ -116,10 +116,10 @@ describe("--check beyond the scenarios", () => {
     expect(existsSync(join(root, "results"))).toBe(false);
   });
 
-  it("reports committed results it cannot parse and leaves them untouched", () => {
+  it("reports committed results it cannot parse and leaves them untouched", async () => {
     const root = benchRoot({ "results/results.json": "not json\n" });
 
-    const run = replayCheck(root);
+    const run = await replayCheck(root);
 
     expect(run.stderr.trim()).toBe("results/results.json: unreadable");
     expect(run.stdout).toBe("");

@@ -1,4 +1,4 @@
-import { spawnSync } from "node:child_process";
+import { spawn, type SpawnOptions } from "node:child_process";
 import { cpSync, mkdirSync, mkdtempSync, symlinkSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
@@ -47,10 +47,29 @@ export function benchRoot(files: Record<string, string | null> = {}): string {
   return root;
 }
 
-export function replay(root: string) {
-  return spawnSync("npm", ["run", "--silent", "replay"], { cwd: root, encoding: "utf8" });
+/** What a finished command printed and how it exited, as `spawnSync` reports it. */
+export type Finished = { status: number | null; signal: NodeJS.Signals | null; stdout: string; stderr: string };
+
+/**
+ * Runs a command to the end without blocking, so the test worker's event loop stays free while a
+ * CLI runs for seconds (a blocked worker misses vitest's RPC calls).
+ */
+export function spawnAsync(command: string, args: string[], options: SpawnOptions = {}): Promise<Finished> {
+  return new Promise((resolve, reject) => {
+    const child = spawn(command, args, { ...options, stdio: ["ignore", "pipe", "pipe"] });
+    let stdout = "";
+    let stderr = "";
+    child.stdout?.setEncoding("utf8").on("data", (chunk: string) => (stdout += chunk));
+    child.stderr?.setEncoding("utf8").on("data", (chunk: string) => (stderr += chunk));
+    child.on("error", reject);
+    child.on("close", (status, signal) => resolve({ status, signal, stdout, stderr }));
+  });
 }
 
-export function replayCheck(root: string) {
-  return spawnSync("npm", ["run", "--silent", "replay", "--", "--check"], { cwd: root, encoding: "utf8" });
+export function replay(root: string): Promise<Finished> {
+  return spawnAsync("npm", ["run", "--silent", "replay"], { cwd: root });
+}
+
+export function replayCheck(root: string): Promise<Finished> {
+  return spawnAsync("npm", ["run", "--silent", "replay", "--", "--check"], { cwd: root });
 }

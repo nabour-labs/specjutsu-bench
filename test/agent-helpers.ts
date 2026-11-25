@@ -1,9 +1,8 @@
-import { spawnSync } from "node:child_process";
 import { chmodSync, existsSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
 import { delimiter, join, relative } from "node:path";
 import { fileURLToPath } from "node:url";
 import { WORKFLOWS } from "../src/steps.ts";
-import { benchRoot, TASKS } from "./helpers.ts";
+import { benchRoot, type Finished, spawnAsync, TASKS } from "./helpers.ts";
 
 /** A prompt script with `count` prompts that each cite a source. */
 export function promptScript(count: number): string {
@@ -154,11 +153,7 @@ export function agentRoot(files: Record<string, string | null> = {}): string {
 }
 
 /** Runs `npm run agents` in `root`, with its fake `claude` first on PATH and `env` added. */
-export function agents(root: string, args: string[] = [], env: NodeJS.ProcessEnv = {}) {
+export function agents(root: string, args: string[] = [], env: NodeJS.ProcessEnv = {}): Promise<Finished> {
   const PATH = `${join(root, "fake-claude")}${delimiter}${process.env.PATH ?? ""}`;
-  return spawnSync("npm", ["run", "--silent", "agents", "--", ...args], {
-    cwd: root,
-    encoding: "utf8",
-    env: { ...process.env, PATH, ...env },
-  });
+  return spawnAsync("npm", ["run", "--silent", "agents", "--", ...args], { cwd: root, env: { ...process.env, PATH, ...env } });
 }
