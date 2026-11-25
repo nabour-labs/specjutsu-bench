@@ -29,5 +29,5 @@
 
 ## 5. Workflow scripts and docs
 
-- [ ] 5.1 Setup and prompt scripts for every workflow and task, with citations (no-scenario: config)
-- [ ] 5.2 README section on layer 2 (no-scenario: docs)
+- [x] 5.1 Setup and prompt scripts for every workflow and task, with citations (no-scenario: config)
+- [x] 5.2 README section on layer 2 (no-scenario: docs)
