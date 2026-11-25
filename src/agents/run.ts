@@ -17,6 +17,12 @@ export type Run = { outcome: "passed" | "failed"; reason?: string } & Usage;
 export type RunOptions = { runs: number; timeout: number };
 /** Every run, by workflow and task, in the order they ran. */
 export type Runs = Record<string, Record<string, Run[]>>;
+/**
+ * A finished run, and whether it failed because a `claude` call errored: exited non-zero, was
+ * killed, or printed no result message. Such a run measures nothing about the workflow, so it
+ * isn't saved and the next start does it again.
+ */
+export type Attempt = { run: Run; errored: boolean };
 
 /** Thrown when a setup command fails; the benchmark stops and writes no results. */
 export class SetupError extends Error {}
@@ -36,7 +42,7 @@ export function runAll(
   tasks: string[],
   options: RunOptions,
   saved: (workflow: string, task: string, n: number) => boolean,
-  finished: (workflow: string, task: string, n: number, run: Run) => void,
+  finished: (workflow: string, task: string, n: number, attempt: Attempt) => void,
 ): void {
   const { model } = loadAgentConfig(root);
   for (const workflow of WORKFLOWS) {
@@ -57,7 +63,7 @@ export function runAll(
  * run, and the run makes no more calls. After the last prompt, the task's golden tests decide
  * whether the run passed.
  */
-export function runAgent(root: string, model: string, workflow: string, task: string, n: number, timeout: number): Run {
+export function runAgent(root: string, model: string, workflow: string, task: string, n: number, timeout: number): Attempt {
   const transcripts = join(root, TRANSCRIPTS, workflow, task, `run-${n}`);
   rmSync(transcripts, { recursive: true, force: true });
   // The run's temporary area holds its workspace and its Claude Code configuration.
@@ -101,20 +107,20 @@ export function runAgent(root: string, model: string, workflow: string, task: st
       const stream = parseCall(stdout.split("\n").filter((line) => line.trim() !== ""));
       usage = addUsage(usage, stream.usage);
       resume = stream.sessionId;
-      const failure =
-        (call.error as NodeJS.ErrnoException | undefined)?.code === "ETIMEDOUT"
-          ? `claude timed out after ${timeout}s`
-          : call.status === null
-            ? `claude killed by ${call.signal}`
-            : call.status !== 0
-              ? `claude exited ${call.status}`
-              : !stream.result
-                ? "no result message"
-                : undefined;
-      if (failure) return { outcome: "failed", reason: `prompt ${k}: ${failure}`, ...usage };
+      const timedOut = (call.error as NodeJS.ErrnoException | undefined)?.code === "ETIMEDOUT";
+      const failure = timedOut
+        ? `claude timed out after ${timeout}s`
+        : call.status === null
+          ? `claude killed by ${call.signal}`
+          : call.status !== 0
+            ? `claude exited ${call.status}`
+            : !stream.result
+              ? "no result message"
+              : undefined;
+      if (failure) return { run: { outcome: "failed", reason: `prompt ${k}: ${failure}`, ...usage }, errored: !timedOut };
     }
-    if (!acceptancePasses(root, task, workspace)) return { outcome: "failed", reason: "acceptance tests failed", ...usage };
-    return { outcome: "passed", ...usage };
+    if (!acceptancePasses(root, task, workspace)) return { run: { outcome: "failed", reason: "acceptance tests failed", ...usage }, errored: false };
+    return { run: { outcome: "passed", ...usage }, errored: false };
   } finally {
     rmSync(area, { recursive: true, force: true });
   }

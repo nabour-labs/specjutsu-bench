@@ -290,8 +290,12 @@ it("AGENT-009 shows a cell's pass rate, median and range over three passing runs
 });
 
 it("AGENT-010 leaves a failed run out of the cell's median", async () => {
-  const root = agentRoot({ "agents/speckit/feature.yaml": promptsYaml(["feature cell"]) });
-  fakeBehaviour(root, { "feature cell": [{ ...inputTurn(9000), exit: 1 }, inputTurn(14000), inputTurn(11000)] });
+  // The acceptance tests fail when the agent leaves a file named broken, as the first run does.
+  const root = agentRoot({
+    "agents/speckit/feature.yaml": promptsYaml(["feature cell"]),
+    "fixture/tasks.json": JSON.stringify({ tasks: TASKS, test: `node -e "process.exit(require('fs').existsSync('broken') ? 1 : 0)"` }),
+  });
+  fakeBehaviour(root, { "feature cell": [{ ...inputTurn(9000), write: "broken" }, inputTurn(14000), inputTurn(11000)] });
 
   const run = await agents(root, ["--runs", "3"]);
 

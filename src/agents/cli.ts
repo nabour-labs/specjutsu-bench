@@ -48,7 +48,11 @@ if (errors.length > 0 || runCount === undefined || timeout === undefined) {
   };
   try {
     const saved = (workflow: string, task: string, n: number) => savedRun(root, workflow, task, n, prints[workflow][task]) !== undefined;
-    runAll(root, tasks, { runs: runCount, timeout }, saved, (workflow, task, n, run) => {
+    runAll(root, tasks, { runs: runCount, timeout }, saved, (workflow, task, n, { run, errored }) => {
+      if (errored) {
+        console.error(`${workflow}/${task} run ${n}: ${run.reason} (not saved, will be retried)`);
+        return;
+      }
       saveRun(root, workflow, task, n, run, prints[workflow][task]);
       // Rewritten after every run, so a stopped pass loses none.
       writeResults();
