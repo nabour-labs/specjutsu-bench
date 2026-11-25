@@ -224,9 +224,12 @@ it("AGENT-007 marks a run failed when claude exits 1 on its second prompt, and t
   const run = await agents(root, ["--runs", "3"]);
 
   expect(run.status).toBe(0);
+  expect(run.stderr).toContain("speckit/feature run 1: prompt 2: claude exited 1 (not saved, will be retried)\n");
+  // Run 1 isn't saved, so only runs 2 and 3 are in the results.
+  const saved = join(root, ".bench", "runs", "speckit", "feature");
+  expect([1, 2, 3].map((n) => existsSync(join(saved, `run-${n}.json`)))).toEqual([false, true, true]);
   const runs = agentResults(root).workflows.speckit.feature.runs;
   expect(runs.map((r: { outcome: string; reason?: string }) => [r.outcome, r.reason])).toEqual([
-    ["failed", "prompt 2: claude exited 1"],
     ["passed", undefined],
     ["passed", undefined],
   ]);
@@ -242,8 +245,9 @@ it("AGENT-007 marks a run failed when a call prints no result message", async ()
   const run = await agents(root, ["--runs", "1"]);
 
   expect(run.status).toBe(0);
-  const [recorded] = agentResults(root).workflows.speckit.feature.runs;
-  expect([recorded.outcome, recorded.reason]).toEqual(["failed", "prompt 1: no result message"]);
+  expect(run.stderr).toContain("speckit/feature run 1: prompt 1: no result message (not saved, will be retried)\n");
+  expect(existsSync(join(root, ".bench", "runs", "speckit", "feature", "run-1.json"))).toBe(false);
+  expect(agentResults(root).workflows.speckit.feature.runs).toEqual([]);
 });
 
 it("AGENT-016 fails a run whose call sleeps past --timeout 1", async () => {
