@@ -10,13 +10,13 @@
 - [x] 2.2 Isolated Claude Code configuration (AGENT-002)
 - [x] 2.3 Setup commands, and a failing one stops the benchmark (AGENT-003)
 - [x] 2.4 The API key reaches only claude, and the workspace is a git repo (AGENT-014, AGENT-015)
-- [ ] 2.5 Each run has its own home, with its .local/bin on PATH (AGENT-023)
+- [x] 2.5 Each run has its own home, with its .local/bin on PATH (AGENT-023)
 
 ## 3. Usage and outcome
 
 - [x] 3.1 Usage summed from every turn, transcripts kept in .bench (AGENT-006, AGENT-013)
 - [x] 3.4 Lines of one message count once (AGENT-017)
-- [ ] 3.5 A subagent's turns count (AGENT-024)
+- [x] 3.5 A subagent's turns count (AGENT-024)
 - [x] 3.2 A failing or hung call marks the run failed (AGENT-007, AGENT-016)
 - [x] 3.3 Golden acceptance tests (AGENT-008)
 
