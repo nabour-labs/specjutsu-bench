@@ -36,11 +36,7 @@ if (errors.length > 0 || runCount === undefined || timeout === undefined) {
   const { model } = loadAgentConfig(root);
   const dir = join(root, "results", "agent");
   // What results/agent held before the first run, put back if the pass stops on an error.
-  const earlier = existsSync(dir)
-    ? readdirSync(dir, { withFileTypes: true })
-        .filter((entry) => entry.isFile())
-        .map((entry) => [entry.name, readFileSync(join(dir, entry.name))] as const)
-    : undefined;
+  const earlier = existsSync(dir) ? readdirSync(dir).map((name) => [name, readFileSync(join(dir, name))] as const) : undefined;
   // Each cell's inputs, hashed once: a run saved with its cell's fingerprint is not run again.
   const prints = fingerprints(root, model, tasks);
   try {
