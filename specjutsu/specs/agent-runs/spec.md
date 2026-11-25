@@ -1,7 +1,7 @@
 # agent-runs Specification
 
 ## Purpose
-TBD - created by archiving change add-agent-runs. Update Purpose after archive.
+Layer 2 of the benchmark: run Claude Code through each workflow, installed with its own installer, on the same tasks as the replay, count the tokens the model processed, and report each cell's median over runs that pass the golden acceptance tests.
 
 ## Requirements
 
