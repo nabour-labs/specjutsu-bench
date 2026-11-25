@@ -35,4 +35,5 @@ Layer 1 (specs `replay`, `steps`) replays cited steps against pinned installs an
 - [Runs cost money and vary] → 3 runs per cell, median and range shown, and the budget cap lands with the CI change.
 - [`bypassPermissions` lets the agent run anything] → Runs happen in a throwaway workspace on a CI runner, never on a developer's checkout. The README will say not to run it on a machine you care about.
 - [A workflow's prompts are written by specjutsu's authors] → Every prompt cites its source and can be challenged like a step. The transcripts' usage is in results.json.
+- [Subagent turns may be missing from stream-json] → specjutsu's sj-apply runs its implementer and reviewers as subagents inside one call, so specjutsu is charged fairly only if their turns are counted. The parser counts `parent_tool_use_id` lines (AGENT-024); the first real run must confirm Claude Code prints them, by comparing the summed usage with the result's `total_cost_usd`, before any headline is published.
 - [Real installers fetch from the network] → Setup commands pin exact versions, like `pins.json`, and their sources are checked.
