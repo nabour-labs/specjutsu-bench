@@ -772,3 +772,20 @@ it("AGENT-041 every other input changes the fingerprint", () => {
   expect(print()).toBe(first);
   for (const changed of prints) expect(changed).not.toBe(first);
 });
+
+it("AGENT-042 a timed-out run is done again under another timeout", async () => {
+  const root = agentRoot(cellPrompts());
+  // The other cells are saved first under a timeout no call comes near, so none of them depends on
+  // --timeout; openspec/change errs there, is not saved, and then sleeps past --timeout 1.
+  fakeBehaviour(root, { "openspec change": [{ exit: 1 }, { sleep: 5 }] });
+  expect((await agents(root, ["--runs", "1", "--timeout", "60"])).status).toBe(0);
+  expect((await agents(root, ["--runs", "1", "--timeout", "1"])).status).toBe(0);
+  const [change] = agentResults(root).workflows.openspec.change.runs;
+  expect([change.outcome, change.reason]).toEqual(["failed", "prompt 1: claude timed out after 1s"]);
+  const first = fakeCalls(root).length;
+
+  const run = await agents(root, ["--runs", "1", "--timeout", "2"]);
+
+  expect(run.status).toBe(0);
+  expect(fakeCalls(root).slice(first).map((call) => call.argv[1])).toEqual(["openspec change"]);
+});
