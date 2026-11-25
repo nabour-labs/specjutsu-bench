@@ -332,8 +332,12 @@ it("AGENT-011 compares total input tokens: specjutsu saves 60% vs speckit, 50% v
 });
 
 it("AGENT-012 gives speckit no total when every speckit/feature run fails, and the headline names that cell", async () => {
-  const root = agentRoot({ "agents/speckit/feature.yaml": promptsYaml(["speckit feature"]) });
-  fakeBehaviour(root, { "speckit feature": [{ exit: 1 }, { exit: 1 }] });
+  // The acceptance tests fail when the agent leaves a file named broken, as both speckit/feature runs do.
+  const root = agentRoot({
+    "agents/speckit/feature.yaml": promptsYaml(["speckit feature"]),
+    "fixture/tasks.json": JSON.stringify({ tasks: TASKS, test: `node -e "process.exit(require('fs').existsSync('broken') ? 1 : 0)"` }),
+  });
+  fakeBehaviour(root, { "speckit feature": [{ write: "broken" }, { write: "broken" }] });
 
   const run = await agents(root, ["--runs", "2"]);
 
