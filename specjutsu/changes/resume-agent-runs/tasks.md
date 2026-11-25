@@ -9,9 +9,9 @@
 
 ## 2. Choosing what runs
 
-- [ ] 2.1 --workflow, its refusal, and cells not run shown as not run (AGENT-033, AGENT-034, AGENT-036)
-- [ ] 2.2 --fresh discards a workflow's saved runs (AGENT-035)
+- [x] 2.1 --workflow, its refusal, and cells not run shown as not run (AGENT-033, AGENT-034, AGENT-036)
+- [x] 2.2 --fresh discards a workflow's saved runs (AGENT-035)
 
 ## 3. Docs
 
-- [ ] 3.1 README: saved runs, starting again, --workflow, --fresh (no-scenario: docs)
+- [x] 3.1 README: saved runs, starting again, --workflow, --fresh (no-scenario: docs)
