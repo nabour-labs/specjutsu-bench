@@ -4,6 +4,8 @@ import { delimiter, dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { expect, it, vi } from "vitest";
 import { agentRoot, agents, fakeBehaviour, fakeCalls, promptsYaml, realFixture } from "./agent-helpers.ts";
+import { WORKFLOWS } from "../src/steps.ts";
+import { TASKS } from "./helpers.ts";
 
 // A test here makes up to nine runs, each copying node_modules, so it gets longer than the replay's 30s.
 vi.setConfig({ testTimeout: 120_000 });
@@ -562,4 +564,55 @@ it("AGENT-030 a finished run is in the results before the next run starts", asyn
   const recorded = JSON.parse(second?.recorded ?? "null");
   expect(recorded.workflows.specjutsu.feature.runs).toHaveLength(1);
   expect(recorded.workflows.specjutsu.feature.runs[0]).toMatchObject({ outcome: "passed", inputTokens: 30000 });
+});
+
+/** A prompt script per workflow and task whose one prompt names its cell, `<workflow> <task>`. */
+function cellPrompts(): Record<string, string> {
+  const files: Record<string, string> = {};
+  for (const workflow of WORKFLOWS) for (const task of TASKS) files[`agents/${workflow}/${task}.yaml`] = promptsYaml([`${workflow} ${task}`]);
+  return files;
+}
+
+/** The session ids in a saved transcript. */
+function transcriptSessions(path: string): string[] {
+  const lines = readFileSync(path, "utf8").split("\n").filter(Boolean);
+  return [...new Set(lines.map((line) => JSON.parse(line).session_id as string))];
+}
+
+it("AGENT-031 a second start does only the runs not yet saved", async () => {
+  const root = agentRoot(cellPrompts());
+  expect((await agents(root, ["--runs", "1"])).status).toBe(0);
+  const first = fakeCalls(root).length;
+  const transcript = (workflow: string, task: string, n: number) =>
+    join(root, ".bench", "transcripts", workflow, task, `run-${n}`, "prompt-1.jsonl");
+  const run1Before = Object.fromEntries(WORKFLOWS.flatMap((w) => TASKS.map((t) => [`${w} ${t}`, readFileSync(transcript(w, t, 1), "utf8")])));
+
+  const run = await agents(root, ["--runs", "2"]);
+
+  expect(run.status).toBe(0);
+  const second = fakeCalls(root).slice(first);
+  // One call per cell, each the call whose session run 2's transcript holds.
+  expect(second.map((call) => call.argv[1]).sort()).toEqual(WORKFLOWS.flatMap((w) => TASKS.map((t) => `${w} ${t}`)).sort());
+  for (const call of second) {
+    const [workflow, task] = call.argv[1].split(" ");
+    expect(transcriptSessions(transcript(workflow, task, 2))).toEqual([call.sessionId]);
+    // Run 1 was skipped, so its transcript from the first start is still there.
+    expect(readFileSync(transcript(workflow, task, 1), "utf8")).toBe(run1Before[call.argv[1]]);
+  }
+  const markdown = agentMarkdown(root);
+  for (const workflow of WORKFLOWS) for (const task of TASKS) expect(markdown).toContain(`| ${workflow} | ${task} | 2/2 |`);
+});
+
+it("AGENT-032 a run whose inputs changed runs again", async () => {
+  const root = agentRoot(cellPrompts());
+  expect((await agents(root, ["--runs", "1"])).status).toBe(0);
+  const first = fakeCalls(root).length;
+  writeFileSync(join(root, "agents", "speckit", "feature.yaml"), promptsYaml(["speckit feature, changed"]));
+
+  const run = await agents(root, ["--runs", "1"]);
+
+  expect(run.status).toBe(0);
+  const second = fakeCalls(root).slice(first);
+  expect(second.map((call) => call.argv[1])).toEqual(["speckit feature, changed"]);
+  expect(transcriptSessions(join(root, ".bench", "transcripts", "speckit", "feature", "run-1", "prompt-1.jsonl"))).toEqual([second[0]?.sessionId]);
 });
