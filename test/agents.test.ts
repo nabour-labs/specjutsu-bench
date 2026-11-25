@@ -492,3 +492,15 @@ it("AGENT-025 a run that writes node_modules/.agent-was-here changes neither the
     rmSync(real, { force: true });
   }
 });
+
+it("AGENT-026 the agent can commit, as bench <bench@localhost>", async () => {
+  const root = agentRoot();
+  fakeBehaviour(root, { "prompt 1": Array(9).fill({ commit: true }) });
+
+  const run = await agents(root, ["--runs", "1"]);
+
+  expect(run.status).toBe(0);
+  const calls = fakeCalls(root);
+  expect(calls).toHaveLength(9);
+  for (const call of calls) expect(call.commit).toEqual({ status: 0, author: "bench <bench@localhost>" });
+});

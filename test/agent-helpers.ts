@@ -53,8 +53,14 @@ const hello = spawnSync("hello", [], { encoding: "utf8" });
 const helloOutput = hello.status === 0 ? hello.stdout : null;
 const git = spawnSync("git", ["log", "--format=%s", "main"], { encoding: "utf8" });
 const gitLog = git.status === 0 ? git.stdout.split("\\n").filter(Boolean) : null;
+let commit;
+if (behaviour.commit) {
+  const made = spawnSync("git", ["commit", "--allow-empty", "-m", "work"], { encoding: "utf8" });
+  const author = spawnSync("git", ["log", "-1", "--format=%an <%ae>"], { encoding: "utf8" });
+  commit = { status: made.status, author: author.stdout.trim() };
+}
 const looked = behaviour.look === undefined ? undefined : existsSync(join(process.cwd(), behaviour.look));
-appendFileSync(log, JSON.stringify({ argv, cwd: process.cwd(), sessionId, config, apiKey, gitLog, home, helloOutput, looked }) + "\\n");
+appendFileSync(log, JSON.stringify({ argv, cwd: process.cwd(), sessionId, config, apiKey, gitLog, home, helloOutput, looked, commit }) + "\\n");
 if (behaviour.sleep) Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, behaviour.sleep * 1000);
 if (behaviour.copy) cpSync(behaviour.copy.from, join(process.cwd(), behaviour.copy.to), { recursive: true });
 if (behaviour.write) writeFileSync(join(process.cwd(), behaviour.write), "written by the agent\\n");
@@ -104,6 +110,8 @@ export type FakeBehaviour = {
   write?: string;
   /** A file the call looks for, relative to its working directory; whether it was there is recorded as `looked`. */
   look?: string;
+  /** Whether the call runs `git commit --allow-empty -m work`; how it went is recorded as `commit`. */
+  commit?: boolean;
 };
 
 /** Sets what the fake `claude` in `root` does for each prompt text: the n-th call with that text follows the n-th entry. */
@@ -123,6 +131,8 @@ export type FakeCall = {
   helloOutput: string | null;
   /** Whether the behaviour's `look` file was there, when the behaviour names one. */
   looked?: boolean;
+  /** How `git commit --allow-empty -m work` exited and the new HEAD's `%an <%ae>`, when the behaviour commits. */
+  commit?: { status: number | null; author: string };
 };
 
 /** The calls the fake `claude` in `root` recorded, in order. */
