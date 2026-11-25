@@ -52,3 +52,40 @@ show `not run` in `results/agent/results.md`, and the headline names it as
 #### Scenario: AGENT-038 A run whose call errored is done again on the next start
 - **WHEN** a start with `--runs 1` finishes with the fake `claude` exiting 1 on the first prompt of `openspec/bugfix` and timing out on the first prompt of `openspec/change`, and the runner is started again with `--runs 1 --timeout 1` and a `claude` that succeeds
 - **THEN** the second start calls `claude` only for `openspec/bugfix`, and `openspec/change` keeps its saved `prompt 1: claude timed out after 1s`
+
+## MODIFIED Requirements
+
+### Requirement: A run's usage is summed from every turn
+The runner SHALL read the usage of every assistant turn in the stream-json output of every call in
+a run. Claude Code prints one assistant line per content block, each repeating its message's usage,
+so lines that share a `message.id` SHALL count as one turn, with the largest value each usage field
+reaches on those lines. Turns of subagents the agent starts
+(lines with a `parent_tool_use_id`) SHALL count like any other turn. A run's input tokens are the sum of `input_tokens`, `cache_creation_input_tokens` and
+`cache_read_input_tokens`; its output tokens the sum of `output_tokens`; its cost the sum of
+each call's reported `total_cost_usd`. A call that exits non-zero, prints no result message, or runs longer than the call timeout
+(`--timeout <seconds>`, default 1800) marks the run failed with that reason, and the runner goes
+on to the next run. Whether a failed run is saved follows the requirement on saved runs.
+
+#### Scenario: AGENT-006 Input tokens include cache writes and reads
+- **WHEN** a run's turns report `input_tokens` 1,000 and 400, `cache_creation_input_tokens` 200 and 0, `cache_read_input_tokens` 5,000 and 6,000, and `output_tokens` 300 and 100
+- **THEN** the run records input tokens 12,600 and output tokens 400
+
+#### Scenario: AGENT-017 Lines of one message count once
+- **WHEN** a call prints three assistant lines with the same `message.id`, each with `input_tokens` 1,000 and `output_tokens` 50, and one more line with another id and `input_tokens` 2,000 and `output_tokens` 80
+- **THEN** the run records input tokens 3,000, output tokens 130 and 2 turns
+
+#### Scenario: AGENT-029 A message's usage is its largest on any of its lines
+- **WHEN** two lines of message `m1` report `input_tokens` 1,000 on both and `output_tokens` 10 and then 50
+- **THEN** the run records input tokens 1,000, output tokens 50 and 1 turn
+
+#### Scenario: AGENT-024 A subagent's turns count
+- **WHEN** a call prints one assistant line with `input_tokens` 1,000 and no `parent_tool_use_id`, and two subagent lines with `parent_tool_use_id` set and `input_tokens` 4,000 and 6,000
+- **THEN** the run records input tokens 11,000 and 3 turns
+
+#### Scenario: AGENT-007 A call that fails marks the run failed and the benchmark goes on
+- **WHEN** the fake `claude` exits 1 on the second prompt of a run's first of three runs
+- **THEN** the runner prints `speckit/feature run 1: prompt 2: claude exited 1 (not saved, will be retried)`, that run is not in the results, and the other two runs still run
+
+#### Scenario: AGENT-016 A call that runs past the timeout fails the run
+- **WHEN** the runner runs with `--timeout 1` and the fake `claude` sleeps 5 seconds on the first prompt
+- **THEN** that run is recorded as failed with `prompt 1: claude timed out after 1s`
