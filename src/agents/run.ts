@@ -185,12 +185,21 @@ function setUp(root: string, workflow: string, workspace: string, env: NodeJS.Pr
   });
 }
 
+/** Who the agent's commits are by: fixed, so no workflow's run depends on the machine's git identity. */
+const AGENT_GIT_IDENTITY = {
+  GIT_AUTHOR_NAME: "bench",
+  GIT_AUTHOR_EMAIL: "bench@localhost",
+  GIT_COMMITTER_NAME: "bench",
+  GIT_COMMITTER_EMAIL: "bench@localhost",
+};
+
 /**
  * The environment for a run's setup commands and calls: the allowlisted variables (`PATH`, which
  * finds `claude`, and `TMPDIR`), `CLAUDE_CONFIG_DIR` as `configDir`, created empty, so the
  * machine's Claude Code settings, memory and plugins never enter the run, and `HOME` as `home`,
  * created empty, with `$HOME/.local/bin` first on `PATH`: installers write there instead of the
- * machine's home, and `claude` finds what they installed.
+ * machine's home, and `claude` finds what they installed. Commits made in the run are by
+ * `bench <bench@localhost>`, the same for every workflow.
  */
 function runEnv(configDir: string, home: string): NodeJS.ProcessEnv {
   mkdirSync(configDir);
@@ -199,5 +208,6 @@ function runEnv(configDir: string, home: string): NodeJS.ProcessEnv {
   env.CLAUDE_CONFIG_DIR = configDir;
   env.HOME = home;
   env.PATH = [join(home, ".local", "bin"), env.PATH].filter((dir) => dir !== undefined).join(delimiter);
+  Object.assign(env, AGENT_GIT_IDENTITY);
   return env;
 }
