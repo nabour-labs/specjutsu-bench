@@ -22,6 +22,8 @@
 
 - [ ] 4.1 Cell median, range and pass rate (AGENT-009, AGENT-010)
 - [ ] 4.2 Totals and headline (AGENT-011, AGENT-012)
+- [ ] 4.3 Headline when specjutsu has no passing run in a cell (AGENT-018)
+- [ ] 4.4 Refuse bad options, a missing claude and missing golden tests (AGENT-019..022)
 
 ## 5. Workflow scripts and docs
 

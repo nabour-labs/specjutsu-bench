@@ -10,6 +10,8 @@ unless a `session` entry precedes it, which starts a new one. Claude Code SHALL 
 empty configuration directory, so the machine's user settings, memory and plugins never enter the
 run. `ANTHROPIC_API_KEY` SHALL reach the `claude` calls and never the setup commands. Like the
 replay's, each workspace SHALL be a git repo with the start state committed on `main` before setup.
+`--runs` and `--timeout` MUST be positive integers, and `claude` MUST be on PATH; otherwise the
+runner prints why, exits 1 before any run, and writes no results.
 
 #### Scenario: AGENT-001 Prompts run in order, and a session entry starts a new session
 - **WHEN** `agents/speckit/feature.yaml` holds prompt A, prompt B, a `session` entry and prompt C, and the fake `claude` answers each call with a new session id
@@ -31,10 +33,23 @@ replay's, each workspace SHALL be a git repo with the start state committed on `
 - **WHEN** the fake `claude` records `git log --format=%s main` in its working directory
 - **THEN** it records one commit, `fixture start`
 
+#### Scenario: AGENT-019 A run count that isn't a positive integer is refused
+- **WHEN** the runner is started with `--runs 0`
+- **THEN** it prints `--runs must be a positive integer`, exits 1, makes no `claude` call and leaves `results/agent/` unchanged
+
+#### Scenario: AGENT-020 A timeout that isn't a positive integer is refused
+- **WHEN** the runner is started with `--timeout abc`
+- **THEN** it prints `--timeout must be a positive integer`, exits 1, runs no setup command and leaves `results/agent/` unchanged
+
+#### Scenario: AGENT-021 A missing claude CLI stops the benchmark
+- **WHEN** no `claude` is on PATH
+- **THEN** the runner prints `claude not found on PATH`, exits 1 and leaves `results/agent/` unchanged
+
 ### Requirement: Prompt and setup scripts cite their sources
 Every prompt and every setup command SHALL carry a `source`, checked before any run with the
 same rules as a step script's sources (form, pinned tool, pin, file and line range). Every
-workflow MUST have a setup script and one prompt script per task in `fixture/tasks.json`. A failed
+workflow MUST have a setup script and one prompt script per task in `fixture/tasks.json`, and every
+task MUST have a `fixture/golden/<task>/test/` directory for the acceptance check. A failed
 check exits 1, names the script and the entry, and writes no results.
 
 #### Scenario: AGENT-004 A prompt citing another version is refused
@@ -44,6 +59,10 @@ check exits 1, names the script and the entry, and writes no results.
 #### Scenario: AGENT-005 A missing prompt script is refused
 - **WHEN** `fixture/tasks.json` lists `feature`, `bugfix` and `change` and `agents/openspec/bugfix.yaml` does not exist
 - **THEN** the runner prints `missing agents/openspec/bugfix.yaml` and exits 1
+
+#### Scenario: AGENT-022 A task without golden tests is refused
+- **WHEN** `fixture/golden/change/test/` does not exist
+- **THEN** the runner prints `fixture/golden/change/test: missing` and exits 1
 
 ### Requirement: A run's usage is summed from every turn
 The runner SHALL read the usage of every assistant turn in the stream-json output of every call in
@@ -86,7 +105,8 @@ over passing runs; the median of an even count is the lower middle value. A work
 sum of its task medians. `results/agent/results.md` SHALL show a row per cell and a total per
 workflow, and the headline `specjutsu saves N% vs speckit, M% vs openspec` on total input tokens,
 rounded down. A workflow with a cell that has no passing run gets no total, and the headline names
-that cell instead of a saving. `results/agent/results.json` SHALL hold every run's usage, outcome
+that cell instead of a saving; when specjutsu itself has no total, the headline is only its first
+such cell. `results/agent/results.json` SHALL hold every run's usage, outcome
 and reason, the model, and the pins. Full transcripts SHALL NOT be committed: each call's stream-json
 is saved under `.bench/transcripts/<workflow>/<task>/run-<n>/prompt-<k>.jsonl`, outside `results/`,
 for CI to keep as an artifact.
@@ -110,3 +130,7 @@ for CI to keep as an artifact.
 #### Scenario: AGENT-013 Transcripts are kept outside results
 - **WHEN** the second run of `openspec/change` makes three calls
 - **THEN** their stream-json is saved as `.bench/transcripts/openspec/change/run-2/prompt-1.jsonl` to `prompt-3.jsonl`, and nothing under `results/` holds a transcript
+
+#### Scenario: AGENT-018 specjutsu with no passing run in a cell gets no headline saving
+- **WHEN** every run of `specjutsu/feature` fails and every other cell has a passing run
+- **THEN** the headline reads `specjutsu/feature: no passing run`, once
