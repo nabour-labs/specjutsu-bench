@@ -149,11 +149,15 @@ function replayScript(
  */
 export function copyStart(root: string, workspace: string): void {
   const start = join(root, "fixture", "start");
-  const left = [join(start, ".specjutsu", "ledger"), join(start, "node_modules")];
-  cpSync(start, workspace, {
-    recursive: true,
-    filter: (src) => !left.some((path) => src === path || src.startsWith(`${path}${sep}`)),
-  });
+  cpSync(start, workspace, { recursive: true, filter: (src) => !leftOutOfStart(relative(start, src)) });
+}
+
+/** What a workspace never gets of `fixture/start/`, relative to it: stale `sj gain` records and any installed `node_modules`. */
+const LEFT_OUT_OF_START = [join(".specjutsu", "ledger"), "node_modules"];
+
+/** True when `path`, relative to `fixture/start/`, is something `copyStart` leaves out. */
+export function leftOutOfStart(path: string): boolean {
+  return LEFT_OUT_OF_START.some((left) => path === left || path.startsWith(`${left}${sep}`));
 }
 
 /**

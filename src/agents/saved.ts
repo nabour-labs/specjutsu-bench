@@ -1,6 +1,7 @@
 import { createHash } from "node:crypto";
 import { existsSync, mkdirSync, readdirSync, readFileSync, renameSync, rmSync, writeFileSync } from "node:fs";
 import { dirname, join, relative } from "node:path";
+import { leftOutOfStart } from "../replay.ts";
 import { WORKFLOWS } from "../steps.ts";
 import type { Run, Runs } from "./run.ts";
 
@@ -21,15 +22,17 @@ function filesUnder(root: string, dir: string): string[] {
 
 /**
  * sha256 over what a run of `workflow` on `task` measures: the model, `pins.json`, the workflow's
- * setup script, the task's prompt script, every file under `fixture/start/` and the task's golden
- * tests, as relative paths and bytes in sorted order.
+ * setup script, the task's prompt script, `fixture/tasks.json` with its acceptance test command,
+ * every file under `fixture/start/` that a workspace gets and the task's golden tests, as relative
+ * paths and bytes in sorted order.
  */
 export function fingerprint(root: string, model: string, workflow: string, task: string): string {
   const paths = [
     "pins.json",
     `agents/${workflow}/setup.yaml`,
     `agents/${workflow}/${task}.yaml`,
-    ...filesUnder(root, "fixture/start"),
+    "fixture/tasks.json",
+    ...filesUnder(root, "fixture/start").filter((path) => !leftOutOfStart(relative("fixture/start", path))),
     ...filesUnder(root, `fixture/golden/${task}/test`),
   ].sort();
   const hash = createHash("sha256").update(`model ${model}\0`);
