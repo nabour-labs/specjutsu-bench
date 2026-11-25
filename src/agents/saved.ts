@@ -8,8 +8,8 @@ import type { Run, Runs } from "./run.ts";
 /** Where finished runs are saved, one file per run: `<workflow>/<task>/run-<n>.json`. */
 export const SAVED_RUNS = ".bench/runs";
 
-/** A saved run: the run, and the fingerprint of the inputs it ran with. */
-type SavedRun = { fingerprint: string; run: Run };
+/** A saved run: the run, the fingerprint of the inputs it ran with, and the `--timeout` it ran out of when it timed out. */
+type SavedRun = { fingerprint: string; run: Run; timedOutAfter?: number };
 
 /** Every file under `dir`, relative to `root`; none when `dir` is missing. */
 function filesUnder(root: string, dir: string): string[] {
@@ -49,11 +49,14 @@ function savedPath(root: string, workflow: string, task: string, n: number): str
   return join(root, SAVED_RUNS, workflow, task, `run-${n}.json`);
 }
 
-/** Saves the `n`-th run of `workflow` on `task` with its fingerprint, through a temporary file so a saved run is always whole. */
-export function saveRun(root: string, workflow: string, task: string, n: number, run: Run, print: string): void {
+/**
+ * Saves the `n`-th run of `workflow` on `task` with its fingerprint and, for a run that timed out,
+ * the timeout it ran out of, through a temporary file so a saved run is always whole.
+ */
+export function saveRun(root: string, workflow: string, task: string, n: number, run: Run, print: string, timedOutAfter?: number): void {
   const path = savedPath(root, workflow, task, n);
   mkdirSync(dirname(path), { recursive: true });
-  const saved: SavedRun = { fingerprint: print, run };
+  const saved: SavedRun = { fingerprint: print, run, ...(timedOutAfter === undefined ? {} : { timedOutAfter }) };
   writeFileSync(`${path}.tmp`, `${JSON.stringify(saved, null, 2)}\n`);
   renameSync(`${path}.tmp`, path);
 }
@@ -73,23 +76,27 @@ export function fingerprints(root: string, model: string, tasks: string[]): Fing
   );
 }
 
-/** The `n`-th run of `workflow` on `task` when it is saved with fingerprint `print`, else undefined. */
-export function savedRun(root: string, workflow: string, task: string, n: number, print: string): Run | undefined {
+/**
+ * The `n`-th run of `workflow` on `task` when it is saved with fingerprint `print`, and, if it
+ * timed out, under the same `timeout`; else undefined.
+ */
+export function savedRun(root: string, workflow: string, task: string, n: number, print: string, timeout: number): Run | undefined {
   const path = savedPath(root, workflow, task, n);
   if (!existsSync(path)) return undefined;
   const saved = JSON.parse(readFileSync(path, "utf8")) as SavedRun;
-  return saved.fingerprint === print ? saved.run : undefined;
+  if (saved.fingerprint !== print) return undefined;
+  return saved.timedOutAfter === undefined || saved.timedOutAfter === timeout ? saved.run : undefined;
 }
 
-/** Runs 1 to `runs` of every workflow and task that are saved with its fingerprint in `prints`, in order. */
-export function savedRuns(root: string, prints: Fingerprints, runs: number): Runs {
+/** Runs 1 to `runs` of every workflow and task that are saved with its fingerprint in `prints` (under `timeout`, see `savedRun`), in order. */
+export function savedRuns(root: string, prints: Fingerprints, runs: number, timeout: number): Runs {
   const all: Runs = {};
   for (const [workflow, tasks] of Object.entries(prints)) {
     all[workflow] = {};
     for (const [task, print] of Object.entries(tasks)) {
       all[workflow][task] = [];
       for (let n = 1; n <= runs; n++) {
-        const run = savedRun(root, workflow, task, n, print);
+        const run = savedRun(root, workflow, task, n, print, timeout);
         if (run !== undefined) all[workflow][task].push(run);
       }
     }

@@ -20,11 +20,12 @@ export type RunOptions = { workflows: readonly string[]; runs: number; timeout: 
 /** Every run, by workflow and task, in the order they ran. */
 export type Runs = Record<string, Record<string, Run[]>>;
 /**
- * A finished run, and whether it failed because a `claude` call errored: exited non-zero, was
- * killed, or printed no result message. Such a run measures nothing about the workflow, so it
- * isn't saved and the next start does it again.
+ * A finished run, whether it failed because a `claude` call errored: exited non-zero, was
+ * killed, or printed no result message, and whether it failed because a call timed out. An
+ * errored run measures nothing about the workflow, so it isn't saved and the next start does it
+ * again; a timed-out run measures the workflow under that timeout only.
  */
-export type Attempt = { run: Run; errored: boolean };
+export type Attempt = { run: Run; errored: boolean; timedOut: boolean };
 
 /** Thrown when a setup command fails; the benchmark stops and writes no results. */
 export class SetupError extends Error {}
@@ -119,10 +120,10 @@ export function runAgent(root: string, model: string, workflow: string, task: st
             : !stream.result
               ? "no result message"
               : undefined;
-      if (failure) return { run: { outcome: "failed", reason: `prompt ${k}: ${failure}`, ...usage }, errored: !timedOut };
+      if (failure) return { run: { outcome: "failed", reason: `prompt ${k}: ${failure}`, ...usage }, errored: !timedOut, timedOut };
     }
-    if (!acceptancePasses(root, task, workspace)) return { run: { outcome: "failed", reason: "acceptance tests failed", ...usage }, errored: false };
-    return { run: { outcome: "passed", ...usage }, errored: false };
+    if (!acceptancePasses(root, task, workspace)) return { run: { outcome: "failed", reason: "acceptance tests failed", ...usage }, errored: false, timedOut: false };
+    return { run: { outcome: "passed", ...usage }, errored: false, timedOut: false };
   } finally {
     rmSync(area, { recursive: true, force: true });
   }

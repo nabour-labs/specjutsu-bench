@@ -51,7 +51,7 @@ if (errors.length > 0 || runCount === undefined || timeout === undefined) {
   const prints = fingerprints(root, model, tasks);
   // The results are rewritten from the saved runs, so they never show a run 1 to --runs doesn't cover.
   const writeResults = () => {
-    const results = agentResults(model, pins, savedRuns(root, prints, runCount));
+    const results = agentResults(model, pins, savedRuns(root, prints, runCount, timeout));
     mkdirSync(dir, { recursive: true });
     writeFileSync(join(dir, "results.json"), `${JSON.stringify(results, null, 2)}\n`);
     writeFileSync(join(dir, "results.md"), resultsMarkdown(results));
@@ -59,13 +59,13 @@ if (errors.length > 0 || runCount === undefined || timeout === undefined) {
   // --fresh takes new samples of the workflows being run, so their saved runs go first.
   if (values.fresh) for (const workflow of workflows) discardRuns(root, workflow);
   try {
-    const saved = (workflow: string, task: string, n: number) => savedRun(root, workflow, task, n, prints[workflow][task]) !== undefined;
-    runAll(root, tasks, { workflows, runs: runCount, timeout }, saved, (workflow, task, n, { run, errored }) => {
+    const saved = (workflow: string, task: string, n: number) => savedRun(root, workflow, task, n, prints[workflow][task], timeout) !== undefined;
+    runAll(root, tasks, { workflows, runs: runCount, timeout }, saved, (workflow, task, n, { run, errored, timedOut }) => {
       if (errored) {
         console.error(`${workflow}/${task} run ${n}: ${run.reason} (not saved, will be retried)`);
         return;
       }
-      saveRun(root, workflow, task, n, run, prints[workflow][task]);
+      saveRun(root, workflow, task, n, run, prints[workflow][task], timedOut ? timeout : undefined);
       // Rewritten after every run, so a stopped pass loses none.
       writeResults();
     });
