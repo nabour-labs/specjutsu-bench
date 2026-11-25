@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://nabour-labs.github.io/specjutsu-bench/sitemap.xml
