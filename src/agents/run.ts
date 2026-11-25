@@ -27,32 +27,36 @@ const CALL_MAX_BUFFER = 256 * 1024 * 1024;
 /** Where a run's call transcripts go: outside `results/`, for CI to keep as an artifact. */
 export const TRANSCRIPTS = ".bench/transcripts";
 
-/** Runs every workflow's prompt script for every task, `options.runs` times each; earlier transcripts are cleared first. */
-export function runAll(root: string, tasks: string[], options: RunOptions): Runs {
+/**
+ * Runs every workflow's prompt script for every task, `options.runs` times each, and hands each
+ * run to `finished` as soon as it is done.
+ */
+export function runAll(
+  root: string,
+  tasks: string[],
+  options: RunOptions,
+  finished: (workflow: string, task: string, n: number, run: Run) => void,
+): void {
   const { model } = loadAgentConfig(root);
-  rmSync(join(root, TRANSCRIPTS), { recursive: true, force: true });
-  const runs: Runs = {};
   for (const workflow of WORKFLOWS) {
-    runs[workflow] = {};
     for (const task of tasks) {
-      runs[workflow][task] = [];
-      for (let n = 1; n <= options.runs; n++) {
-        runs[workflow][task].push(runAgent(root, model, workflow, task, n, options.timeout));
-      }
+      for (let n = 1; n <= options.runs; n++) finished(workflow, task, n, runAgent(root, model, workflow, task, n, options.timeout));
     }
   }
-  return runs;
 }
 
 /**
  * The `n`-th run of a workflow's prompt script for a task, in a fresh copy of `fixture/start/`
- * removed afterwards. Each call's stream-json, with the API key redacted, is saved as
+ * removed afterwards. The run's earlier transcripts are cleared when it starts. Each call's
+ * stream-json, with the API key redacted, is saved as
  * `.bench/transcripts/<workflow>/<task>/run-<n>/prompt-<k>.jsonl`, `k` counting prompts from 1.
  * A call that exits non-zero, prints no result message or runs past `timeout` seconds fails the
  * run, and the run makes no more calls. After the last prompt, the task's golden tests decide
  * whether the run passed.
  */
 export function runAgent(root: string, model: string, workflow: string, task: string, n: number, timeout: number): Run {
+  const transcripts = join(root, TRANSCRIPTS, workflow, task, `run-${n}`);
+  rmSync(transcripts, { recursive: true, force: true });
   // The run's temporary area holds its workspace and its Claude Code configuration.
   const area = realpathSync(mkdtempSync(join(tmpdir(), "agent-run-")));
   try {
@@ -66,7 +70,6 @@ export function runAgent(root: string, model: string, workflow: string, task: st
     setUp(root, workflow, workspace, env);
     // Only `claude` needs the API key; setup commands run third-party installers.
     if (process.env.ANTHROPIC_API_KEY !== undefined) env.ANTHROPIC_API_KEY = process.env.ANTHROPIC_API_KEY;
-    const transcripts = join(root, TRANSCRIPTS, workflow, task, `run-${n}`);
     mkdirSync(transcripts, { recursive: true });
     let usage = NO_USAGE;
     let k = 0;
