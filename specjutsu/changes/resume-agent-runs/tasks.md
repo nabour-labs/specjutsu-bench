@@ -18,7 +18,7 @@
 
 ## 4. Final review fixes
 
-- [ ] 4.1 Fingerprint the acceptance command and only what a workspace gets (AGENT-039, AGENT-040, AGENT-041)
-- [ ] 4.2 A timed-out run is reused only under the same --timeout (AGENT-042)
-- [ ] 4.3 A cell missing some runs shows it and gives no total (AGENT-043)
-- [ ] 4.4 README: fingerprint inputs and partial cells (no-scenario: docs)
+- [x] 4.1 Fingerprint the acceptance command and only what a workspace gets (AGENT-039, AGENT-040, AGENT-041)
+- [x] 4.2 A timed-out run is reused only under the same --timeout (AGENT-042)
+- [x] 4.3 A cell missing some runs shows it and gives no total (AGENT-043)
+- [x] 4.4 README: fingerprint inputs and partial cells (no-scenario: docs)
