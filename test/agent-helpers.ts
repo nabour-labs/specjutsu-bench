@@ -1,5 +1,5 @@
 import { spawnSync } from "node:child_process";
-import { chmodSync, existsSync, readFileSync } from "node:fs";
+import { chmodSync, existsSync, readFileSync, writeFileSync } from "node:fs";
 import { delimiter, join } from "node:path";
 import { WORKFLOWS } from "../src/steps.ts";
 import { benchRoot, TASKS } from "./helpers.ts";
@@ -12,6 +12,11 @@ export function promptScript(count: number): string {
   return `prompts:\n${prompts.join("")}`;
 }
 
+/** A prompt script sending `prompts` in order, each citing a source. */
+export function promptsYaml(prompts: string[]): string {
+  return `prompts:\n${prompts.map((prompt, i) => `  - prompt: ${JSON.stringify(prompt)}\n    source: https://example.com/docs#p-${i + 1}\n`).join("")}`;
+}
+
 /** A setup script with one sourced command that does nothing. */
 export const SETUP_SCRIPT = `steps:\n  - command: "true"\n    source: https://example.com/docs#setup\n`;
 
@@ -20,6 +25,10 @@ export const SETUP_SCRIPT = `steps:\n  - command: "true"\n    source: https://ex
  * argv, working directory, the session id it answers with (`session-<n>` for the n-th call) and
  * what it sees of `CLAUDE_CONFIG_DIR` and `ANTHROPIC_API_KEY`, and the subjects `git log main` prints
  * in its working directory (null when git fails); then it prints stream-json with that session id.
+ *
+ * What it does for a prompt is set per test in `behaviour.json` beside it (see `FakeBehaviour`):
+ * the n-th call with a given prompt text follows the n-th behaviour listed for that text, and a
+ * call without one answers with one turn of 100 input and 10 output tokens.
  */
 const FAKE_CLAUDE = `#!/usr/bin/env node
 import { spawnSync } from "node:child_process";
@@ -28,21 +37,44 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 const dir = dirname(fileURLToPath(import.meta.url));
 const log = join(dir, "calls.jsonl");
-const n = existsSync(log) ? readFileSync(log, "utf8").split("\\n").filter(Boolean).length + 1 : 1;
+const previous = existsSync(log) ? readFileSync(log, "utf8").split("\\n").filter(Boolean).map((line) => JSON.parse(line)) : [];
+const n = previous.length + 1;
+const argv = process.argv.slice(2);
+const prompt = argv[argv.indexOf("-p") + 1];
+const behaviours = existsSync(join(dir, "behaviour.json")) ? JSON.parse(readFileSync(join(dir, "behaviour.json"), "utf8")) : {};
+const behaviour = (behaviours[prompt] ?? [])[previous.filter((call) => call.argv[argv.indexOf("-p") + 1] === prompt).length] ?? {};
 const sessionId = "session-" + n;
 const configDir = process.env.CLAUDE_CONFIG_DIR;
 const config = configDir === undefined ? undefined : { path: configDir, entries: existsSync(configDir) ? readdirSync(configDir) : null };
 const apiKey = process.env.ANTHROPIC_API_KEY;
 const git = spawnSync("git", ["log", "--format=%s", "main"], { encoding: "utf8" });
 const gitLog = git.status === 0 ? git.stdout.split("\\n").filter(Boolean) : null;
-appendFileSync(log, JSON.stringify({ argv: process.argv.slice(2), cwd: process.cwd(), sessionId, config, apiKey, gitLog }) + "\\n");
-const usage = { input_tokens: 100, cache_creation_input_tokens: 0, cache_read_input_tokens: 0, output_tokens: 10 };
-for (const line of [
-  { type: "system", subtype: "init", session_id: sessionId },
-  { type: "assistant", session_id: sessionId, message: { role: "assistant", content: [{ type: "text", text: "ok" }], usage } },
-  { type: "result", subtype: "success", is_error: false, session_id: sessionId, total_cost_usd: 0.01, usage },
-]) console.log(JSON.stringify(line));
+appendFileSync(log, JSON.stringify({ argv, cwd: process.cwd(), sessionId, config, apiKey, gitLog }) + "\\n");
+const turns = behaviour.turns ?? [{ input_tokens: 100, cache_creation_input_tokens: 0, cache_read_input_tokens: 0, output_tokens: 10 }];
+// The result message's usage is the call's total, as Claude Code reports it.
+const total = {};
+for (const turn of turns) for (const [key, value] of Object.entries(turn)) total[key] = (total[key] ?? 0) + value;
+const lines = [{ type: "system", subtype: "init", session_id: sessionId }];
+for (const usage of turns) lines.push({ type: "assistant", session_id: sessionId, message: { role: "assistant", content: [{ type: "text", text: "ok" }], usage } });
+lines.push({ type: "result", subtype: "success", is_error: false, session_id: sessionId, total_cost_usd: behaviour.cost ?? 0.01, usage: total });
+for (const line of lines) console.log(JSON.stringify(line));
 `;
+
+/** Usage as one assistant turn of Claude Code's stream-json reports it. */
+export type TurnUsage = {
+  input_tokens: number;
+  cache_creation_input_tokens: number;
+  cache_read_input_tokens: number;
+  output_tokens: number;
+};
+
+/** What the fake `claude` does for one call: the turns it reports (default one of 100 in, 10 out) and the cost. */
+export type FakeBehaviour = { turns?: TurnUsage[]; cost?: number };
+
+/** Sets what the fake `claude` in `root` does for each prompt text: the n-th call with that text follows the n-th entry. */
+export function fakeBehaviour(root: string, byPrompt: Record<string, FakeBehaviour[]>): void {
+  writeFileSync(join(root, "fake-claude", "behaviour.json"), JSON.stringify(byPrompt));
+}
 
 export type FakeCall = {
   argv: string[];
