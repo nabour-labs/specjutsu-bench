@@ -66,10 +66,11 @@ npm run agents
   `.bench/transcripts/` and is not committed.
 - If a pass is interrupted, run the same command again: it skips every run already saved and does
   only what's left. A run cut off partway is done again from the start. A saved run is reused only
-  while its inputs are unchanged (the model, the pins, the workflow's setup and prompt scripts,
-  `fixture/start/` and the task's golden tests); change any of them and that run is done again.
-  The `claude` version and the machine's `PATH` aren't among them, so use `--fresh` after changing
-  those.
+  while its inputs are unchanged (the model, the pins, `fixture/tasks.json` with the acceptance
+  test command, the workflow's setup and prompt scripts, `fixture/start/` as a workspace gets it
+  and the task's golden tests); change any of them and that run is done again. A timed-out run is
+  also done again under a different `--timeout`. The `claude` version and the machine's `PATH`
+  aren't among the inputs, so use `--fresh` after changing those.
 - A run whose `claude` call exits non-zero, is killed or prints no result message isn't saved: the
   runner prints `<workflow>/<task> run <n>: <reason> (not saved, will be retried)`, and the next
   start does it again. So an API outage, a rate limit or running out of credit doesn't count
@@ -77,8 +78,9 @@ npm run agents
 - `--workflow <name>` runs only that workflow (`specjutsu`, `speckit` or `openspec`); the other
   workflows' saved runs stay in the report. `--fresh` discards the saved runs of the workflows
   being run first, to take new samples.
-- A cell with no saved run shows as `not run`, and a workflow with one gets no total, so a partial
-  report never gives a headline number.
+- A cell with no saved run shows as `not run`, and one with fewer saved runs than `--runs` shows
+  how many are missing, such as `1/1 (1 not run)`. A workflow with either gets no total, so a
+  partial report never gives a headline number.
 
 **Warning:** it runs Claude Code with `--permission-mode bypassPermissions` and real installers.
 Run it only on a throwaway machine or a CI runner, never on a machine you care about. It also
