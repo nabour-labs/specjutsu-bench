@@ -789,3 +789,18 @@ it("AGENT-042 a timed-out run is done again under another timeout", async () => 
   expect(run.status).toBe(0);
   expect(fakeCalls(root).slice(first).map((call) => call.argv[1])).toEqual(["openspec change"]);
 });
+
+it("AGENT-043 a cell missing some runs shows it and gives no total", async () => {
+  const root = agentRoot(cellPrompts());
+  // speckit/bugfix's second run errs, so it is not saved; every other run passes.
+  fakeBehaviour(root, { "speckit bugfix": [{}, { exit: 1 }] });
+
+  const run = await agents(root, ["--runs", "2"]);
+
+  expect(run.status).toBe(0);
+  const markdown = agentMarkdown(root);
+  expect(markdown).toContain("| speckit | bugfix | 1/1 (1 not run) |");
+  expect(markdown).toContain("| speckit | total | | — | |");
+  // Every other cell's runs report 100 input tokens, so specjutsu and openspec tie.
+  expect(markdown).toContain("specjutsu saves speckit/bugfix: 1 not run, 0% vs openspec\n");
+});
