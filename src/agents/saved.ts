@@ -1,5 +1,5 @@
 import { createHash } from "node:crypto";
-import { existsSync, mkdirSync, readdirSync, readFileSync, renameSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readdirSync, readFileSync, renameSync, rmSync, writeFileSync } from "node:fs";
 import { dirname, join, relative } from "node:path";
 import { WORKFLOWS } from "../steps.ts";
 import type { Run, Runs } from "./run.ts";
@@ -53,6 +53,11 @@ export function saveRun(root: string, workflow: string, task: string, n: number,
   const saved: SavedRun = { fingerprint: print, run };
   writeFileSync(`${path}.tmp`, `${JSON.stringify(saved, null, 2)}\n`);
   renameSync(`${path}.tmp`, path);
+}
+
+/** Removes every saved run of `workflow`, so the next start does them again. */
+export function discardRuns(root: string, workflow: string): void {
+  rmSync(join(root, SAVED_RUNS, workflow), { recursive: true, force: true });
 }
 
 /** Every workflow and task's fingerprint, by workflow and task. */

@@ -6,7 +6,7 @@ import { StartCommitError } from "../replay.ts";
 import { loadTasks, WORKFLOWS } from "../steps.ts";
 import { agentResults, resultsMarkdown } from "./results.ts";
 import { checkRunnable, runAll, SetupError } from "./run.ts";
-import { fingerprints, saveRun, savedRun, savedRuns } from "./saved.ts";
+import { discardRuns, fingerprints, saveRun, savedRun, savedRuns } from "./saved.ts";
 import { checkAgentScripts, loadAgentConfig } from "./scripts.ts";
 
 const { values } = parseArgs({
@@ -56,6 +56,8 @@ if (errors.length > 0 || runCount === undefined || timeout === undefined) {
     writeFileSync(join(dir, "results.json"), `${JSON.stringify(results, null, 2)}\n`);
     writeFileSync(join(dir, "results.md"), resultsMarkdown(results));
   };
+  // --fresh takes new samples of the workflows being run, so their saved runs go first.
+  if (values.fresh) for (const workflow of workflows) discardRuns(root, workflow);
   try {
     const saved = (workflow: string, task: string, n: number) => savedRun(root, workflow, task, n, prints[workflow][task]) !== undefined;
     runAll(root, tasks, { workflows, runs: runCount, timeout }, saved, (workflow, task, n, { run, errored }) => {
