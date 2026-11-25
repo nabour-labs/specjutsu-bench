@@ -349,3 +349,15 @@ it("AGENT-017 counts the lines of one message as one turn", async () => {
   const [recorded] = agentResults(root).workflows.speckit.feature.runs;
   expect([recorded.inputTokens, recorded.outputTokens, recorded.turns]).toEqual([3000, 130, 2]);
 });
+
+it("AGENT-018 names specjutsu/feature once in the headline when every specjutsu/feature run fails", async () => {
+  const root = agentRoot({ "agents/specjutsu/feature.yaml": promptsYaml(["specjutsu feature"]) });
+  fakeBehaviour(root, { "specjutsu feature": [{ exit: 1 }] });
+
+  const run = await agents(root, ["--runs", "1"]);
+
+  expect(run.status).toBe(0);
+  const lines = agentMarkdown(root).trimEnd().split("\n");
+  expect(lines.at(-1)).toBe("specjutsu/feature: no passing run");
+  expect(lines.filter((line) => line.includes("no passing run"))).toHaveLength(1);
+});
