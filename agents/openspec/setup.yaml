@@ -15,14 +15,21 @@ steps:
     note: >-
       The docs' own form for setup scripts: "If your script commits skills for teammates or CI,
       use `openspec init --scope project --tools claude`". `--tools claude` skips the picker
-      (docs-lab/reference/cli.md#L80). Project scope writes the six core-profile skills into the
+      (docs-lab/reference/cli.md#L107). Project scope writes the six core-profile skills into the
       workspace (.agents/skills/, linked from .claude/skills/). The default global scope would
       write them under $HOME (~/.agents/skills/, ~/.claude/skills/); with CLAUDE_CONFIG_DIR set,
       Claude Code reads user skills from $CLAUDE_CONFIG_DIR/skills instead, so globally installed
-      skills would likely never load. No smaller profile is available headless: a custom profile
-      (say propose, apply and archive only), the analogue of Spec Kit's `--no-model-invocation`,
-      is chosen only through `openspec config profile`'s interactive picker, which exits 1
-      without a terminal; `core` is the only preset (docs-lab/reference/cli.md#L450-L466). Called
+      skills would likely never load. Profile: the core six (propose, explore, apply, update,
+      sync, archive; docs-lab/reference/configuration/config-json.md#L24). A smaller `custom`
+      profile with only the workflows the prompts use (propose, apply, archive, and sync for
+      archive's inline sync), the analogue of Spec Kit's `--no-model-invocation`, was considered
+      under the fairness rule but has no documented headless route: `profile custom` installs
+      the saved `workflows` list (config-json.md#L13-L15, #L30-L32; cli.md#L110), and the docs
+      set that list only through the interactive picker (docs-lab/customize/profiles.md#L35-L41).
+      `openspec config set` documents strings, booleans and numbers (cli.md#L335-L347) and no
+      list syntax, and no environment variable names the workflows. The pinned source's
+      `config set` also parses a JSON array (src/core/config-schema.ts#L262-L265), but that is
+      undocumented, as is hand-writing config.json, so `core` stays. Called
       by its full path so setup doesn't depend on ~/.local/bin being on PATH already.
   - command: claude plugin marketplace add https://github.com/obra/superpowers.git#v7.0.2
     source: superpowers@7.0.2:README.md#L68-L76
