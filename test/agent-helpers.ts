@@ -33,7 +33,7 @@ export const SETUP_SCRIPT = `steps:\n  - command: "true"\n    source: https://ex
  */
 const FAKE_CLAUDE = `#!/usr/bin/env node
 import { spawnSync } from "node:child_process";
-import { appendFileSync, cpSync, existsSync, readdirSync, readFileSync } from "node:fs";
+import { appendFileSync, cpSync, existsSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 const dir = dirname(fileURLToPath(import.meta.url));
@@ -53,9 +53,11 @@ const hello = spawnSync("hello", [], { encoding: "utf8" });
 const helloOutput = hello.status === 0 ? hello.stdout : null;
 const git = spawnSync("git", ["log", "--format=%s", "main"], { encoding: "utf8" });
 const gitLog = git.status === 0 ? git.stdout.split("\\n").filter(Boolean) : null;
-appendFileSync(log, JSON.stringify({ argv, cwd: process.cwd(), sessionId, config, apiKey, gitLog, home, helloOutput }) + "\\n");
+const looked = behaviour.look === undefined ? undefined : existsSync(join(process.cwd(), behaviour.look));
+appendFileSync(log, JSON.stringify({ argv, cwd: process.cwd(), sessionId, config, apiKey, gitLog, home, helloOutput, looked }) + "\\n");
 if (behaviour.sleep) Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, behaviour.sleep * 1000);
 if (behaviour.copy) cpSync(behaviour.copy.from, join(process.cwd(), behaviour.copy.to), { recursive: true });
+if (behaviour.write) writeFileSync(join(process.cwd(), behaviour.write), "written by the agent\\n");
 const turns = behaviour.turns ?? [{ input_tokens: 100, cache_creation_input_tokens: 0, cache_read_input_tokens: 0, output_tokens: 10 }];
 // The result message's usage is the call's total, as Claude Code reports it.
 const total = {};
@@ -98,6 +100,10 @@ export type FakeBehaviour = {
   exit?: number;
   /** A directory copied over `to`, relative to the call's working directory, as the agent's edits. */
   copy?: { from: string; to: string };
+  /** A file the call writes, relative to its working directory. */
+  write?: string;
+  /** A file the call looks for, relative to its working directory; whether it was there is recorded as `looked`. */
+  look?: string;
 };
 
 /** Sets what the fake `claude` in `root` does for each prompt text: the n-th call with that text follows the n-th entry. */
@@ -115,6 +121,8 @@ export type FakeCall = {
   home?: string;
   /** What a `hello` command on PATH printed, or null when there was none. */
   helloOutput: string | null;
+  /** Whether the behaviour's `look` file was there, when the behaviour names one. */
+  looked?: boolean;
 };
 
 /** The calls the fake `claude` in `root` recorded, in order. */

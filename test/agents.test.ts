@@ -1,6 +1,7 @@
-import { existsSync, mkdtempSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
+import { existsSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { delimiter, dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
 import { expect, it } from "vitest";
 import { agentRoot, agents, fakeBehaviour, fakeCalls, promptsYaml, realFixture } from "./agent-helpers.ts";
 
@@ -472,4 +473,22 @@ it("AGENT-024 counts a subagent's turns like the agent's own", async () => {
   expect(run.status).toBe(0);
   const [recorded] = agentResults(root).workflows.speckit.feature.runs;
   expect([recorded.inputTokens, recorded.turns]).toEqual([11000, 3]);
+});
+
+it("AGENT-025 a run that writes node_modules/.agent-was-here changes neither the bench's node_modules nor the next run's", async () => {
+  const root = agentRoot({ "agents/speckit/feature.yaml": promptsYaml(["touch the packages"]) });
+  const marker = "node_modules/.agent-was-here";
+  fakeBehaviour(root, { "touch the packages": [{ write: marker }, { look: marker }] });
+  // A test root's node_modules links to this package's own, so a shared one would be written here.
+  const real = join(fileURLToPath(new URL("..", import.meta.url)), marker);
+  try {
+    const run = await agents(root, ["--runs", "2"]);
+
+    expect(run.status).toBe(0);
+    expect(existsSync(join(root, marker))).toBe(false);
+    const second = fakeCalls(root).filter((call) => call.argv[1] === "touch the packages")[1];
+    expect(second?.looked).toBe(false);
+  } finally {
+    rmSync(real, { force: true });
+  }
 });
