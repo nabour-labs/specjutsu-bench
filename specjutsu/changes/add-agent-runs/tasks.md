@@ -10,6 +10,7 @@
 - [x] 2.2 Isolated Claude Code configuration (AGENT-002)
 - [x] 2.3 Setup commands, and a failing one stops the benchmark (AGENT-003)
 - [x] 2.4 The API key reaches only claude, and the workspace is a git repo (AGENT-014, AGENT-015)
+- [ ] 2.5 Each run has its own home, with its .local/bin on PATH (AGENT-023)
 
 ## 3. Usage and outcome
 

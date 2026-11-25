@@ -8,7 +8,10 @@ model `agents/agents.json` pins (`{"model": "claude-sonnet-5-5"}`), a full model
 by editing that file. A prompt continues the current session (`--resume <session id>`)
 unless a `session` entry precedes it, which starts a new one. Claude Code SHALL run with its own
 empty configuration directory, so the machine's user settings, memory and plugins never enter the
-run. `ANTHROPIC_API_KEY` SHALL reach the `claude` calls and never the setup commands. Like the
+run. Each run SHALL also get its own empty `HOME`, with `$HOME/.local/bin`
+first on `PATH` for setup commands and `claude` calls alike, so installers never write to the
+machine's home and the tools they install are found by the agent. `ANTHROPIC_API_KEY` SHALL
+reach the `claude` calls and never the setup commands. Like the
 replay's, each workspace SHALL be a git repo with the start state committed on `main` before setup.
 `--runs` and `--timeout` MUST be positive integers, and `claude` MUST be on PATH; otherwise the
 runner prints why, exits 1 before any run, and writes no results.
@@ -32,6 +35,10 @@ runner prints why, exits 1 before any run, and writes no results.
 #### Scenario: AGENT-015 The workspace is a git repo with the start state committed
 - **WHEN** the fake `claude` records `git log --format=%s main` in its working directory
 - **THEN** it records one commit, `fixture start`
+
+#### Scenario: AGENT-023 Each run has its own home, and what setup installs there is on PATH
+- **WHEN** a setup command writes an executable `$HOME/.local/bin/hello`, and the fake `claude` records `$HOME` and the output of `hello`
+- **THEN** every run's `HOME` is a different, fresh directory inside its temporary area, the machine's home holds no `.local/bin/hello`, and `claude` records `hello`'s output
 
 #### Scenario: AGENT-019 A run count that isn't a positive integer is refused
 - **WHEN** the runner is started with `--runs 0`
