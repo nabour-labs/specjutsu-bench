@@ -4,7 +4,6 @@ import { tmpdir } from "node:os";
 import { delimiter, join, sep } from "node:path";
 import { allowlistedEnv, loadTestCommand, SUITE_TIMEOUT_MS } from "../fixture.ts";
 import { BENCH_GIT_IDENTITY, commitStart, copyStart, excludeNodeModules } from "../replay.ts";
-import { WORKFLOWS } from "../steps.ts";
 import { loadAgentConfig, loadPrompts, loadSetup } from "./scripts.ts";
 import { addUsage, NO_USAGE, parseCall, type Usage } from "./usage.ts";
 
@@ -13,8 +12,11 @@ import { addUsage, NO_USAGE, parseCall, type Usage } from "./usage.ts";
  * summed over every call it made.
  */
 export type Run = { outcome: "passed" | "failed"; reason?: string } & Usage;
-/** How many runs each workflow and task gets, and the seconds a call may take before the run fails. */
-export type RunOptions = { runs: number; timeout: number };
+/**
+ * The workflows to run, how many runs each of their tasks gets, and the seconds a call may take
+ * before the run fails.
+ */
+export type RunOptions = { workflows: readonly string[]; runs: number; timeout: number };
 /** Every run, by workflow and task, in the order they ran. */
 export type Runs = Record<string, Record<string, Run[]>>;
 /**
@@ -34,7 +36,7 @@ const CALL_MAX_BUFFER = 256 * 1024 * 1024;
 export const TRANSCRIPTS = ".bench/transcripts";
 
 /**
- * Runs every workflow's prompt script for every task, `options.runs` times each, skipping the runs
+ * Runs each of `options.workflows`' prompt scripts for every task, `options.runs` times each, skipping the runs
  * `saved` says are already saved, and hands each run to `finished` as soon as it is done.
  */
 export function runAll(
@@ -45,7 +47,7 @@ export function runAll(
   finished: (workflow: string, task: string, n: number, attempt: Attempt) => void,
 ): void {
   const { model } = loadAgentConfig(root);
-  for (const workflow of WORKFLOWS) {
+  for (const workflow of options.workflows) {
     for (const task of tasks) {
       for (let n = 1; n <= options.runs; n++) {
         if (!saved(workflow, task, n)) finished(workflow, task, n, runAgent(root, model, workflow, task, n, options.timeout));

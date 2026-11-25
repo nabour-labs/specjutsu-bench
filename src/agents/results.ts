@@ -45,9 +45,10 @@ function saving(specjutsu: number, other: number): number {
 
 /**
  * One row per workflow per task: pass rate, and the median and range of passing runs' input
- * tokens; a total per workflow, the sum of its task medians, or `—` when a cell has no passing run;
- * and specjutsu's saving against each other workflow, or `<workflow>/<task>: no passing run` for
- * the first cell that leaves that workflow without a total. Without specjutsu's own total, the
+ * tokens, or `not run` for a cell with no run; a total per workflow, the sum of its task medians,
+ * or `—` when a cell has no passing run or no run; and specjutsu's saving against each other
+ * workflow, or `<workflow>/<task>: no passing run` (or `: not run`) for the first cell that leaves
+ * that workflow without a total. Without specjutsu's own total, the
  * headline is just its first such cell.
  */
 export function resultsMarkdown(results: AgentResults): string {
@@ -64,6 +65,12 @@ export function resultsMarkdown(results: AgentResults): string {
   for (const [workflow, tasks] of Object.entries(results.workflows)) {
     let total: number | string = 0;
     for (const [task, { runs }] of Object.entries(tasks)) {
+      if (runs.length === 0) {
+        // A cell with no saved run is not a failure, so it gets no pass rate.
+        lines.push(`| ${workflow} | ${task} | not run | — | — |`);
+        if (typeof total === "number") total = `${workflow}/${task}: not run`;
+        continue;
+      }
       const { passed, median, min, max } = cell(runs);
       const range = median === undefined ? "—" : `${count(min ?? 0)}–${count(max ?? 0)}`;
       lines.push(`| ${workflow} | ${task} | ${passed}/${runs.length} | ${median === undefined ? "—" : count(median)} | ${range} |`);
