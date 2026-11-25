@@ -3,7 +3,7 @@
 ## 1. Saved runs
 
 - [x] 1.1 Save each finished run and rewrite the results from saved runs (AGENT-030)
-- [ ] 1.2 Skip runs saved with the current fingerprint, redo changed ones (AGENT-031, AGENT-032)
+- [x] 1.2 Skip runs saved with the current fingerprint, redo changed ones (AGENT-031, AGENT-032)
 - [ ] 1.3 A cell with no saved run shows as not run, and every start ends by rewriting the results (AGENT-036, AGENT-037)
 - [ ] 1.4 A run whose claude call errored isn't saved, so it is retried (AGENT-038)
 
