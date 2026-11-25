@@ -5,7 +5,8 @@ As soon as a run finishes, the runner SHALL save its outcome, reason and usage a
 `.bench/runs/<workflow>/<task>/run-<n>.json`, with a fingerprint of its inputs: the model, the
 pins, the workflow's setup script, the task's prompt script, `fixture/start/` and the task's golden
 tests. It SHALL then rewrite `results/agent/results.json` and `results/agent/results.md` from
-runs 1 to `--runs` of every workflow and task that are saved with the current fingerprint. A start
+runs 1 to `--runs` of every workflow and task that are saved with the current fingerprint, and rewrite them once more when the start ends, even
+if every run was already saved. A start
 SHALL skip a run that is already saved with the current fingerprint, and do again one whose
 fingerprint differs. `--workflow <name>` SHALL limit the runs to that workflow while the other
 workflows' saved runs still go into the results; a name that is not a workflow MUST be refused
@@ -41,3 +42,7 @@ show `not run` in `results/agent/results.md`, and the headline names it as
 #### Scenario: AGENT-036 A cell with no saved run shows as not run
 - **WHEN** the first start ever is with `--runs 1 --workflow specjutsu`
 - **THEN** `results/agent/results.md` shows every `speckit` and `openspec` cell as `not run`, and the headline reads `speckit/feature: not run` and `openspec/feature: not run` in place of their savings
+
+#### Scenario: AGENT-037 A start with nothing left to run still rewrites the results
+- **WHEN** a start with `--runs 2` finishes, and the runner is started again with `--runs 1`
+- **THEN** the second start makes no `claude` call, and `results/agent/results.md` shows each cell's pass rate out of 1
