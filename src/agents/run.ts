@@ -1,8 +1,8 @@
 import { spawnSync } from "node:child_process";
-import { mkdirSync, mkdtempSync, realpathSync, rmSync, writeFileSync } from "node:fs";
+import { cpSync, existsSync, mkdirSync, mkdtempSync, realpathSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { allowlistedEnv } from "../fixture.ts";
+import { allowlistedEnv, loadTestCommand, SUITE_TIMEOUT_MS } from "../fixture.ts";
 import { commitStart, copyStart, linkExcludedNodeModules } from "../replay.ts";
 import { WORKFLOWS } from "../steps.ts";
 import { loadAgentConfig, loadPrompts, loadSetup } from "./scripts.ts";
@@ -49,7 +49,8 @@ export function runAll(root: string, tasks: string[], options: RunOptions): Runs
  * removed afterwards. Each call's stream-json is saved as
  * `.bench/transcripts/<workflow>/<task>/run-<n>/prompt-<k>.jsonl`, `k` counting prompts from 1.
  * A call that exits non-zero, prints no result message or runs past `timeout` seconds fails the
- * run, and the run makes no more calls.
+ * run, and the run makes no more calls. After the last prompt, the task's golden tests decide
+ * whether the run passed.
  */
 export function runAgent(root: string, model: string, workflow: string, task: string, n: number, timeout: number): Run {
   // The run's temporary area holds its workspace and its Claude Code configuration.
@@ -102,10 +103,25 @@ export function runAgent(root: string, model: string, workflow: string, task: st
               : undefined;
       if (failure) return { outcome: "failed", reason: `prompt ${k}: ${failure}`, ...usage };
     }
+    if (!acceptancePasses(root, task, workspace)) return { outcome: "failed", reason: "acceptance tests failed", ...usage };
     return { outcome: "passed", ...usage };
   } finally {
     rmSync(area, { recursive: true, force: true });
   }
+}
+
+/**
+ * Copies every file under `fixture/golden/<task>/test/` into the workspace's `test/`, over the
+ * agent's own copies, and runs the fixture's test command there; true when it exits 0.
+ */
+function acceptancePasses(root: string, task: string, workspace: string): boolean {
+  const command = loadTestCommand(root);
+  if (command === undefined) return false;
+  const tests = join(root, "fixture", "golden", task, "test");
+  if (existsSync(tests)) cpSync(tests, join(workspace, "test"), { recursive: true, force: true });
+  // Like the fixture check's suite runs: the allowlisted environment, without the API key.
+  const suite = spawnSync(command, { cwd: workspace, shell: true, stdio: "ignore", timeout: SUITE_TIMEOUT_MS, env: allowlistedEnv() });
+  return suite.status === 0;
 }
 
 /** Runs the workflow's setup commands in the workspace; their output isn't counted. */
