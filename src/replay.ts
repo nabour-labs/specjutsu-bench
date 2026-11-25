@@ -171,12 +171,17 @@ export function excludeNodeModules(workspace: string): void {
   appendFileSync(join(info, "exclude"), "/node_modules\n");
 }
 
-/** The workspace's fixed author, committer and date, so the start commit's hash is the same everywhere. */
-const START_COMMIT = {
+/** The bench's git author and committer, `bench <bench@localhost>`. */
+export const BENCH_GIT_IDENTITY = {
   GIT_AUTHOR_NAME: "bench",
   GIT_AUTHOR_EMAIL: "bench@localhost",
   GIT_COMMITTER_NAME: "bench",
   GIT_COMMITTER_EMAIL: "bench@localhost",
+};
+
+/** The workspace's fixed author, committer and date, so the start commit's hash is the same everywhere. */
+const START_COMMIT = {
+  ...BENCH_GIT_IDENTITY,
   GIT_AUTHOR_DATE: "2026-01-01T00:00:00Z",
   GIT_COMMITTER_DATE: "2026-01-01T00:00:00Z",
 };

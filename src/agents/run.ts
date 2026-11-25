@@ -3,7 +3,7 @@ import { accessSync, constants, cpSync, existsSync, mkdirSync, mkdtempSync, real
 import { tmpdir } from "node:os";
 import { delimiter, join, sep } from "node:path";
 import { allowlistedEnv, loadTestCommand, SUITE_TIMEOUT_MS } from "../fixture.ts";
-import { commitStart, copyStart, excludeNodeModules } from "../replay.ts";
+import { BENCH_GIT_IDENTITY, commitStart, copyStart, excludeNodeModules } from "../replay.ts";
 import { WORKFLOWS } from "../steps.ts";
 import { loadAgentConfig, loadPrompts, loadSetup } from "./scripts.ts";
 import { addUsage, NO_USAGE, parseCall, type Usage } from "./usage.ts";
@@ -199,14 +199,6 @@ function setUp(root: string, workflow: string, workspace: string, env: NodeJS.Pr
   });
 }
 
-/** Who the agent's commits are by: fixed, so no workflow's run depends on the machine's git identity. */
-const AGENT_GIT_IDENTITY = {
-  GIT_AUTHOR_NAME: "bench",
-  GIT_AUTHOR_EMAIL: "bench@localhost",
-  GIT_COMMITTER_NAME: "bench",
-  GIT_COMMITTER_EMAIL: "bench@localhost",
-};
-
 /**
  * The environment for a run's setup commands and calls: the allowlisted variables (`PATH`, which
  * finds `claude`, and `TMPDIR`), `CLAUDE_CONFIG_DIR` as `configDir`, created empty, so the
@@ -222,6 +214,7 @@ function runEnv(configDir: string, home: string): NodeJS.ProcessEnv {
   env.CLAUDE_CONFIG_DIR = configDir;
   env.HOME = home;
   env.PATH = [join(home, ".local", "bin"), env.PATH].filter((dir) => dir !== undefined).join(delimiter);
-  Object.assign(env, AGENT_GIT_IDENTITY);
+  // Fixed, so no workflow's run depends on the machine's git identity.
+  Object.assign(env, BENCH_GIT_IDENTITY);
   return env;
 }
