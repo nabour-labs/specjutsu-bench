@@ -171,10 +171,17 @@ it("AGENT-015 the workspace is a git repo with the start state committed as fixt
 });
 
 it("AGENT-006 sums every turn's input tokens, cache writes and reads included", async () => {
-  const root = agentRoot({ "agents/speckit/feature.yaml": promptsYaml(["first", "second"]) });
+  const root = agentRoot({ "agents/speckit/feature.yaml": promptsYaml(["one call"]) });
   fakeBehaviour(root, {
-    first: [{ turns: [{ input_tokens: 1000, cache_creation_input_tokens: 200, cache_read_input_tokens: 5000, output_tokens: 300 }] }],
-    second: [{ turns: [{ input_tokens: 400, cache_creation_input_tokens: 0, cache_read_input_tokens: 6000, output_tokens: 100 }] }],
+    "one call": [
+      {
+        turns: [
+          { input_tokens: 1000, cache_creation_input_tokens: 200, cache_read_input_tokens: 5000, output_tokens: 300 },
+          { input_tokens: 400, cache_creation_input_tokens: 0, cache_read_input_tokens: 6000, output_tokens: 100 },
+        ],
+        resultOutput: 450,
+      },
+    ],
   });
 
   const run = await agents(root, ["--runs", "1"]);
@@ -182,6 +189,7 @@ it("AGENT-006 sums every turn's input tokens, cache writes and reads included", 
   expect(run.status).toBe(0);
   const [recorded] = agentResults(root).workflows.speckit.feature.runs;
   expect(recorded.inputTokens).toBe(12600);
+  expect(recorded.outputTokens).toBe(450);
 });
 
 it("AGENT-044 takes each call's output tokens from its result message", async () => {
@@ -356,22 +364,27 @@ it("AGENT-012 gives speckit no total when every speckit/feature run fails, and t
 
 it("AGENT-017 counts the lines of one message as one turn", async () => {
   const root = agentRoot({ "agents/speckit/feature.yaml": promptsYaml(["one call"]) });
-  const line = (id: string, input: number) => ({
+  const line = (id: string, input: number, output: number) => ({
     id,
     input_tokens: input,
     cache_creation_input_tokens: 0,
     cache_read_input_tokens: 0,
-    output_tokens: 0,
+    output_tokens: output,
   });
   fakeBehaviour(root, {
-    "one call": [{ turns: [line("msg-a", 1000), line("msg-a", 1000), line("msg-a", 1000), line("msg-b", 2000)] }],
+    "one call": [
+      {
+        turns: [line("msg-a", 1000, 50), line("msg-a", 1000, 50), line("msg-a", 1000, 50), line("msg-b", 2000, 80)],
+        resultOutput: 300,
+      },
+    ],
   });
 
   const run = await agents(root, ["--runs", "1"]);
 
   expect(run.status).toBe(0);
   const [recorded] = agentResults(root).workflows.speckit.feature.runs;
-  expect([recorded.inputTokens, recorded.turns]).toEqual([3000, 2]);
+  expect([recorded.inputTokens, recorded.outputTokens, recorded.turns]).toEqual([3000, 300, 2]);
 });
 
 it("AGENT-018 names specjutsu/feature once in the headline when every specjutsu/feature run fails", async () => {
@@ -555,22 +568,22 @@ it("AGENT-028 stops when ANTHROPIC_API_KEY is not set", async () => {
   expectEarlierResults(root);
 });
 
-it("AGENT-029 records a message's largest input usage on any of its lines", async () => {
+it("AGENT-029 records a message's largest usage on any of its lines", async () => {
   const root = agentRoot({ "agents/speckit/feature.yaml": promptsYaml(["one message"]) });
-  const line = (cacheRead: number) => ({
+  const line = (cacheRead: number, output: number) => ({
     id: "m1",
     input_tokens: 1000,
     cache_creation_input_tokens: 0,
     cache_read_input_tokens: cacheRead,
-    output_tokens: 0,
+    output_tokens: output,
   });
-  fakeBehaviour(root, { "one message": [{ turns: [line(5000), line(4000)] }] });
+  fakeBehaviour(root, { "one message": [{ turns: [line(5000, 10), line(4000, 50)], resultOutput: 75 }] });
 
   const run = await agents(root, ["--runs", "1"]);
 
   expect(run.status).toBe(0);
   const [recorded] = agentResults(root).workflows.speckit.feature.runs;
-  expect([recorded.inputTokens, recorded.turns]).toEqual([6000, 1]);
+  expect([recorded.inputTokens, recorded.outputTokens, recorded.turns]).toEqual([6000, 75, 1]);
 });
 
 it("AGENT-030 a finished run is in the results before the next run starts", async () => {
