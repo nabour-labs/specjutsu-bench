@@ -191,7 +191,21 @@ it("AGENT-006 sums every turn's input tokens, cache writes and reads included", 
   expect(run.status).toBe(0);
   const [recorded] = agentResults(root).workflows.speckit.feature.runs;
   expect(recorded.inputTokens).toBe(12600);
-  expect(recorded.outputTokens).toBe(400);
+});
+
+it("AGENT-044 takes each call's output tokens from its result message", async () => {
+  const root = agentRoot({ "agents/speckit/feature.yaml": promptsYaml(["first", "second"]) });
+  const turn = (output: number) => ({ input_tokens: 100, cache_creation_input_tokens: 0, cache_read_input_tokens: 0, output_tokens: output });
+  fakeBehaviour(root, {
+    first: [{ turns: [turn(10), turn(20)], resultOutput: 900 }],
+    second: [{ resultOutput: 100 }],
+  });
+
+  const run = await agents(root, ["--runs", "1"]);
+
+  expect(run.status).toBe(0);
+  const [recorded] = agentResults(root).workflows.speckit.feature.runs;
+  expect(recorded.outputTokens).toBe(1000);
 });
 
 it("AGENT-013 keeps each call's stream-json under .bench/transcripts, not under results", async () => {
@@ -351,22 +365,22 @@ it("AGENT-012 gives speckit no total when every speckit/feature run fails, and t
 
 it("AGENT-017 counts the lines of one message as one turn", async () => {
   const root = agentRoot({ "agents/speckit/feature.yaml": promptsYaml(["one call"]) });
-  const line = (id: string, input: number, output: number) => ({
+  const line = (id: string, input: number) => ({
     id,
     input_tokens: input,
     cache_creation_input_tokens: 0,
     cache_read_input_tokens: 0,
-    output_tokens: output,
+    output_tokens: 0,
   });
   fakeBehaviour(root, {
-    "one call": [{ turns: [line("msg-a", 1000, 50), line("msg-a", 1000, 50), line("msg-a", 1000, 50), line("msg-b", 2000, 80)] }],
+    "one call": [{ turns: [line("msg-a", 1000), line("msg-a", 1000), line("msg-a", 1000), line("msg-b", 2000)] }],
   });
 
   const run = await agents(root, ["--runs", "1"]);
 
   expect(run.status).toBe(0);
   const [recorded] = agentResults(root).workflows.speckit.feature.runs;
-  expect([recorded.inputTokens, recorded.outputTokens, recorded.turns]).toEqual([3000, 130, 2]);
+  expect([recorded.inputTokens, recorded.turns]).toEqual([3000, 2]);
 });
 
 it("AGENT-018 names specjutsu/feature once in the headline when every specjutsu/feature run fails", async () => {
@@ -550,22 +564,22 @@ it("AGENT-028 stops when ANTHROPIC_API_KEY is not set", async () => {
   expectEarlierResults(root);
 });
 
-it("AGENT-029 records a message's largest usage on any of its lines", async () => {
+it("AGENT-029 records a message's largest input usage on any of its lines", async () => {
   const root = agentRoot({ "agents/speckit/feature.yaml": promptsYaml(["one message"]) });
-  const line = (output: number) => ({
+  const line = (cacheRead: number) => ({
     id: "m1",
     input_tokens: 1000,
     cache_creation_input_tokens: 0,
-    cache_read_input_tokens: 0,
-    output_tokens: output,
+    cache_read_input_tokens: cacheRead,
+    output_tokens: 0,
   });
-  fakeBehaviour(root, { "one message": [{ turns: [line(10), line(50)] }] });
+  fakeBehaviour(root, { "one message": [{ turns: [line(4000), line(5000)] }] });
 
   const run = await agents(root, ["--runs", "1"]);
 
   expect(run.status).toBe(0);
   const [recorded] = agentResults(root).workflows.speckit.feature.runs;
-  expect([recorded.inputTokens, recorded.outputTokens, recorded.turns]).toEqual([1000, 50, 1]);
+  expect([recorded.inputTokens, recorded.turns]).toEqual([6000, 1]);
 });
 
 it("AGENT-030 a finished run is in the results before the next run starts", async () => {
