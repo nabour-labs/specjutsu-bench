@@ -7,6 +7,8 @@ The first agent pass under `resume-agent-runs` showed three flaws in the benchma
   neither the module nor the error. specjutsu's run got the behaviour and the names right but put
   them in `src/invoice.ts`, so the golden test couldn't import them and the run failed. Every
   workflow has to guess the same thing, so the feature cells measure luck, not the workflow.
+- OpenSpec's apply asked a question under `claude -p`, where no one can answer. It paused, changed
+  no code and failed its acceptance tests. Any workflow could ask, so the result depended on chance.
 - Output tokens are undercounted about 7 times. In stream-json, an assistant line carries its
   message's output count as it was when the line was printed, not the final one: one call's
   lines sum to 888 where its result message reports 6,215. Input tokens match the result message
@@ -38,11 +40,13 @@ The first agent pass under `resume-agent-runs` showed three flaws in the benchma
 
 ### Modified Capabilities
 
-- `agent-runs`: output tokens come from each call's result message.
+- `agent-runs`: output tokens come from each call's result message, and every run is unattended
+  the same way, with its fixed `claude` arguments in the fingerprint.
 
 ## Impact
 
-- Code: `src/agents/usage.ts`.
+- Code: `src/agents/usage.ts`, `src/agents/run.ts` (the fixed `claude` arguments) and
+  `src/agents/saved.ts` (the fingerprint).
 - Tests: `test/agents.test.ts`, and the fake `claude` in `test/agent-helpers.ts` if it needs a
   separate result-message output count.
 - Agent scripts: `agents/{specjutsu,speckit,openspec}/feature.yaml`. `fixture/tasks.json` is left as

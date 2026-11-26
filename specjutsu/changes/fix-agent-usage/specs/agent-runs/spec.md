@@ -20,7 +20,7 @@ every run's fingerprint, so changing them does every saved run again.
 ### Requirement: A run's usage is summed from every turn
 The runner SHALL read the usage of every assistant turn in the stream-json output of every call in
 a run. Claude Code prints one assistant line per content block, each repeating its message's usage,
-so lines that share a `message.id` SHALL count as one turn, with the largest value each usage field
+so lines that share a `message.id` SHALL count as one turn, with the largest value each input field
 reaches on those lines. Turns of subagents the agent starts
 (lines with a `parent_tool_use_id`) SHALL count like any other turn. A run's input tokens are the sum of `input_tokens`, `cache_creation_input_tokens` and
 `cache_read_input_tokens`; its output tokens the sum of each call's result message
@@ -37,7 +37,7 @@ on to the next run. Whether a failed run is saved follows the requirement on sav
 - **WHEN** a call prints three assistant lines with the same `message.id`, each with `input_tokens` 1,000, and one more line with another id and `input_tokens` 2,000
 - **THEN** the run records input tokens 3,000 and 2 turns
 
-#### Scenario: AGENT-029 A message's usage is its largest on any of its lines
+#### Scenario: AGENT-029 A message's input usage is its largest on any of its lines
 - **WHEN** two lines of message `m1` report `input_tokens` 1,000 on both and `cache_read_input_tokens` 5,000 and then 4,000
 - **THEN** the run records input tokens 6,000 and 1 turn
 
