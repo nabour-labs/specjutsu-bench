@@ -6,7 +6,7 @@
 
 ## 1b. Unattended runs
 
-- [ ] 1.2 Every call is unattended, and its fixed arguments are fingerprinted (AGENT-045, AGENT-046)
+- [x] 1.2 Every call is unattended, and its fixed arguments are fingerprinted (AGENT-045, AGENT-046)
 
 ## 2. Feature prompts
 
