@@ -1,3 +1,20 @@
+## ADDED Requirements
+
+### Requirement: Runs are unattended, the same way for every workflow
+No one answers an agent's questions in a run. Every `claude` call SHALL pass
+`--disallowedTools AskUserQuestion` and `--append-system-prompt` with the line `No one can answer
+questions in this run. Where you would ask the user, choose the option you would recommend, say
+which you chose, and continue.`, for every workflow alike. These fixed arguments SHALL be part of
+every run's fingerprint, so changing them does every saved run again.
+
+#### Scenario: AGENT-045 Every call is told no one can answer
+- **WHEN** the runner makes any `claude` call
+- **THEN** its arguments include `--disallowedTools AskUserQuestion` and `--append-system-prompt` followed by that line, for specjutsu, speckit and openspec alike
+
+#### Scenario: AGENT-046 The fixed claude arguments are part of the fingerprint
+- **WHEN** the fingerprint of `speckit/feature` is taken with the runner's fixed `claude` arguments and again with one of them changed
+- **THEN** the two fingerprints differ
+
 ## MODIFIED Requirements
 
 ### Requirement: A run's usage is summed from every turn

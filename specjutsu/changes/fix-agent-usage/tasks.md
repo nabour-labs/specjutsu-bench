@@ -4,6 +4,10 @@
 
 - [ ] 1.1 Output tokens from each call's result message (AGENT-044, AGENT-006, AGENT-017, AGENT-029; AGENT-024, AGENT-007, AGENT-016 unchanged)
 
+## 1b. Unattended runs
+
+- [ ] 1.2 Every call is unattended, and its fixed arguments are fingerprinted (AGENT-045, AGENT-046)
+
 ## 2. Feature prompts
 
 - [ ] 2.1 The three feature prompts state the interface the golden test checks (no-scenario: config)

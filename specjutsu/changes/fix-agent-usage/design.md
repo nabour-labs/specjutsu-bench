@@ -36,7 +36,19 @@ The feature task's golden tests pin an interface the prompt doesn't state.
   the file is part of every cell's fingerprint (AGENT-039). Changing it would throw away the
   bugfix and change runs already saved.
 
+- **Unattended by flag and one fixed line, the same for every workflow.** Turning off the
+  question tool alone could leave the agent asking in plain text and stopping. The appended line
+  says what to do instead. It goes through `--append-system-prompt`, not the prompt scripts, so
+  the cited prompts stay as each workflow's docs give them. Rejected: counting an unanswered
+  question against the workflow that asked, which makes the result depend on whether the model
+  happened to ask; and scripting answers, which needs the question known in advance.
+- **The fixed arguments are fingerprinted.** A run made with different `claude` arguments measured
+  a different harness. Rejected: a hand-bumped harness version, which is easy to forget.
+
 ## Risks / Trade-offs
+
+- [The appended line is text no workflow's docs prescribe] -> It is the same for all three and
+  only matters when the agent would ask; the README lists it as a harness rule.
 
 - [Subagent output tokens may not be in the result message] -> Unknown until a run shows
   `parent_tool_use_id` lines. The first real pass showed none. Input tokens still count them.

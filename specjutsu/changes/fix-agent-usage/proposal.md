@@ -1,6 +1,6 @@
 ## Why
 
-The first agent pass under `resume-agent-runs` showed two flaws in the benchmark itself.
+The first agent pass under `resume-agent-runs` showed three flaws in the benchmark harness itself.
 
 - The feature task's golden test imports `dueDate` and `PaymentTerms` from `src/terms.ts` and
   expects the error `invoice INV-9: unknown payment terms net-60`, but the feature prompt names
@@ -14,6 +14,13 @@ The first agent pass under `resume-agent-runs` showed two flaws in the benchmark
   numbers.
 
 ## What Changes
+
+- Every `claude` call runs unattended, the same way for every workflow: `--disallowedTools
+  AskUserQuestion` and one appended system-prompt line telling the agent to choose its
+  recommended option where it would ask. In the first pass, OpenSpec's apply asked a question
+  under `claude -p`, got no answer, changed no code and failed its acceptance tests. These fixed
+  arguments become part of every run's fingerprint, so the next start does every run again under
+  the same harness (about $15 at `--runs 1`).
 
 - A run's output tokens are the sum of each call's result message `usage.output_tokens`. Input
   tokens are still summed per turn, deduplicated by `message.id`.
