@@ -109,6 +109,8 @@ The headline compares context bytes only: `specjutsu saves N% vs speckit, M% vs 
 
 - **input tokens** are uncached input plus cache writes and cache reads, summed over every turn,
   subagents' turns included.
+- **output tokens** (in results.json) are summed from each call's result message. The assistant
+  lines in stream-json carry a partial output count, taken when the line was printed.
 - Each cell shows its pass rate, then the median and the min–max range over passing runs. A
   workflow's total is the sum of its task medians.
 - Failed runs are left out of the median. results.json names each one with its reason. A workflow
@@ -123,6 +125,10 @@ Caveats:
 - The results are not deterministic, so they aren't checked on pull requests.
 - Subagents' turns are counted only if Claude Code prints them in its stream-json. The first real
   run must confirm that it does.
+- The feature prompt adds, in the same words for every workflow, the interface the golden test
+  checks (`src/terms.ts`, the `PaymentTerms` values, `dueDate` and the error message), so a run
+  passes or fails on behaviour, not on guessing a file name. `fixture/tasks.json` keeps the
+  shorter description.
 - Each run gets its own copy of the bench's `node_modules` and commits as `bench <bench@localhost>`,
   the same for every workflow.
 - Runs see the machine's `PATH`, so tools installed there are visible to the agent. Claude Code
