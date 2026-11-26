@@ -4,6 +4,7 @@ import { delimiter, dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { expect, it, vi } from "vitest";
 import { agentRoot, agents, fakeBehaviour, fakeCalls, promptsYaml, realFixture } from "./agent-helpers.ts";
+import { CLAUDE_ARGS } from "../src/agents/run.ts";
 import { fingerprint } from "../src/agents/saved.ts";
 import { WORKFLOWS } from "../src/steps.ts";
 import { TASKS } from "./helpers.ts";
@@ -785,6 +786,33 @@ it("AGENT-041 every other input changes the fingerprint", () => {
 
   expect(print()).toBe(first);
   for (const changed of prints) expect(changed).not.toBe(first);
+});
+
+const UNATTENDED = "No one can answer questions in this run. Where you would ask the user, choose the option you would recommend, say which you chose, and continue.";
+
+it("AGENT-045 every call is told no one can answer, for every workflow", async () => {
+  const root = agentRoot(cellPrompts());
+
+  const run = await agents(root, ["--runs", "1"]);
+
+  expect(run.status).toBe(0);
+  const calls = fakeCalls(root);
+  expect(new Set(calls.map((call) => call.argv[1]?.split(" ")[0]))).toEqual(new Set(["specjutsu", "speckit", "openspec"]));
+  for (const call of calls) {
+    expect(call.argv[call.argv.indexOf("--disallowedTools") + 1]).toBe("AskUserQuestion");
+    expect(call.argv[call.argv.indexOf("--append-system-prompt") + 1]).toBe(UNATTENDED);
+  }
+});
+
+it("AGENT-046 the fixed claude arguments are part of the fingerprint", () => {
+  const root = agentRoot();
+  const model = "claude-sonnet-5-5";
+  const changed = CLAUDE_ARGS.map((arg) => (arg === "AskUserQuestion" ? "AskUserQuestion,Bash" : arg));
+
+  const print = fingerprint(root, model, "speckit", "feature", CLAUDE_ARGS);
+
+  expect(changed).not.toEqual(CLAUDE_ARGS);
+  expect(fingerprint(root, model, "speckit", "feature", changed)).not.toBe(print);
 });
 
 it("AGENT-042 a timed-out run is done again under another timeout", async () => {
