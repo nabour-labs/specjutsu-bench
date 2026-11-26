@@ -108,16 +108,16 @@ the line was printed, not the final count; its cost the sum of each call's repor
 on to the next run. Whether a failed run is saved follows the requirement on saved runs.
 
 #### Scenario: AGENT-006 Input tokens include cache writes and reads
-- **WHEN** a run's turns report `input_tokens` 1,000 and 400, `cache_creation_input_tokens` 200 and 0, and `cache_read_input_tokens` 5,000 and 6,000
-- **THEN** the run records input tokens 12,600
+- **WHEN** a run's turns report `input_tokens` 1,000 and 400, `cache_creation_input_tokens` 200 and 0, `cache_read_input_tokens` 5,000 and 6,000, and `output_tokens` 300 and 100, and the call's result message reports `usage.output_tokens` 450
+- **THEN** the run records input tokens 12,600 and output tokens 450
 
 #### Scenario: AGENT-017 Lines of one message count once
-- **WHEN** a call prints three assistant lines with the same `message.id`, each with `input_tokens` 1,000, and one more line with another id and `input_tokens` 2,000
-- **THEN** the run records input tokens 3,000 and 2 turns
+- **WHEN** a call prints three assistant lines with the same `message.id`, each with `input_tokens` 1,000 and `output_tokens` 50, one more line with another id and `input_tokens` 2,000 and `output_tokens` 80, and a result message with `usage.output_tokens` 300
+- **THEN** the run records input tokens 3,000, output tokens 300 and 2 turns
 
 #### Scenario: AGENT-029 A message's usage is its largest on any of its lines
-- **WHEN** two lines of message `m1` report `input_tokens` 1,000 on both and `cache_read_input_tokens` 5,000 and then 4,000
-- **THEN** the run records input tokens 6,000 and 1 turn
+- **WHEN** two lines of message `m1` report `input_tokens` 1,000 on both, `cache_read_input_tokens` 5,000 and then 4,000, and `output_tokens` 10 and then 50, and the call's result message reports `usage.output_tokens` 75
+- **THEN** the run records input tokens 6,000, output tokens 75 and 1 turn
 
 #### Scenario: AGENT-024 A subagent's turns count
 - **WHEN** a call prints one assistant line with `input_tokens` 1,000 and no `parent_tool_use_id`, and two subagent lines with `parent_tool_use_id` set and `input_tokens` 4,000 and 6,000
