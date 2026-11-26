@@ -10,7 +10,7 @@
 # stream-json lines that carry a `parent_tool_use_id` (scenario AGENT-024); the first real run
 # must confirm Claude Code prints the subagents' turns that way.
 prompts:
-  - prompt: "/sj-propose Add payment terms to invoices (due on receipt, net 15, net 30) and a dueDate function that works out when an invoice is due."
+  - prompt: "/sj-propose Add payment terms to invoices (due on receipt, net 15, net 30) and a dueDate function that works out when an invoice is due. Put them in a new src/terms.ts that exports a PaymentTerms type, \"due-on-receipt\" | \"net-15\" | \"net-30\", and dueDate(invoice), which returns the due date as YYYY-MM-DD; an invoice without terms is due on its issue date. createInvoice takes an optional terms field and throws InvoiceError(\"invoice <id>: unknown payment terms <terms>\") for any other value."
     source: specjutsu@0.5.1:crates/sj-adapters/assets/skills/sj-propose/SKILL.md#L1-L4
     note: >-
       The task's direction is agreed, sj-propose's trigger (its description). The skill is invoked

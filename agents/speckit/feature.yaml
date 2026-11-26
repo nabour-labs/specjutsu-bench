@@ -4,7 +4,7 @@
 # there is no `session` entry. Claude Code invokes the installed skills as /speckit-<command>
 # (docs/integrations/claude.md#L22-L24).
 prompts:
-  - prompt: "/speckit-specify Add payment terms to invoices (due on receipt, net 15, net 30) and a dueDate function that works out when an invoice is due."
+  - prompt: "/speckit-specify Add payment terms to invoices (due on receipt, net 15, net 30) and a dueDate function that works out when an invoice is due. Put them in a new src/terms.ts that exports a PaymentTerms type, \"due-on-receipt\" | \"net-15\" | \"net-30\", and dueDate(invoice), which returns the due date as YYYY-MM-DD; an invoice without terms is due on its issue date. createInvoice takes an optional terms field and throws InvoiceError(\"invoice <id>: unknown payment terms <terms>\") for any other value."
     source: speckit@1.4.3:docs/quickstart.md#L32-L38
     note: >-
       Step 1 of the shorter path. /speckit-constitution, once per project before either path

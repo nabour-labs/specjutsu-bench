@@ -77,6 +77,7 @@ turns.forEach(({ id, parent, ...usage }, i) => {
   const message = { id: id ?? "msg-" + n + "-" + (i + 1), role: "assistant", content: [{ type: "text", text: "ok" }], usage };
   lines.push({ type: "assistant", session_id: sessionId, parent_tool_use_id: parent ?? null, message });
 });
+if (behaviour.resultOutput !== undefined) total.output_tokens = behaviour.resultOutput;
 if (!behaviour.noResult) lines.push({ type: "result", subtype: "success", is_error: false, session_id: sessionId, total_cost_usd: behaviour.cost ?? 0.01, usage: total });
 for (const line of lines) console.log(JSON.stringify(line));
 if (behaviour.print) console.log(behaviour.print);
@@ -105,6 +106,8 @@ export type TurnUsage = {
 export type FakeBehaviour = {
   turns?: TurnUsage[];
   cost?: number;
+  /** The result message's `usage.output_tokens`, in place of the turns' total. */
+  resultOutput?: number;
   sleep?: number;
   noResult?: boolean;
   exit?: number;

@@ -4,6 +4,7 @@ import { delimiter, dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { expect, it, vi } from "vitest";
 import { agentRoot, agents, fakeBehaviour, fakeCalls, promptsYaml, realFixture } from "./agent-helpers.ts";
+import { CLAUDE_ARGS } from "../src/agents/run.ts";
 import { fingerprint } from "../src/agents/saved.ts";
 import { WORKFLOWS } from "../src/steps.ts";
 import { TASKS } from "./helpers.ts";
@@ -90,17 +91,7 @@ it("AGENT-001 sends prompts in order, resuming the session unless a session entr
   expect(run.stderr).toBe("");
   expect(run.status).toBe(0);
   const calls = fakeCalls(root).filter((call) => ["prompt A", "prompt B", "prompt C"].includes(call.argv[1]));
-  const base = (prompt: string) => [
-    "-p",
-    prompt,
-    "--output-format",
-    "stream-json",
-    "--verbose",
-    "--model",
-    "claude-sonnet-5-5",
-    "--permission-mode",
-    "bypassPermissions",
-  ];
+  const base = (prompt: string) => ["-p", prompt, "--model", "claude-sonnet-5-5", ...CLAUDE_ARGS];
   expect(calls.map((call) => call.argv)).toEqual([
     base("prompt A"),
     [...base("prompt B"), "--resume", calls[0]?.sessionId],
@@ -180,10 +171,17 @@ it("AGENT-015 the workspace is a git repo with the start state committed as fixt
 });
 
 it("AGENT-006 sums every turn's input tokens, cache writes and reads included", async () => {
-  const root = agentRoot({ "agents/speckit/feature.yaml": promptsYaml(["first", "second"]) });
+  const root = agentRoot({ "agents/speckit/feature.yaml": promptsYaml(["one call"]) });
   fakeBehaviour(root, {
-    first: [{ turns: [{ input_tokens: 1000, cache_creation_input_tokens: 200, cache_read_input_tokens: 5000, output_tokens: 300 }] }],
-    second: [{ turns: [{ input_tokens: 400, cache_creation_input_tokens: 0, cache_read_input_tokens: 6000, output_tokens: 100 }] }],
+    "one call": [
+      {
+        turns: [
+          { input_tokens: 1000, cache_creation_input_tokens: 200, cache_read_input_tokens: 5000, output_tokens: 300 },
+          { input_tokens: 400, cache_creation_input_tokens: 0, cache_read_input_tokens: 6000, output_tokens: 100 },
+        ],
+        resultOutput: 450,
+      },
+    ],
   });
 
   const run = await agents(root, ["--runs", "1"]);
@@ -191,7 +189,22 @@ it("AGENT-006 sums every turn's input tokens, cache writes and reads included", 
   expect(run.status).toBe(0);
   const [recorded] = agentResults(root).workflows.speckit.feature.runs;
   expect(recorded.inputTokens).toBe(12600);
-  expect(recorded.outputTokens).toBe(400);
+  expect(recorded.outputTokens).toBe(450);
+});
+
+it("AGENT-044 takes each call's output tokens from its result message", async () => {
+  const root = agentRoot({ "agents/speckit/feature.yaml": promptsYaml(["first", "second"]) });
+  const turn = (output: number) => ({ input_tokens: 100, cache_creation_input_tokens: 0, cache_read_input_tokens: 0, output_tokens: output });
+  fakeBehaviour(root, {
+    first: [{ turns: [turn(10), turn(20)], resultOutput: 900 }],
+    second: [{ resultOutput: 100 }],
+  });
+
+  const run = await agents(root, ["--runs", "1"]);
+
+  expect(run.status).toBe(0);
+  const [recorded] = agentResults(root).workflows.speckit.feature.runs;
+  expect(recorded.outputTokens).toBe(1000);
 });
 
 it("AGENT-013 keeps each call's stream-json under .bench/transcripts, not under results", async () => {
@@ -359,14 +372,19 @@ it("AGENT-017 counts the lines of one message as one turn", async () => {
     output_tokens: output,
   });
   fakeBehaviour(root, {
-    "one call": [{ turns: [line("msg-a", 1000, 50), line("msg-a", 1000, 50), line("msg-a", 1000, 50), line("msg-b", 2000, 80)] }],
+    "one call": [
+      {
+        turns: [line("msg-a", 1000, 50), line("msg-a", 1000, 50), line("msg-a", 1000, 50), line("msg-b", 2000, 80)],
+        resultOutput: 300,
+      },
+    ],
   });
 
   const run = await agents(root, ["--runs", "1"]);
 
   expect(run.status).toBe(0);
   const [recorded] = agentResults(root).workflows.speckit.feature.runs;
-  expect([recorded.inputTokens, recorded.outputTokens, recorded.turns]).toEqual([3000, 130, 2]);
+  expect([recorded.inputTokens, recorded.outputTokens, recorded.turns]).toEqual([3000, 300, 2]);
 });
 
 it("AGENT-018 names specjutsu/feature once in the headline when every specjutsu/feature run fails", async () => {
@@ -552,20 +570,20 @@ it("AGENT-028 stops when ANTHROPIC_API_KEY is not set", async () => {
 
 it("AGENT-029 records a message's largest usage on any of its lines", async () => {
   const root = agentRoot({ "agents/speckit/feature.yaml": promptsYaml(["one message"]) });
-  const line = (output: number) => ({
+  const line = (cacheRead: number, output: number) => ({
     id: "m1",
     input_tokens: 1000,
     cache_creation_input_tokens: 0,
-    cache_read_input_tokens: 0,
+    cache_read_input_tokens: cacheRead,
     output_tokens: output,
   });
-  fakeBehaviour(root, { "one message": [{ turns: [line(10), line(50)] }] });
+  fakeBehaviour(root, { "one message": [{ turns: [line(5000, 10), line(4000, 50)], resultOutput: 75 }] });
 
   const run = await agents(root, ["--runs", "1"]);
 
   expect(run.status).toBe(0);
   const [recorded] = agentResults(root).workflows.speckit.feature.runs;
-  expect([recorded.inputTokens, recorded.outputTokens, recorded.turns]).toEqual([1000, 50, 1]);
+  expect([recorded.inputTokens, recorded.outputTokens, recorded.turns]).toEqual([6000, 75, 1]);
 });
 
 it("AGENT-030 a finished run is in the results before the next run starts", async () => {
@@ -771,6 +789,33 @@ it("AGENT-041 every other input changes the fingerprint", () => {
 
   expect(print()).toBe(first);
   for (const changed of prints) expect(changed).not.toBe(first);
+});
+
+const UNATTENDED = "No one can answer questions in this run. Where you would ask the user, choose the option you would recommend, say which you chose, and continue.";
+
+it("AGENT-045 every call is told no one can answer, for every workflow", async () => {
+  const root = agentRoot(cellPrompts());
+
+  const run = await agents(root, ["--runs", "1"]);
+
+  expect(run.status).toBe(0);
+  const calls = fakeCalls(root);
+  expect(new Set(calls.map((call) => call.argv[1]?.split(" ")[0]))).toEqual(new Set(["specjutsu", "speckit", "openspec"]));
+  for (const call of calls) {
+    expect(call.argv[call.argv.indexOf("--disallowedTools") + 1]).toBe("AskUserQuestion");
+    expect(call.argv[call.argv.indexOf("--append-system-prompt") + 1]).toBe(UNATTENDED);
+  }
+});
+
+it("AGENT-046 the fixed claude arguments are part of the fingerprint", () => {
+  const root = agentRoot();
+  const model = "claude-sonnet-5-5";
+  const changed = CLAUDE_ARGS.map((arg) => (arg === "AskUserQuestion" ? "AskUserQuestion,Bash" : arg));
+
+  const print = fingerprint(root, model, "speckit", "feature", CLAUDE_ARGS);
+
+  expect(changed).not.toEqual(CLAUDE_ARGS);
+  expect(fingerprint(root, model, "speckit", "feature", changed)).not.toBe(print);
 });
 
 it("AGENT-042 a timed-out run is done again under another timeout", async () => {
