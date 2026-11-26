@@ -125,6 +125,11 @@ Caveats:
 - The results are not deterministic, so they aren't checked on pull requests.
 - Subagents' turns are counted only if Claude Code prints them in its stream-json. The first real
   run must confirm that it does.
+- Runs are unattended, the same way for every workflow: every `claude` call passes
+  `--disallowedTools AskUserQuestion` and one appended system-prompt line telling the agent to
+  choose the option it would recommend where it would ask, say which, and continue. Without it,
+  a workflow that asks a question stalls under `claude -p`. Those fixed arguments are part of
+  every run's fingerprint.
 - The feature prompt adds, in the same words for every workflow, the interface the golden test
   checks (`src/terms.ts`, the `PaymentTerms` values, `dueDate` and the error message), so a run
   passes or fails on behaviour, not on guessing a file name. `fixture/tasks.json` keeps the
