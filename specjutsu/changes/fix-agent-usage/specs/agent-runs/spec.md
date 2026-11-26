@@ -38,7 +38,7 @@ on to the next run. Whether a failed run is saved follows the requirement on sav
 - **THEN** the run records input tokens 3,000 and 2 turns
 
 #### Scenario: AGENT-029 A message's usage is its largest on any of its lines
-- **WHEN** two lines of message `m1` report `input_tokens` 1,000 on both and `cache_read_input_tokens` 4,000 and then 5,000
+- **WHEN** two lines of message `m1` report `input_tokens` 1,000 on both and `cache_read_input_tokens` 5,000 and then 4,000
 - **THEN** the run records input tokens 6,000 and 1 turn
 
 #### Scenario: AGENT-024 A subagent's turns count
