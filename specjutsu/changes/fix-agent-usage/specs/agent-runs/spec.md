@@ -37,7 +37,7 @@ on to the next run. Whether a failed run is saved follows the requirement on sav
 - **WHEN** a call prints three assistant lines with the same `message.id`, each with `input_tokens` 1,000, and one more line with another id and `input_tokens` 2,000
 - **THEN** the run records input tokens 3,000 and 2 turns
 
-#### Scenario: AGENT-029 A message's input usage is its largest on any of its lines
+#### Scenario: AGENT-029 A message's usage is its largest on any of its lines
 - **WHEN** two lines of message `m1` report `input_tokens` 1,000 on both and `cache_read_input_tokens` 5,000 and then 4,000
 - **THEN** the run records input tokens 6,000 and 1 turn
 
