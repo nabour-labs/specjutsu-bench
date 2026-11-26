@@ -3,7 +3,7 @@ import { existsSync, mkdirSync, readdirSync, readFileSync, renameSync, rmSync, w
 import { dirname, join, relative } from "node:path";
 import { leftOutOfStart } from "../replay.ts";
 import { WORKFLOWS } from "../steps.ts";
-import type { Run, Runs } from "./run.ts";
+import { CLAUDE_ARGS, type Run, type Runs } from "./run.ts";
 
 /** Where finished runs are saved, one file per run: `<workflow>/<task>/run-<n>.json`. */
 export const SAVED_RUNS = ".bench/runs";
@@ -21,12 +21,13 @@ function filesUnder(root: string, dir: string): string[] {
 }
 
 /**
- * sha256 over what a run of `workflow` on `task` measures: the model, `pins.json`, the workflow's
+ * sha256 over what a run of `workflow` on `task` measures: the model, the fixed `claude` arguments
+ * (`claudeArgs`, the runner's own by default), `pins.json`, the workflow's
  * setup script, the task's prompt script, `fixture/tasks.json` with its acceptance test command,
  * every file under `fixture/start/` that a workspace gets and the task's golden tests, as relative
  * paths and bytes in sorted order.
  */
-export function fingerprint(root: string, model: string, workflow: string, task: string): string {
+export function fingerprint(root: string, model: string, workflow: string, task: string, claudeArgs: readonly string[] = CLAUDE_ARGS): string {
   const paths = [
     "pins.json",
     `agents/${workflow}/setup.yaml`,
@@ -35,7 +36,7 @@ export function fingerprint(root: string, model: string, workflow: string, task:
     ...filesUnder(root, "fixture/start").filter((path) => !leftOutOfStart(relative("fixture/start", path))),
     ...filesUnder(root, `fixture/golden/${task}/test`),
   ].sort();
-  const hash = createHash("sha256").update(`model ${model}\0`);
+  const hash = createHash("sha256").update(`model ${model}\0args ${JSON.stringify(claudeArgs)}\0`);
   for (const path of paths) {
     const file = join(root, path);
     const bytes = existsSync(file) ? readFileSync(file) : undefined;

@@ -91,17 +91,7 @@ it("AGENT-001 sends prompts in order, resuming the session unless a session entr
   expect(run.stderr).toBe("");
   expect(run.status).toBe(0);
   const calls = fakeCalls(root).filter((call) => ["prompt A", "prompt B", "prompt C"].includes(call.argv[1]));
-  const base = (prompt: string) => [
-    "-p",
-    prompt,
-    "--output-format",
-    "stream-json",
-    "--verbose",
-    "--model",
-    "claude-sonnet-5-5",
-    "--permission-mode",
-    "bypassPermissions",
-  ];
+  const base = (prompt: string) => ["-p", prompt, "--model", "claude-sonnet-5-5", ...CLAUDE_ARGS];
   expect(calls.map((call) => call.argv)).toEqual([
     base("prompt A"),
     [...base("prompt B"), "--resume", calls[0]?.sessionId],

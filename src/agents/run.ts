@@ -58,6 +58,23 @@ export function runAll(
 }
 
 /**
+ * The arguments every `claude` call gets, for every workflow: stream-json output, permissions
+ * bypassed, and unattended, with the question tool off and a line saying what to do instead.
+ * They are part of every run's fingerprint.
+ */
+export const CLAUDE_ARGS: readonly string[] = [
+  "--output-format",
+  "stream-json",
+  "--verbose",
+  "--permission-mode",
+  "bypassPermissions",
+  "--disallowedTools",
+  "AskUserQuestion",
+  "--append-system-prompt",
+  "No one can answer questions in this run. Where you would ask the user, choose the option you would recommend, say which you chose, and continue.",
+];
+
+/**
  * The `n`-th run of a workflow's prompt script for a task, in a fresh copy of `fixture/start/`
  * removed afterwards. The run's earlier transcripts are cleared when it starts. Each call's
  * stream-json, with the API key redacted, is saved as
@@ -93,8 +110,7 @@ export function runAgent(root: string, model: string, workflow: string, task: st
         continue;
       }
       k++;
-      const argv = ["-p", entry.prompt ?? "", "--output-format", "stream-json", "--verbose", "--model", model];
-      argv.push("--permission-mode", "bypassPermissions");
+      const argv = ["-p", entry.prompt ?? "", "--model", model, ...CLAUDE_ARGS];
       if (resume) argv.push("--resume", resume);
       const call = spawnSync("claude", argv, {
         cwd: workspace,
