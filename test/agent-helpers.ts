@@ -60,7 +60,10 @@ if (behaviour.commit) {
   commit = { status: made.status, author: author.stdout.trim() };
 }
 const looked = behaviour.look === undefined ? undefined : existsSync(join(process.cwd(), behaviour.look));
-appendFileSync(log, JSON.stringify({ argv, cwd: process.cwd(), sessionId, config, apiKey, gitLog, home, helloOutput, looked, commit }) + "\\n");
+// The bench root is the fake's parent directory, not the call's workspace.
+const benchFile = behaviour.record === undefined ? undefined : join(dir, "..", behaviour.record);
+const recorded = benchFile === undefined ? undefined : existsSync(benchFile) ? readFileSync(benchFile, "utf8") : null;
+appendFileSync(log, JSON.stringify({ argv, cwd: process.cwd(), sessionId, config, apiKey, gitLog, home, helloOutput, looked, recorded, commit }) + "\\n");
 if (behaviour.sleep) Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, behaviour.sleep * 1000);
 if (behaviour.copy) cpSync(behaviour.copy.from, join(process.cwd(), behaviour.copy.to), { recursive: true });
 if (behaviour.write) writeFileSync(join(process.cwd(), behaviour.write), "written by the agent\\n");
@@ -111,6 +114,8 @@ export type FakeBehaviour = {
   write?: string;
   /** A file the call looks for, relative to its working directory; whether it was there is recorded as `looked`. */
   look?: string;
+  /** A file in the bench root whose contents the call records as `recorded` (null when it is missing). */
+  record?: string;
   /** Whether the call runs `git commit --allow-empty -m work`; how it went is recorded as `commit`. */
   commit?: boolean;
   /** A line the call prints after its stream-json. */
@@ -134,6 +139,8 @@ export type FakeCall = {
   helloOutput: string | null;
   /** Whether the behaviour's `look` file was there, when the behaviour names one. */
   looked?: boolean;
+  /** The contents of the behaviour's `record` file when the call started, or null when it was missing. */
+  recorded?: string | null;
   /** How `git commit --allow-empty -m work` exited and the new HEAD's `%an <%ae>`, when the behaviour commits. */
   commit?: { status: number | null; author: string };
 };

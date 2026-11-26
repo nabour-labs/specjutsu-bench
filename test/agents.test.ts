@@ -1,9 +1,12 @@
-import { existsSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { delimiter, dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { expect, it, vi } from "vitest";
 import { agentRoot, agents, fakeBehaviour, fakeCalls, promptsYaml, realFixture } from "./agent-helpers.ts";
+import { fingerprint } from "../src/agents/saved.ts";
+import { WORKFLOWS } from "../src/steps.ts";
+import { TASKS } from "./helpers.ts";
 
 // A test here makes up to nine runs, each copying node_modules, so it gets longer than the replay's 30s.
 vi.setConfig({ testTimeout: 120_000 });
@@ -222,9 +225,12 @@ it("AGENT-007 marks a run failed when claude exits 1 on its second prompt, and t
   const run = await agents(root, ["--runs", "3"]);
 
   expect(run.status).toBe(0);
+  expect(run.stderr).toContain("speckit/feature run 1: prompt 2: claude exited 1 (not saved, will be retried)\n");
+  // Run 1 isn't saved, so only runs 2 and 3 are in the results.
+  const saved = join(root, ".bench", "runs", "speckit", "feature");
+  expect([1, 2, 3].map((n) => existsSync(join(saved, `run-${n}.json`)))).toEqual([false, true, true]);
   const runs = agentResults(root).workflows.speckit.feature.runs;
   expect(runs.map((r: { outcome: string; reason?: string }) => [r.outcome, r.reason])).toEqual([
-    ["failed", "prompt 2: claude exited 1"],
     ["passed", undefined],
     ["passed", undefined],
   ]);
@@ -240,8 +246,9 @@ it("AGENT-007 marks a run failed when a call prints no result message", async ()
   const run = await agents(root, ["--runs", "1"]);
 
   expect(run.status).toBe(0);
-  const [recorded] = agentResults(root).workflows.speckit.feature.runs;
-  expect([recorded.outcome, recorded.reason]).toEqual(["failed", "prompt 1: no result message"]);
+  expect(run.stderr).toContain("speckit/feature run 1: prompt 1: no result message (not saved, will be retried)\n");
+  expect(existsSync(join(root, ".bench", "runs", "speckit", "feature", "run-1.json"))).toBe(false);
+  expect(agentResults(root).workflows.speckit.feature.runs).toEqual([]);
 });
 
 it("AGENT-016 fails a run whose call sleeps past --timeout 1", async () => {
@@ -288,8 +295,12 @@ it("AGENT-009 shows a cell's pass rate, median and range over three passing runs
 });
 
 it("AGENT-010 leaves a failed run out of the cell's median", async () => {
-  const root = agentRoot({ "agents/speckit/feature.yaml": promptsYaml(["feature cell"]) });
-  fakeBehaviour(root, { "feature cell": [{ ...inputTurn(9000), exit: 1 }, inputTurn(14000), inputTurn(11000)] });
+  // The acceptance tests fail when the agent leaves a file named broken, as the first run does.
+  const root = agentRoot({
+    "agents/speckit/feature.yaml": promptsYaml(["feature cell"]),
+    "fixture/tasks.json": JSON.stringify({ tasks: TASKS, test: `node -e "process.exit(require('fs').existsSync('broken') ? 1 : 0)"` }),
+  });
+  fakeBehaviour(root, { "feature cell": [{ ...inputTurn(9000), write: "broken" }, inputTurn(14000), inputTurn(11000)] });
 
   const run = await agents(root, ["--runs", "3"]);
 
@@ -322,8 +333,12 @@ it("AGENT-011 compares total input tokens: specjutsu saves 60% vs speckit, 50% v
 });
 
 it("AGENT-012 gives speckit no total when every speckit/feature run fails, and the headline names that cell", async () => {
-  const root = agentRoot({ "agents/speckit/feature.yaml": promptsYaml(["speckit feature"]) });
-  fakeBehaviour(root, { "speckit feature": [{ exit: 1 }, { exit: 1 }] });
+  // The acceptance tests fail when the agent leaves a file named broken, as both speckit/feature runs do.
+  const root = agentRoot({
+    "agents/speckit/feature.yaml": promptsYaml(["speckit feature"]),
+    "fixture/tasks.json": JSON.stringify({ tasks: TASKS, test: `node -e "process.exit(require('fs').existsSync('broken') ? 1 : 0)"` }),
+  });
+  fakeBehaviour(root, { "speckit feature": [{ write: "broken" }, { write: "broken" }] });
 
   const run = await agents(root, ["--runs", "2"]);
 
@@ -355,8 +370,12 @@ it("AGENT-017 counts the lines of one message as one turn", async () => {
 });
 
 it("AGENT-018 names specjutsu/feature once in the headline when every specjutsu/feature run fails", async () => {
-  const root = agentRoot({ "agents/specjutsu/feature.yaml": promptsYaml(["specjutsu feature"]) });
-  fakeBehaviour(root, { "specjutsu feature": [{ exit: 1 }] });
+  // The acceptance tests fail when the agent leaves a file named broken, as the specjutsu/feature run does.
+  const root = agentRoot({
+    "agents/specjutsu/feature.yaml": promptsYaml(["specjutsu feature"]),
+    "fixture/tasks.json": JSON.stringify({ tasks: TASKS, test: `node -e "process.exit(require('fs').existsSync('broken') ? 1 : 0)"` }),
+  });
+  fakeBehaviour(root, { "specjutsu feature": [{ write: "broken" }] });
 
   const run = await agents(root, ["--runs", "1"]);
 
@@ -547,4 +566,241 @@ it("AGENT-029 records a message's largest usage on any of its lines", async () =
   expect(run.status).toBe(0);
   const [recorded] = agentResults(root).workflows.speckit.feature.runs;
   expect([recorded.inputTokens, recorded.outputTokens, recorded.turns]).toEqual([1000, 50, 1]);
+});
+
+it("AGENT-030 a finished run is in the results before the next run starts", async () => {
+  const root = agentRoot({ "agents/specjutsu/feature.yaml": promptsYaml(["specjutsu feature"]) });
+  // Run 2's first call records the results as they stand once run 1 has finished.
+  fakeBehaviour(root, { "specjutsu feature": [inputTurn(30000), { record: "results/agent/results.json" }] });
+
+  const run = await agents(root, ["--runs", "2"]);
+
+  expect(run.status).toBe(0);
+  const second = fakeCalls(root).filter((call) => call.argv[1] === "specjutsu feature")[1];
+  expect(second?.recorded).toEqual(expect.any(String));
+  const recorded = JSON.parse(second?.recorded ?? "null");
+  expect(recorded.workflows.specjutsu.feature.runs).toHaveLength(1);
+  expect(recorded.workflows.specjutsu.feature.runs[0]).toMatchObject({ outcome: "passed", inputTokens: 30000 });
+});
+
+/** A prompt script per workflow and task whose one prompt names its cell, `<workflow> <task>`. */
+function cellPrompts(): Record<string, string> {
+  const files: Record<string, string> = {};
+  for (const workflow of WORKFLOWS) for (const task of TASKS) files[`agents/${workflow}/${task}.yaml`] = promptsYaml([`${workflow} ${task}`]);
+  return files;
+}
+
+/** The session ids in a saved transcript. */
+function transcriptSessions(path: string): string[] {
+  const lines = readFileSync(path, "utf8").split("\n").filter(Boolean);
+  return [...new Set(lines.map((line) => JSON.parse(line).session_id as string))];
+}
+
+it("AGENT-031 a second start does only the runs not yet saved", async () => {
+  const root = agentRoot(cellPrompts());
+  expect((await agents(root, ["--runs", "1"])).status).toBe(0);
+  const first = fakeCalls(root).length;
+  const transcript = (workflow: string, task: string, n: number) =>
+    join(root, ".bench", "transcripts", workflow, task, `run-${n}`, "prompt-1.jsonl");
+  const run1Before = Object.fromEntries(WORKFLOWS.flatMap((w) => TASKS.map((t) => [`${w} ${t}`, readFileSync(transcript(w, t, 1), "utf8")])));
+
+  const run = await agents(root, ["--runs", "2"]);
+
+  expect(run.status).toBe(0);
+  const second = fakeCalls(root).slice(first);
+  // One call per cell, each the call whose session run 2's transcript holds.
+  expect(second.map((call) => call.argv[1]).sort()).toEqual(WORKFLOWS.flatMap((w) => TASKS.map((t) => `${w} ${t}`)).sort());
+  for (const call of second) {
+    const [workflow, task] = call.argv[1].split(" ");
+    expect(transcriptSessions(transcript(workflow, task, 2))).toEqual([call.sessionId]);
+    // Run 1 was skipped, so its transcript from the first start is still there.
+    expect(readFileSync(transcript(workflow, task, 1), "utf8")).toBe(run1Before[call.argv[1]]);
+  }
+  const markdown = agentMarkdown(root);
+  for (const workflow of WORKFLOWS) for (const task of TASKS) expect(markdown).toContain(`| ${workflow} | ${task} | 2/2 |`);
+});
+
+it("AGENT-032 a run whose inputs changed runs again", async () => {
+  const root = agentRoot(cellPrompts());
+  expect((await agents(root, ["--runs", "1"])).status).toBe(0);
+  const first = fakeCalls(root).length;
+  writeFileSync(join(root, "agents", "speckit", "feature.yaml"), promptsYaml(["speckit feature, changed"]));
+
+  const run = await agents(root, ["--runs", "1"]);
+
+  expect(run.status).toBe(0);
+  const second = fakeCalls(root).slice(first);
+  expect(second.map((call) => call.argv[1])).toEqual(["speckit feature, changed"]);
+  expect(transcriptSessions(join(root, ".bench", "transcripts", "speckit", "feature", "run-1", "prompt-1.jsonl"))).toEqual([second[0]?.sessionId]);
+});
+
+it("AGENT-037 a start with nothing left to run still rewrites the results", async () => {
+  const root = agentRoot(cellPrompts());
+  expect((await agents(root, ["--runs", "2"])).status).toBe(0);
+  const first = fakeCalls(root).length;
+
+  const run = await agents(root, ["--runs", "1"]);
+
+  expect(run.status).toBe(0);
+  expect(fakeCalls(root).slice(first)).toEqual([]);
+  const markdown = agentMarkdown(root);
+  for (const workflow of WORKFLOWS) for (const task of TASKS) expect(markdown).toContain(`| ${workflow} | ${task} | 1/1 |`);
+});
+
+it("AGENT-038 a run whose call errored is done again on the next start", async () => {
+  const root = agentRoot(cellPrompts());
+  // Only the first call of each errs; later calls with the same prompt succeed.
+  fakeBehaviour(root, { "openspec bugfix": [{ exit: 1 }], "openspec change": [{ sleep: 5 }] });
+  expect((await agents(root, ["--runs", "1", "--timeout", "1"])).status).toBe(0);
+  const first = fakeCalls(root).length;
+
+  const run = await agents(root, ["--runs", "1", "--timeout", "1"]);
+
+  expect(run.status).toBe(0);
+  const second = fakeCalls(root).slice(first);
+  expect(second.map((call) => call.argv[1])).toEqual(["openspec bugfix"]);
+  expect(transcriptSessions(join(root, ".bench", "transcripts", "openspec", "bugfix", "run-1", "prompt-1.jsonl"))).toEqual([second[0]?.sessionId]);
+  const [change] = agentResults(root).workflows.openspec.change.runs;
+  expect([change.outcome, change.reason]).toEqual(["failed", "prompt 1: claude timed out after 1s"]);
+});
+
+it("AGENT-033 --workflow runs one workflow and keeps the others' runs", async () => {
+  const root = agentRoot(cellPrompts());
+  expect((await agents(root, ["--runs", "1"])).status).toBe(0);
+  const first = fakeCalls(root).length;
+  const before = agentResults(root).workflows;
+
+  const run = await agents(root, ["--runs", "1", "--workflow", "openspec", "--fresh"]);
+
+  expect(run.status).toBe(0);
+  const second = fakeCalls(root).slice(first);
+  expect(second.map((call) => call.argv[1]).sort()).toEqual(TASKS.map((task) => `openspec ${task}`).sort());
+  const after = agentResults(root).workflows;
+  expect(after.specjutsu).toEqual(before.specjutsu);
+  expect(after.speckit).toEqual(before.speckit);
+});
+
+it("AGENT-034 refuses an unknown workflow before any claude call", async () => {
+  const root = rootWithEarlierResults();
+
+  const run = await agents(root, ["--workflow", "spec-kit"]);
+
+  expect(run.stderr).toContain("--workflow must be one of specjutsu, speckit, openspec");
+  expect(run.status).toBe(1);
+  expect(fakeCalls(root)).toEqual([]);
+  expectEarlierResults(root);
+});
+
+it("AGENT-036 a cell with no saved run shows as not run", async () => {
+  const root = agentRoot(cellPrompts());
+
+  const run = await agents(root, ["--runs", "1", "--workflow", "specjutsu"]);
+
+  expect(run.status).toBe(0);
+  const markdown = agentMarkdown(root);
+  for (const workflow of ["speckit", "openspec"]) {
+    for (const task of TASKS) expect(markdown).toContain(`| ${workflow} | ${task} | not run | — | — |`);
+  }
+  expect(markdown).toContain("specjutsu saves speckit/feature: not run, openspec/feature: not run\n");
+});
+
+it("AGENT-035 --fresh does a workflow's saved runs again", async () => {
+  const root = agentRoot(cellPrompts());
+  expect((await agents(root, ["--runs", "1"])).status).toBe(0);
+  const first = fakeCalls(root).length;
+
+  const run = await agents(root, ["--runs", "1", "--workflow", "speckit", "--fresh"]);
+
+  expect(run.status).toBe(0);
+  const second = fakeCalls(root).slice(first);
+  expect(second.map((call) => call.argv[1]).sort()).toEqual(TASKS.map((task) => `speckit ${task}`).sort());
+});
+
+it("AGENT-039 a changed acceptance test command does every run again", async () => {
+  const root = agentRoot(cellPrompts());
+  expect((await agents(root, ["--runs", "1"])).status).toBe(0);
+  const first = fakeCalls(root).length;
+  writeFileSync(join(root, "fixture", "tasks.json"), JSON.stringify({ tasks: TASKS, test: `node -e "process.exit(0)" && true` }));
+
+  const run = await agents(root, ["--runs", "1"]);
+
+  expect(run.status).toBe(0);
+  const second = fakeCalls(root).slice(first);
+  expect(second.map((call) => call.argv[1]).sort()).toEqual(WORKFLOWS.flatMap((workflow) => TASKS.map((task) => `${workflow} ${task}`)).sort());
+});
+
+it("AGENT-040 what a workspace doesn't get leaves the fingerprint alone", async () => {
+  const root = agentRoot(cellPrompts());
+  expect((await agents(root, ["--runs", "1"])).status).toBe(0);
+  const first = fakeCalls(root).length;
+  const start = join(root, "fixture", "start");
+  mkdirSync(join(start, "node_modules"), { recursive: true });
+  writeFileSync(join(start, "node_modules", "x.js"), "export {};\n");
+  mkdirSync(join(start, ".specjutsu", "ledger"), { recursive: true });
+  writeFileSync(join(start, ".specjutsu", "ledger", "runs.jsonl"), "{}\n");
+
+  const run = await agents(root, ["--runs", "1"]);
+
+  expect(run.status).toBe(0);
+  expect(fakeCalls(root).slice(first)).toEqual([]);
+});
+
+it("AGENT-041 every other input changes the fingerprint", () => {
+  const root = agentRoot();
+  const model = "claude-sonnet-5-5";
+  const print = () => fingerprint(root, model, "speckit", "feature");
+  const first = print();
+  /** The fingerprint with `path` holding `content`, then `path` put back. */
+  const withFile = (path: string, content: string) => {
+    const file = join(root, path);
+    const before = existsSync(file) ? readFileSync(file) : undefined;
+    writeFileSync(file, content);
+    const changed = print();
+    if (before === undefined) rmSync(file);
+    else writeFileSync(file, before);
+    return changed;
+  };
+
+  const prints = [
+    fingerprint(root, "claude-opus-5-5", "speckit", "feature"),
+    withFile("pins.json", JSON.stringify({ openspec: "1.2.1", superpowers: "0123456789abcdef0123456789abcdef01234567" })),
+    withFile("agents/speckit/setup.yaml", "steps:\n  - command: \"echo set up\"\n    source: https://example.com/docs#setup\n"),
+    withFile("fixture/start/file-1.md", "file 1, changed\n"),
+    withFile("fixture/golden/feature/test/README.md", "golden tests, changed\n"),
+  ];
+
+  expect(print()).toBe(first);
+  for (const changed of prints) expect(changed).not.toBe(first);
+});
+
+it("AGENT-042 a timed-out run is done again under another timeout", async () => {
+  const root = agentRoot(cellPrompts());
+  // The other cells are saved first under a timeout no call comes near, so none of them depends on
+  // --timeout; openspec/change errs there, is not saved, and then sleeps past --timeout 1.
+  fakeBehaviour(root, { "openspec change": [{ exit: 1 }, { sleep: 5 }] });
+  expect((await agents(root, ["--runs", "1", "--timeout", "60"])).status).toBe(0);
+  expect((await agents(root, ["--runs", "1", "--timeout", "1"])).status).toBe(0);
+  const [change] = agentResults(root).workflows.openspec.change.runs;
+  expect([change.outcome, change.reason]).toEqual(["failed", "prompt 1: claude timed out after 1s"]);
+  const first = fakeCalls(root).length;
+
+  const run = await agents(root, ["--runs", "1", "--timeout", "2"]);
+
+  expect(run.status).toBe(0);
+  expect(fakeCalls(root).slice(first).map((call) => call.argv[1])).toEqual(["openspec change"]);
+});
+
+it("AGENT-043 a cell missing some runs shows it and gives no total", async () => {
+  const root = agentRoot(cellPrompts());
+  // speckit/bugfix's second run errs, so it is not saved; every other run passes.
+  fakeBehaviour(root, { "speckit bugfix": [{}, { exit: 1 }] });
+
+  const run = await agents(root, ["--runs", "2"]);
+
+  expect(run.status).toBe(0);
+  const markdown = agentMarkdown(root);
+  expect(markdown).toContain("| speckit | bugfix | 1/1 (1 not run) |");
+  expect(markdown).toContain("| speckit | total | | — | |");
+  // Every other cell's runs report 100 input tokens, so specjutsu and openspec tie.
+  expect(markdown).toContain("specjutsu saves speckit/bugfix: 1 not run, 0% vs openspec\n");
 });

@@ -4,7 +4,6 @@ import { tmpdir } from "node:os";
 import { delimiter, join, sep } from "node:path";
 import { allowlistedEnv, loadTestCommand, SUITE_TIMEOUT_MS } from "../fixture.ts";
 import { BENCH_GIT_IDENTITY, commitStart, copyStart, excludeNodeModules } from "../replay.ts";
-import { WORKFLOWS } from "../steps.ts";
 import { loadAgentConfig, loadPrompts, loadSetup } from "./scripts.ts";
 import { addUsage, NO_USAGE, parseCall, type Usage } from "./usage.ts";
 
@@ -13,10 +12,20 @@ import { addUsage, NO_USAGE, parseCall, type Usage } from "./usage.ts";
  * summed over every call it made.
  */
 export type Run = { outcome: "passed" | "failed"; reason?: string } & Usage;
-/** How many runs each workflow and task gets, and the seconds a call may take before the run fails. */
-export type RunOptions = { runs: number; timeout: number };
+/**
+ * The workflows to run, how many runs each of their tasks gets, and the seconds a call may take
+ * before the run fails.
+ */
+export type RunOptions = { workflows: readonly string[]; runs: number; timeout: number };
 /** Every run, by workflow and task, in the order they ran. */
 export type Runs = Record<string, Record<string, Run[]>>;
+/**
+ * A finished run, whether it failed because a `claude` call errored: exited non-zero, was
+ * killed, or printed no result message, and whether it failed because a call timed out. An
+ * errored run measures nothing about the workflow, so it isn't saved and the next start does it
+ * again; a timed-out run measures the workflow under that timeout only.
+ */
+export type Attempt = { run: Run; errored: boolean; timedOut: boolean };
 
 /** Thrown when a setup command fails; the benchmark stops and writes no results. */
 export class SetupError extends Error {}
@@ -27,32 +36,39 @@ const CALL_MAX_BUFFER = 256 * 1024 * 1024;
 /** Where a run's call transcripts go: outside `results/`, for CI to keep as an artifact. */
 export const TRANSCRIPTS = ".bench/transcripts";
 
-/** Runs every workflow's prompt script for every task, `options.runs` times each; earlier transcripts are cleared first. */
-export function runAll(root: string, tasks: string[], options: RunOptions): Runs {
+/**
+ * Runs each of `options.workflows`' prompt scripts for every task, `options.runs` times each, skipping the runs
+ * `saved` says are already saved, and hands each run to `finished` as soon as it is done.
+ */
+export function runAll(
+  root: string,
+  tasks: string[],
+  options: RunOptions,
+  saved: (workflow: string, task: string, n: number) => boolean,
+  finished: (workflow: string, task: string, n: number, attempt: Attempt) => void,
+): void {
   const { model } = loadAgentConfig(root);
-  rmSync(join(root, TRANSCRIPTS), { recursive: true, force: true });
-  const runs: Runs = {};
-  for (const workflow of WORKFLOWS) {
-    runs[workflow] = {};
+  for (const workflow of options.workflows) {
     for (const task of tasks) {
-      runs[workflow][task] = [];
       for (let n = 1; n <= options.runs; n++) {
-        runs[workflow][task].push(runAgent(root, model, workflow, task, n, options.timeout));
+        if (!saved(workflow, task, n)) finished(workflow, task, n, runAgent(root, model, workflow, task, n, options.timeout));
       }
     }
   }
-  return runs;
 }
 
 /**
  * The `n`-th run of a workflow's prompt script for a task, in a fresh copy of `fixture/start/`
- * removed afterwards. Each call's stream-json, with the API key redacted, is saved as
+ * removed afterwards. The run's earlier transcripts are cleared when it starts. Each call's
+ * stream-json, with the API key redacted, is saved as
  * `.bench/transcripts/<workflow>/<task>/run-<n>/prompt-<k>.jsonl`, `k` counting prompts from 1.
  * A call that exits non-zero, prints no result message or runs past `timeout` seconds fails the
  * run, and the run makes no more calls. After the last prompt, the task's golden tests decide
  * whether the run passed.
  */
-export function runAgent(root: string, model: string, workflow: string, task: string, n: number, timeout: number): Run {
+export function runAgent(root: string, model: string, workflow: string, task: string, n: number, timeout: number): Attempt {
+  const transcripts = join(root, TRANSCRIPTS, workflow, task, `run-${n}`);
+  rmSync(transcripts, { recursive: true, force: true });
   // The run's temporary area holds its workspace and its Claude Code configuration.
   const area = realpathSync(mkdtempSync(join(tmpdir(), "agent-run-")));
   try {
@@ -66,7 +82,6 @@ export function runAgent(root: string, model: string, workflow: string, task: st
     setUp(root, workflow, workspace, env);
     // Only `claude` needs the API key; setup commands run third-party installers.
     if (process.env.ANTHROPIC_API_KEY !== undefined) env.ANTHROPIC_API_KEY = process.env.ANTHROPIC_API_KEY;
-    const transcripts = join(root, TRANSCRIPTS, workflow, task, `run-${n}`);
     mkdirSync(transcripts, { recursive: true });
     let usage = NO_USAGE;
     let k = 0;
@@ -95,20 +110,20 @@ export function runAgent(root: string, model: string, workflow: string, task: st
       const stream = parseCall(stdout.split("\n").filter((line) => line.trim() !== ""));
       usage = addUsage(usage, stream.usage);
       resume = stream.sessionId;
-      const failure =
-        (call.error as NodeJS.ErrnoException | undefined)?.code === "ETIMEDOUT"
-          ? `claude timed out after ${timeout}s`
-          : call.status === null
-            ? `claude killed by ${call.signal}`
-            : call.status !== 0
-              ? `claude exited ${call.status}`
-              : !stream.result
-                ? "no result message"
-                : undefined;
-      if (failure) return { outcome: "failed", reason: `prompt ${k}: ${failure}`, ...usage };
+      const timedOut = (call.error as NodeJS.ErrnoException | undefined)?.code === "ETIMEDOUT";
+      const failure = timedOut
+        ? `claude timed out after ${timeout}s`
+        : call.status === null
+          ? `claude killed by ${call.signal}`
+          : call.status !== 0
+            ? `claude exited ${call.status}`
+            : !stream.result
+              ? "no result message"
+              : undefined;
+      if (failure) return { run: { outcome: "failed", reason: `prompt ${k}: ${failure}`, ...usage }, errored: !timedOut, timedOut };
     }
-    if (!acceptancePasses(root, task, workspace)) return { outcome: "failed", reason: "acceptance tests failed", ...usage };
-    return { outcome: "passed", ...usage };
+    if (!acceptancePasses(root, task, workspace)) return { run: { outcome: "failed", reason: "acceptance tests failed", ...usage }, errored: false, timedOut: false };
+    return { run: { outcome: "passed", ...usage }, errored: false, timedOut: false };
   } finally {
     rmSync(area, { recursive: true, force: true });
   }
