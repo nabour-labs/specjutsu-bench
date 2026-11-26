@@ -14,4 +14,4 @@
 
 ## 3. Docs
 
-- [ ] 3.1 README: output tokens and the feature prompt (no-scenario: docs)
+- [x] 3.1 README: output tokens and the feature prompt (no-scenario: docs)
