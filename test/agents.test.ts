@@ -573,7 +573,7 @@ it("AGENT-029 records a message's largest input usage on any of its lines", asyn
     cache_read_input_tokens: cacheRead,
     output_tokens: 0,
   });
-  fakeBehaviour(root, { "one message": [{ turns: [line(4000), line(5000)] }] });
+  fakeBehaviour(root, { "one message": [{ turns: [line(5000), line(4000)] }] });
 
   const run = await agents(root, ["--runs", "1"]);
 
