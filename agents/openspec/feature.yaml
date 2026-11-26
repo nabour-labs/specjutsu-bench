@@ -7,7 +7,7 @@ prompts:
   - session: true
     source: openspec@2.1.1:docs-lab/start/quickstart.md
     note: Layer 1's session 1, propose. The first prompt starts a new session anyway.
-  - prompt: "/openspec-propose Add payment terms to invoices (due on receipt, net 15, net 30) and a dueDate function that works out when an invoice is due."
+  - prompt: "/openspec-propose Add payment terms to invoices (due on receipt, net 15, net 30) and a dueDate function that works out when an invoice is due. Put them in a new src/terms.ts that exports a PaymentTerms type, \"due-on-receipt\" | \"net-15\" | \"net-30\", and dueDate(invoice), which returns the due date as YYYY-MM-DD; an invoice without terms is due on its issue date. createInvoice takes an optional terms field and throws InvoiceError(\"invoice <id>: unknown payment terms <terms>\") for any other value."
     source: openspec@2.1.1:README.md#L146
     note: >-
       "Already know what you want? Go straight to `/openspec-propose <what-you-want-to-build>`."
